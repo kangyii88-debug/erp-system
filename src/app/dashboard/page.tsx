@@ -181,7 +181,7 @@ function DashboardContent() {
                     <Td>{"-"}</Td>
                     <Td>{"-"}</Td>
                     <Td>{"-"}</Td>
-                  <Td>{"-"}</Td>
+                    <Td>{"-"}</Td>
                   </tr>
                 ) : null}
               </tbody>
