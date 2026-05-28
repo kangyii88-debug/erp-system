@@ -290,11 +290,11 @@ function SalesContent() {
               <tbody>
                 <tr>
                   <Td>{t.empty}</Td>
-                  <Td />
-                  <Td />
-                  <Td />
-                  <Td />
-                  <Td />
+                  <Td>{"-"}</Td>
+                  <Td>{"-"}</Td>
+                  <Td>{"-"}</Td>
+                  <Td>{"-"}</Td>
+                  <Td>{"-"}</Td>
                 </tr>
               </tbody>
             </Table>
