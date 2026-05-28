@@ -23,6 +23,7 @@ function DashboardContent() {
   const [rows, setRows] = useState<ReplenishmentRow[]>([]);
   const [salesRows, setSalesRows] = useState<SaleDaily[]>([]);
   const [totalSales, setTotalSales] = useState(0);
+  const [sales30d, setSales30d] = useState(0);
   const [returnInboundSaleable, setReturnInboundSaleable] = useState(0);
   const [lossQuantity, setLossQuantity] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -33,18 +34,23 @@ function DashboardContent() {
 
   async function load() {
     setLoading(true);
-    const since = new Date();
-    since.setDate(since.getDate() - 6);
-    const date = since.toISOString().slice(0, 10);
-    const [{ data: products }, { data: sales }, { data: purchases }, { data: allSales }, { data: movements }] = await Promise.all([
+    const since7d = new Date();
+    since7d.setDate(since7d.getDate() - 6);
+    const date7d = since7d.toISOString().slice(0, 10);
+    const since30d = new Date();
+    since30d.setDate(since30d.getDate() - 29);
+    const date30d = since30d.toISOString().slice(0, 10);
+    const [{ data: products }, { data: sales }, { data: sales30 }, { data: purchases }, { data: allSales }, { data: movements }] = await Promise.all([
       supabase.from("products").select("*, inventory_balances(current_stock)").order("created_at", { ascending: false }),
-      supabase.from("sales_daily").select("*").gte("sale_date", date),
+      supabase.from("sales_daily").select("*").gte("sale_date", date7d),
+      supabase.from("sales_daily").select("quantity").gte("sale_date", date30d),
       supabase.from("purchase_orders").select("*, products(name, sku)"),
       supabase.from("sales_daily").select("quantity"),
       supabase.from("stock_movements").select("type, quantity, memo")
     ]);
 
     setTotalSales((allSales ?? []).reduce((sum, sale) => sum + Number(sale.quantity ?? 0), 0));
+    setSales30d((sales30 ?? []).reduce((sum, sale) => sum + Number(sale.quantity ?? 0), 0));
     setReturnInboundSaleable(
       (movements ?? []).reduce((sum, movement) => {
         const memo = String(movement.memo ?? "");
@@ -80,6 +86,7 @@ function DashboardContent() {
   const skuCount = rows.length;
   const lowStock = rows.filter((row) => row.currentStock <= row.product.low_stock_threshold);
   const sales7d = rows.reduce((sum, row) => sum + row.sales7d, 0);
+  const averageDailySales = Math.round((sales30d / 30) * 10) / 10;
   const suggested = rows.filter((row) => row.suggestedQty > 0).sort((a, b) => b.suggestedQty - a.suggestedQty);
   const stockByColor = buildStockByColor(rows);
   const salesByDate = buildSalesByDate(salesRows);
@@ -89,10 +96,12 @@ function DashboardContent() {
   return (
     <>
       <PageHeader title={t.dashboard} />
-      <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-7">
+      <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-5">
         <KpiCard label={t.totalStock} value={totalStock} />
         <KpiCard label="SKU总数" value={skuCount} />
         <KpiCard label={t.totalSales} value={totalSales} />
+        <KpiCard label="30天销量" value={sales30d} />
+        <KpiCard label="平均一天销量" value={averageDailySales} />
         <KpiCard label={t.return_inbound} value={returnInboundSaleable} />
         <KpiCard label={t.loss} value={lossQuantity} />
         <KpiCard label={t.lowStock} value={lowStock.length} />

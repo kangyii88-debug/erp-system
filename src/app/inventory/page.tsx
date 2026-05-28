@@ -70,13 +70,21 @@ function InventoryContent() {
       memo: businessMemo
     };
 
-    const { error } = editingId
-      ? await updateMovement(editingId, payload)
-      : await supabase.from("stock_movements").insert({ user_id: auth.user.id, ...payload });
-
-    if (error) {
-      setMessage(error.message);
-      return;
+    if (editingId) {
+      const error = await updateMovement(editingId, payload);
+      if (error) {
+        setMessage(error.message);
+        return;
+      }
+    } else {
+      const { error } = await supabase.from("stock_movements").insert({
+        user_id: auth.user.id,
+        ...payload
+      });
+      if (error) {
+        setMessage(error.message);
+        return;
+      }
     }
     setMessage("");
     setEditingId(null);

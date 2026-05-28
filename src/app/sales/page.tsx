@@ -68,10 +68,13 @@ function SalesContent() {
       ? await updateSale(editingId, payload)
       : await supabase.from("stock_movements").insert({ user_id: auth.user.id, ...payload });
 
-    if (error) {
+    const error = result && "error" in result ? result.error : null;
+     
+      if (error) {
       setMessage(error.message);
       return;
-    }
+  }
+
 
     setMessage("");
     setEditingId(null);
