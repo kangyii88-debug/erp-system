@@ -178,10 +178,10 @@ function DashboardContent() {
                 {!suggested.length ? (
                   <tr>
                     <Td>{t.empty}</Td>
-                    <Td></Td>
-                    <Td></Td>
-                    <Td></Td>
-                    <Td></Td>
+                    <Td>{""}</Td>
+                    <Td>{""}</Td>
+                    <Td>{""}</Td>
+                    <Td>{""}</Td>
                   </tr>
                 ) : null}
               </tbody>
