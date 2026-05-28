@@ -64,7 +64,7 @@ function SalesContent() {
       memo: form.memo || null
     };
 
-    const { error } = editingId
+    const result: any = editingId
       ? await updateSale(editingId, payload)
       : await supabase.from("stock_movements").insert({ user_id: auth.user.id, ...payload });
 
