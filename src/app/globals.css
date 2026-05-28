@@ -1,0 +1,27 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  background: #eef3ee;
+  color: #17201b;
+}
+
+input,
+select,
+textarea {
+  @apply rounded border border-line bg-white px-3 py-2 text-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/15;
+}
+
+button {
+  @apply transition;
+}
+
+table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
