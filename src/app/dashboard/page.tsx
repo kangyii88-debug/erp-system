@@ -2,6 +2,15 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, ArrowDownRight, ArrowUpRight, CalendarDays, CircleAlert, CircleCheck } from "lucide-react";
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis
+} from "recharts";
 import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/Card";
 import { PageHeader } from "@/components/PageHeader";
@@ -18,8 +27,8 @@ import {
 import type { ProductWithStock, PurchaseOrder, SaleDaily } from "@/lib/types";
 
 type ViewMode = "today" | "yesterday" | "7d" | "30d" | "month" | "custom";
-type TrendMetric = "quantity" | "revenue";
-type SalesPoint = { date: string; label: string; quantity: number; revenue: number; profit: number };
+type TrendMetric = "orders" | "quantity";
+type SalesPoint = { date: string; label: string; orders: number; quantity: number; revenue: number; profit: number };
 type AlertItem = { level: "danger" | "warning" | "success"; text: string };
 type MovementRow = { type: string; quantity: number; happened_at: string; memo: string | null };
 
@@ -40,7 +49,7 @@ function DashboardContent() {
   const [movements, setMovements] = useState<MovementRow[]>([]);
   const [selectedDate, setSelectedDate] = useState(toDateKey(new Date()));
   const [viewMode, setViewMode] = useState<ViewMode>("today");
-  const [trendMetric, setTrendMetric] = useState<TrendMetric>("revenue");
+  const [trendMetric, setTrendMetric] = useState<TrendMetric>("quantity");
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [loading, setLoading] = useState(true);
 
@@ -104,7 +113,7 @@ function DashboardContent() {
   const selectedDayMovements = movements.filter((movement) => movement.happened_at.slice(0, 10) === range.end);
   const salesWindowRows = salesRows.filter((sale) => isBetween(sale.sale_date, daysAgoKey(anchorDate, 29), range.end));
   const salesSummary = summarizeSales(salesWindowRows);
-  const trendDays = viewMode === "30d" ? 30 : viewMode === "month" ? daysInRange(range) : 7;
+  const trendDays = viewMode === "30d" ? 30 : viewMode === "month" ? daysInRange(range) : viewMode === "custom" ? 7 : viewMode === "7d" ? 7 : 7;
 
   const totalStock = rows.reduce((sum, row) => sum + row.currentStock, 0);
   const skuCount = rows.length;
@@ -124,6 +133,7 @@ function DashboardContent() {
     comparisonProfit: comparisonMetrics.profit
   });
   const trendData = buildDailySalesPoints(salesRows, productMap, trendDays, anchorDate);
+  const comparisonTrendData = buildDailySalesPoints(salesAllRows, productMap, trendDays, parseDateKey(comparisonRange.end));
   const annualData = buildMonthlySalesPoints(salesYearRows, productMap, selectedYear);
   const topSales = buildTopSales(rangeSales, productMap, "quantity");
   const topProfit = buildTopSales(rangeSales, productMap, "profit");
@@ -185,12 +195,18 @@ function DashboardContent() {
           <Card>
             <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
               <DashboardSectionTitle eyebrow="销售趋势中心" title={`${trendData[0]?.label ?? ""} - ${trendData[trendData.length - 1]?.label ?? ""}`} />
-              <div className="flex gap-2">
-                <SegmentButton active={trendMetric === "revenue"} onClick={() => setTrendMetric("revenue")}>销售额</SegmentButton>
+              <div className="flex flex-wrap gap-2">
+                <SegmentButton active={trendMetric === "orders"} onClick={() => setTrendMetric("orders")}>订单数</SegmentButton>
                 <SegmentButton active={trendMetric === "quantity"} onClick={() => setTrendMetric("quantity")}>销量</SegmentButton>
+                <span className="mx-1 h-9 w-px bg-line" />
+                {(["7d", "30d", "month", "custom"] as ViewMode[]).map((mode) => (
+                  <SegmentButton key={mode} active={viewMode === mode} onClick={() => setViewMode(mode)}>
+                    {mode === "7d" ? "7天" : mode === "30d" ? "30天" : mode === "month" ? "本月" : "自定义日期"}
+                  </SegmentButton>
+                ))}
               </div>
             </div>
-            <TrendChart data={trendData} metric={trendMetric} />
+            <TrendChart data={trendData} comparisonData={comparisonTrendData} metric={trendMetric} />
           </Card>
 
           <Card>
@@ -450,25 +466,113 @@ function SegmentButton({ active, onClick, children }: { active: boolean; onClick
   );
 }
 
-function TrendChart({ data, metric }: { data: SalesPoint[]; metric: TrendMetric }) {
-  const maxValue = Math.max(1, ...data.map((item) => item[metric]));
-  const points = data.map((item, index) => {
-    const x = data.length === 1 ? 0 : (index / (data.length - 1)) * 100;
-    const y = 100 - (item[metric] / maxValue) * 92;
-    return `${x},${y}`;
-  }).join(" ");
+function TrendChart({ data, comparisonData, metric }: { data: SalesPoint[]; comparisonData: SalesPoint[]; metric: TrendMetric }) {
+  const currentTotal = sumMetric(data, metric);
+  const previousTotal = sumMetric(comparisonData, metric);
+  const growth = compare(currentTotal, previousTotal);
+  const bestDay = data.reduce((best, item) => item[metric] > best[metric] ? item : best, data[0] ?? emptyPoint());
+  const worstDay = data.reduce((worst, item) => item[metric] < worst[metric] ? item : worst, data[0] ?? emptyPoint());
+  const hasData = data.some((item) => item.quantity > 0 || item.orders > 0);
+  const trendLabel = metric === "orders" ? "订单数" : "销量";
+  const analysisText = growth == null
+    ? "当前周期暂无可对比数据。"
+    : growth >= 0
+      ? `本周期${trendLabel}较上一周期增长${growth.toFixed(1)}%，趋势健康。`
+      : `本周期${trendLabel}下降${Math.abs(growth).toFixed(1)}%，建议检查库存与广告表现。`;
+
+  if (!hasData) {
+    return (
+      <div className="rounded-2xl border border-line bg-gradient-to-br from-white to-panel p-6">
+        <TrendSummary data={data} metric={metric} growth={growth} bestDay={bestDay} worstDay={worstDay} />
+        <div className="mt-6 flex h-72 flex-col items-center justify-center rounded-xl border border-dashed border-line bg-white/70 text-center">
+          <div className="text-lg font-semibold text-ink">暂无销售数据</div>
+          <div className="mt-2 text-sm text-ink/55">请导入订单数据或切换日期范围。</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div>
-      <div className="h-72 rounded border border-line bg-panel p-4">
-        <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="h-full w-full">
-          <polyline fill="none" stroke="#217f57" strokeWidth="2.2" points={points} vectorEffect="non-scaling-stroke" />
-        </svg>
+    <div className="rounded-2xl border border-line bg-gradient-to-br from-white via-white to-emerald-50/60 p-5 shadow-soft">
+      <TrendSummary data={data} metric={metric} growth={growth} bestDay={bestDay} worstDay={worstDay} />
+      <div className="mt-5 h-80">
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={data} margin={{ top: 12, right: 18, left: 0, bottom: 6 }}>
+            <defs>
+              <linearGradient id="salesTrendFill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#217f57" stopOpacity={0.35} />
+                <stop offset="55%" stopColor="#217f57" stopOpacity={0.1} />
+                <stop offset="100%" stopColor="#217f57" stopOpacity={0.01} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid stroke="#d9e3dc" strokeDasharray="4 6" vertical={false} />
+            <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fill: "#66736b", fontSize: 12 }} />
+            <YAxis tickLine={false} axisLine={false} tick={{ fill: "#66736b", fontSize: 12 }} width={36} />
+            <Tooltip content={<TrendTooltip />} cursor={{ stroke: "#217f57", strokeWidth: 1, strokeDasharray: "4 4" }} />
+            <Area
+              type="monotone"
+              dataKey={metric}
+              stroke="#217f57"
+              strokeWidth={3}
+              fill="url(#salesTrendFill)"
+              activeDot={{ r: 6, stroke: "#ffffff", strokeWidth: 3, fill: "#217f57" }}
+              dot={{ r: 3, stroke: "#217f57", strokeWidth: 2, fill: "#ffffff" }}
+            />
+          </AreaChart>
+        </ResponsiveContainer>
       </div>
-      <div className="mt-3 grid gap-2 text-xs text-ink/60" style={{ gridTemplateColumns: `repeat(${Math.min(data.length, 12)}, minmax(0, 1fr))` }}>
-        {sampleLabels(data).map((item) => (
-          <span key={item.date}>{item.label}</span>
-        ))}
+      <div className={`mt-4 rounded-lg px-4 py-3 text-sm font-semibold ${growth != null && growth < 0 ? "bg-red-50 text-red-700" : "bg-emerald-50 text-emerald-700"}`}>
+        {analysisText}
+      </div>
+    </div>
+  );
+}
+
+function TrendSummary({
+  data,
+  metric,
+  growth,
+  bestDay,
+  worstDay
+}: {
+  data: SalesPoint[];
+  metric: TrendMetric;
+  growth: number | null;
+  bestDay: SalesPoint;
+  worstDay: SalesPoint;
+}) {
+  return (
+    <div className="grid gap-3 md:grid-cols-4">
+      <MiniTrendCard label="当前周期订单数" value={sumMetric(data, "orders")} />
+      <MiniTrendCard label="当前周期销量" value={sumMetric(data, "quantity")} />
+      <MiniTrendCard label="同比增长" value={growth == null ? "-" : `${growth >= 0 ? "+" : ""}${growth.toFixed(1)}%`} tone={growth != null && growth < 0 ? "down" : "up"} />
+      <MiniTrendCard label={metric === "orders" ? "订单峰值" : "销量峰值"} value={`${bestDay.label} / ${bestDay[metric]}`} sub={`低点 ${worstDay.label} / ${worstDay[metric]}`} />
+    </div>
+  );
+}
+
+function MiniTrendCard({ label, value, sub, tone }: { label: string; value: string | number; sub?: string; tone?: "up" | "down" }) {
+  return (
+    <div className="rounded-xl border border-line bg-white/85 p-3">
+      <div className="text-xs font-semibold text-ink/55">{label}</div>
+      <div className={`mt-2 text-2xl font-semibold ${tone === "down" ? "text-red-600" : tone === "up" ? "text-emerald-700" : "text-ink"}`}>{value}</div>
+      {sub ? <div className="mt-1 text-xs text-ink/55">{sub}</div> : null}
+    </div>
+  );
+}
+
+function TrendTooltip({ active, payload }: { active?: boolean; payload?: Array<{ payload?: SalesPoint }> }) {
+  if (!active || !payload?.length) return null;
+  const point = payload[0]?.payload as SalesPoint | undefined;
+  if (!point) return null;
+
+  return (
+    <div className="rounded-xl border border-line bg-white px-4 py-3 shadow-soft">
+      <div className="text-sm font-semibold text-ink">{point.date}</div>
+      <div className="mt-2 grid gap-1 text-sm text-ink/75">
+        <div>订单数：<span className="font-semibold text-ink">{point.orders}</span></div>
+        <div>销量：<span className="font-semibold text-ink">{point.quantity}</span></div>
+        <div>销售额：<span className="font-semibold text-ink">{won(point.revenue)}</span></div>
       </div>
     </div>
   );
@@ -481,7 +585,7 @@ function MonthlyBars({ data, metric }: { data: SalesPoint[]; metric: TrendMetric
       {data.map((item) => (
         <div key={item.date} className="rounded border border-line bg-panel p-2">
           <div className="text-xs font-semibold text-ink/60">{item.label}</div>
-          <div className="mt-1 text-sm font-semibold text-ink">{metric === "revenue" ? shortWon(item.revenue) : item.quantity}</div>
+          <div className="mt-1 text-sm font-semibold text-ink">{item[metric]}</div>
           <div className="mt-3 flex h-24 items-end rounded bg-white px-1">
             <div className="w-full rounded-t bg-brand" style={{ height: `${Math.max(4, (item[metric] / maxValue) * 100)}%` }} />
           </div>
@@ -699,7 +803,7 @@ function buildDailySalesPoints(salesRows: SaleDaily[], productMap: Map<string, P
     const date = new Date(anchorDate);
     date.setDate(anchorDate.getDate() - (days - 1 - index));
     const key = toDateKey(date);
-    return { date: key, label: `${date.getMonth() + 1}/${date.getDate()}`, quantity: 0, revenue: 0, profit: 0 };
+    return { date: key, label: `${date.getMonth() + 1}/${date.getDate()}`, orders: 0, quantity: 0, revenue: 0, profit: 0 };
   });
   const map = new Map(points.map((point) => [point.date, point]));
 
@@ -707,6 +811,7 @@ function buildDailySalesPoints(salesRows: SaleDaily[], productMap: Map<string, P
     const point = map.get(sale.sale_date);
     const product = productMap.get(sale.product_id);
     if (!point || !product) continue;
+    point.orders += sale.quantity;
     point.quantity += sale.quantity;
     point.revenue += sale.quantity * money(product.sale_price);
     point.profit += sale.quantity * (money(product.sale_price) - money(product.purchase_price));
@@ -719,6 +824,7 @@ function buildMonthlySalesPoints(salesRows: SaleDaily[], productMap: Map<string,
   const months = Array.from({ length: 12 }, (_, index) => ({
     date: `${year}-${String(index + 1).padStart(2, "0")}`,
     label: `${index + 1}月`,
+    orders: 0,
     quantity: 0,
     revenue: 0,
     profit: 0
@@ -729,6 +835,7 @@ function buildMonthlySalesPoints(salesRows: SaleDaily[], productMap: Map<string,
     const product = productMap.get(sale.product_id);
     if (saleYear !== year || !saleMonth || !product) continue;
     const point = months[saleMonth - 1];
+    point.orders += sale.quantity;
     point.quantity += sale.quantity;
     point.revenue += sale.quantity * money(product.sale_price);
     point.profit += sale.quantity * (money(product.sale_price) - money(product.purchase_price));
@@ -811,6 +918,14 @@ function sampleLabels(data: SalesPoint[]) {
   if (data.length <= 12) return data;
   const step = Math.ceil(data.length / 12);
   return data.filter((_, index) => index % step === 0 || index === data.length - 1);
+}
+
+function sumMetric(data: SalesPoint[], metric: TrendMetric) {
+  return data.reduce((sum, item) => sum + item[metric], 0);
+}
+
+function emptyPoint(): SalesPoint {
+  return { date: "", label: "-", orders: 0, quantity: 0, revenue: 0, profit: 0 };
 }
 
 function formatSaleableDays(days: number) {
