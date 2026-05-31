@@ -96,6 +96,7 @@ function DashboardContent() {
   const suggested = rows.filter((row) => row.suggestedQty > 0).sort((a, b) => b.suggestedQty - a.suggestedQty);
   const stockByColor = buildStockByColor(rows);
   const salesByDate = buildSalesByDate(salesRows);
+  const replenishmentSummary = buildReplenishmentSummary(rows);
   const maxColorStock = Math.max(1, ...stockByColor.map((item) => item.stock));
   const maxDailySales = Math.max(1, ...salesByDate.map((item) => item.quantity));
   const maxMonthlySales = Math.max(1, ...monthlySales.map((item) => item.quantity));
@@ -108,7 +109,7 @@ function DashboardContent() {
         <KpiCard label="SKU总数" value={skuCount} />
         <KpiCard label={t.totalSales} value={totalSales} />
         <KpiCard label="平均日销量" value={salesSummary.averageDailySales} />
-        <KpiCard label="有效销售天数" value={salesSummary.activeSalesDays} />
+        <KpiCard label="销售天数" value={salesSummary.activeSalesDays} />
         <KpiCard label={t.return_inbound} value={returnInboundSaleable} />
         <KpiCard label={t.loss} value={lossQuantity} />
         <KpiCard label={t.lowStock} value={lowStock.length} />
@@ -119,15 +120,16 @@ function DashboardContent() {
         <Card>
           <div className="mb-4 flex items-end justify-between gap-3">
             <div>
-              <div className="text-sm font-medium text-ink/55">最近 {SALES_ANALYSIS_DAYS} 天有效销量 / 有销量日期</div>
-              <h2 className="text-xl font-semibold text-ink">平均日销量</h2>
-            </div>
-            <div className="rounded bg-panel px-3 py-1 text-sm font-semibold text-ink">
-              {salesSummary.totalQuantity} / {salesSummary.activeSalesDays} 天
+              <div className="text-sm font-medium text-ink/55">补货计算</div>
+              <h2 className="text-xl font-semibold text-ink">补货计算看板</h2>
             </div>
           </div>
-          <div className="text-sm text-ink/70">
-            平均日销量 = 最近 {SALES_ANALYSIS_DAYS} 天有效销量 ÷ 实际有销量的天数。退货入库、损耗丢失不会计入销量。
+
+          <div className="grid gap-3 md:grid-cols-4">
+            <MiniMetric label="30天有效销量" value={salesSummary.totalQuantity} />
+            <MiniMetric label="销售天数" value={salesSummary.activeSalesDays} />
+            <MiniMetric label="采购周期" value={`${REPLENISHMENT_CYCLE_DAYS}天`} />
+            <MiniMetric label="安全库存总量" value={replenishmentSummary.safetyStockTotal} />
           </div>
         </Card>
       </div>
@@ -296,6 +298,21 @@ function DashboardContent() {
 
 function sumPositiveQuantities(rows: Array<Pick<SaleDaily, "quantity">>) {
   return rows.reduce((sum, row) => sum + Math.max(0, Number(row.quantity ?? 0)), 0);
+}
+
+function MiniMetric({ label, value }: { label: string; value: number | string }) {
+  return (
+    <div className="rounded border border-line bg-panel p-3">
+      <div className="text-xs font-semibold text-ink/60">{label}</div>
+      <div className="mt-2 text-2xl font-semibold text-ink">{value}</div>
+    </div>
+  );
+}
+
+function buildReplenishmentSummary(rows: ReplenishmentRow[]) {
+  return {
+    safetyStockTotal: rows.reduce((sum, row) => sum + row.safetyStock, 0)
+  };
 }
 
 function sumTypedMovements(movements: Array<{ type: string; quantity: number; memo: string | null }>, target: "return_inbound" | "loss") {
