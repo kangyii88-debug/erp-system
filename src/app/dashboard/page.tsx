@@ -28,7 +28,15 @@ import type { ProductWithStock, PurchaseOrder, SaleDaily } from "@/lib/types";
 
 type ViewMode = "today" | "yesterday" | "7d" | "30d" | "month" | "custom";
 type TrendMetric = "orders" | "quantity";
+type AnnualMetric = "quantity" | "orders" | "revenue";
 type SalesPoint = { date: string; label: string; orders: number; quantity: number; revenue: number; profit: number };
+type AnnualPoint = SalesPoint & {
+  month: number;
+  previousOrders: number;
+  previousQuantity: number;
+  previousRevenue: number;
+  previousProfit: number;
+};
 type AlertItem = { level: "danger" | "warning" | "success"; text: string };
 type MovementRow = { type: string; quantity: number; happened_at: string; memo: string | null };
 
@@ -45,11 +53,14 @@ function DashboardContent() {
   const [rows, setRows] = useState<ReplenishmentRow[]>([]);
   const [salesRows, setSalesRows] = useState<SaleDaily[]>([]);
   const [salesYearRows, setSalesYearRows] = useState<SaleDaily[]>([]);
+  const [salesPreviousYearRows, setSalesPreviousYearRows] = useState<SaleDaily[]>([]);
   const [salesAllRows, setSalesAllRows] = useState<SaleDaily[]>([]);
   const [movements, setMovements] = useState<MovementRow[]>([]);
   const [selectedDate, setSelectedDate] = useState(toDateKey(new Date()));
   const [viewMode, setViewMode] = useState<ViewMode>("today");
   const [trendMetric, setTrendMetric] = useState<TrendMetric>("quantity");
+  const [annualMetric, setAnnualMetric] = useState<AnnualMetric>("quantity");
+  const [comparePreviousYear, setComparePreviousYear] = useState(true);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [loading, setLoading] = useState(true);
 
@@ -74,12 +85,15 @@ function DashboardContent() {
     const replenishStart = daysAgoKey(anchor, SALES_ANALYSIS_DAYS - 1);
     const yearStart = `${selectedYear}-01-01`;
     const yearEnd = `${selectedYear}-12-31`;
+    const previousYearStart = `${selectedYear - 1}-01-01`;
+    const previousYearEnd = `${selectedYear - 1}-12-31`;
 
     const [
       { data: products },
       { data: sales90 },
       { data: sales30 },
       { data: salesYear },
+      { data: salesPreviousYear },
       { data: allSales },
       { data: purchases },
       { data: movementRows }
@@ -88,6 +102,7 @@ function DashboardContent() {
       supabase.from("sales_daily").select("*").gte("sale_date", salesStart).lte("sale_date", salesEnd),
       supabase.from("sales_daily").select("*").gte("sale_date", replenishStart).lte("sale_date", salesEnd),
       supabase.from("sales_daily").select("*").gte("sale_date", yearStart).lte("sale_date", yearEnd),
+      supabase.from("sales_daily").select("*").gte("sale_date", previousYearStart).lte("sale_date", previousYearEnd),
       supabase.from("sales_daily").select("*"),
       supabase.from("purchase_orders").select("*, products(name, sku)"),
       supabase.from("stock_movements").select("type, quantity, happened_at, memo")
@@ -102,6 +117,7 @@ function DashboardContent() {
     );
     setSalesRows((sales90 ?? []) as SaleDaily[]);
     setSalesYearRows((salesYear ?? []) as SaleDaily[]);
+    setSalesPreviousYearRows((salesPreviousYear ?? []) as SaleDaily[]);
     setSalesAllRows((allSales ?? []) as SaleDaily[]);
     setMovements((movementRows ?? []) as MovementRow[]);
     setLoading(false);
@@ -134,7 +150,7 @@ function DashboardContent() {
   });
   const trendData = buildDailySalesPoints(salesRows, productMap, trendDays, anchorDate);
   const comparisonTrendData = buildDailySalesPoints(salesAllRows, productMap, trendDays, parseDateKey(comparisonRange.end));
-  const annualData = buildMonthlySalesPoints(salesYearRows, productMap, selectedYear);
+  const annualData = buildAnnualTrendPoints(salesYearRows, salesPreviousYearRows, productMap, selectedYear);
   const topSales = buildTopSales(rangeSales, productMap, "quantity");
   const topProfit = buildTopSales(rangeSales, productMap, "profit");
   const slowMoving = rows
@@ -191,7 +207,7 @@ function DashboardContent() {
           </Card>
         </section>
 
-        <section className="grid gap-4 xl:grid-cols-[1.35fr_1fr]">
+        <section className="grid gap-4">
           <Card>
             <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
               <DashboardSectionTitle eyebrow="销售趋势中心" title={`${trendData[0]?.label ?? ""} - ${trendData[trendData.length - 1]?.label ?? ""}`} />
@@ -210,15 +226,30 @@ function DashboardContent() {
           </Card>
 
           <Card>
-            <div className="mb-4 flex items-end justify-between gap-3">
+            <div className="hidden">
               <DashboardSectionTitle eyebrow="年度经营趋势" title="月度经营" />
-              <select className="w-28" value={selectedYear} onChange={(event) => setSelectedYear(Number(event.target.value))}>
+              <div className="flex rounded-xl border border-line bg-panel p-1">
                 {buildYearOptions().map((year) => (
-                  <option key={year} value={year}>{year}</option>
+                  <button
+                    key={year}
+                    type="button"
+                    onClick={() => setSelectedYear(year)}
+                    className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition ${selectedYear === year ? "bg-brand text-white shadow-soft" : "text-ink/65 hover:bg-white"}`}
+                  >
+                    {year}
+                  </button>
                 ))}
-              </select>
+              </div>
             </div>
-            <MonthlyBars data={annualData} metric={trendMetric} />
+            <AnnualTrendModule
+              data={annualData}
+              year={selectedYear}
+              metric={annualMetric}
+              comparePreviousYear={comparePreviousYear}
+              onMetricChange={setAnnualMetric}
+              onYearChange={setSelectedYear}
+              onCompareChange={setComparePreviousYear}
+            />
           </Card>
         </section>
 
@@ -578,19 +609,167 @@ function TrendTooltip({ active, payload }: { active?: boolean; payload?: Array<{
   );
 }
 
-function MonthlyBars({ data, metric }: { data: SalesPoint[]; metric: TrendMetric }) {
-  const maxValue = Math.max(1, ...data.map((item) => item[metric]));
+function AnnualTrendModule({
+  data,
+  year,
+  metric,
+  comparePreviousYear,
+  onMetricChange,
+  onYearChange,
+  onCompareChange
+}: {
+  data: AnnualPoint[];
+  year: number;
+  metric: AnnualMetric;
+  comparePreviousYear: boolean;
+  onMetricChange: (metric: AnnualMetric) => void;
+  onYearChange: (year: number) => void;
+  onCompareChange: (enabled: boolean) => void;
+}) {
+  const metricKey = metric;
+  const previousKey = annualPreviousKey(metric);
+  const annualQuantity = sumAnnualMetric(data, "quantity");
+  const annualOrders = sumAnnualMetric(data, "orders");
+  const currentTotal = sumAnnualMetric(data, metric);
+  const previousTotal = sumAnnualPreviousMetric(data, metric);
+  const growth = compare(currentTotal, previousTotal);
+  const hasData = data.some((item) => item.quantity > 0 || item.orders > 0 || item.revenue > 0);
+  const bestMonth = data.reduce((best, item) => item[metricKey] > best[metricKey] ? item : best, data[0] ?? emptyAnnualPoint(year));
+  const worstMonth = data.reduce((worst, item) => item[metricKey] < worst[metricKey] ? item : worst, data[0] ?? emptyAnnualPoint(year));
+  const insight = buildAnnualInsight(data, metric, growth, bestMonth, worstMonth);
+
   return (
-    <div className="grid grid-cols-6 gap-2 xl:grid-cols-12">
-      {data.map((item) => (
-        <div key={item.date} className="rounded border border-line bg-panel p-2">
-          <div className="text-xs font-semibold text-ink/60">{item.label}</div>
-          <div className="mt-1 text-sm font-semibold text-ink">{item[metric]}</div>
-          <div className="mt-3 flex h-24 items-end rounded bg-white px-1">
-            <div className="w-full rounded-t bg-brand" style={{ height: `${Math.max(4, (item[metric] / maxValue) * 100)}%` }} />
+    <div className="rounded-2xl border border-line bg-gradient-to-br from-white via-white to-emerald-50/70 p-5 shadow-soft">
+      <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <DashboardSectionTitle eyebrow="年度经营趋势" title={`${year} 年度经营分析`} />
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex rounded-xl border border-line bg-panel p-1">
+            {buildYearOptions().map((optionYear) => (
+              <button
+                key={optionYear}
+                type="button"
+                onClick={() => onYearChange(optionYear)}
+                className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition ${year === optionYear ? "bg-brand text-white shadow-soft" : "text-ink/65 hover:bg-white"}`}
+              >
+                {optionYear}
+              </button>
+            ))}
           </div>
+          <SegmentButton active={metric === "quantity"} onClick={() => onMetricChange("quantity")}>月销量</SegmentButton>
+          <SegmentButton active={metric === "orders"} onClick={() => onMetricChange("orders")}>月订单数</SegmentButton>
+          <SegmentButton active={metric === "revenue"} onClick={() => onMetricChange("revenue")}>月销售额</SegmentButton>
+          <button
+            type="button"
+            onClick={() => onCompareChange(!comparePreviousYear)}
+            className={`rounded border px-3 py-2 text-sm font-semibold transition ${comparePreviousYear ? "border-brand bg-brand text-white" : "border-line bg-white text-ink"}`}
+          >
+            对比去年
+          </button>
         </div>
-      ))}
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-5">
+        <MiniTrendCard label="年度总销量" value={annualQuantity.toLocaleString("ko-KR")} />
+        <MiniTrendCard label="年度总订单数" value={annualOrders.toLocaleString("ko-KR")} />
+        <MiniTrendCard label="年度增长率" value={growth == null ? "-" : `${growth >= 0 ? "+" : ""}${growth.toFixed(1)}%`} tone={growth != null && growth < 0 ? "down" : "up"} />
+        <MiniTrendCard label="最佳销售月份" value={bestMonth.label} sub={formatAnnualMetricValue(bestMonth[metricKey], metric)} />
+        <MiniTrendCard label="最差销售月份" value={worstMonth.label} sub={formatAnnualMetricValue(worstMonth[metricKey], metric)} />
+      </div>
+
+      <div className="mt-6 h-[360px] rounded-2xl border border-line bg-white/80 p-4">
+        {hasData ? (
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={data} margin={{ top: 16, right: 24, left: 4, bottom: 8 }}>
+              <defs>
+                <linearGradient id="annualTrendFill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#217f57" stopOpacity={0.32} />
+                  <stop offset="55%" stopColor="#217f57" stopOpacity={0.1} />
+                  <stop offset="100%" stopColor="#217f57" stopOpacity={0.01} />
+                </linearGradient>
+                <linearGradient id="annualPreviousFill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#94a3b8" stopOpacity={0.18} />
+                  <stop offset="100%" stopColor="#94a3b8" stopOpacity={0.01} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid stroke="#d9e3dc" strokeDasharray="4 6" vertical={false} />
+              <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fill: "#66736b", fontSize: 12 }} />
+              <YAxis
+                tickLine={false}
+                axisLine={false}
+                tick={{ fill: "#66736b", fontSize: 12 }}
+                width={metric === "revenue" ? 78 : 44}
+                tickFormatter={(value) => metric === "revenue" ? shortWon(Number(value)) : Number(value).toLocaleString("ko-KR")}
+              />
+              <Tooltip content={<AnnualTooltip year={year} metric={metric} comparePreviousYear={comparePreviousYear} />} cursor={{ stroke: "#217f57", strokeWidth: 1, strokeDasharray: "4 4" }} />
+              {comparePreviousYear ? (
+                <Area
+                  type="monotone"
+                  dataKey={previousKey}
+                  name={`${year - 1}`}
+                  stroke="#94a3b8"
+                  strokeWidth={2}
+                  fill="url(#annualPreviousFill)"
+                  activeDot={{ r: 5, stroke: "#ffffff", strokeWidth: 2, fill: "#94a3b8" }}
+                  dot={{ r: 2, stroke: "#94a3b8", strokeWidth: 1, fill: "#ffffff" }}
+                />
+              ) : null}
+              <Area
+                type="monotone"
+                dataKey={metricKey}
+                name={`${year}`}
+                stroke="#217f57"
+                strokeWidth={3}
+                fill="url(#annualTrendFill)"
+                activeDot={{ r: 7, stroke: "#ffffff", strokeWidth: 3, fill: "#217f57" }}
+                dot={{ r: 3, stroke: "#217f57", strokeWidth: 2, fill: "#ffffff" }}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        ) : (
+          <div className="flex h-full flex-col items-center justify-center rounded-xl border border-dashed border-line bg-panel/60 text-center">
+            <div className="text-lg font-semibold text-ink">暂无年度经营数据</div>
+            <div className="mt-2 text-sm text-ink/55">请导入订单数据，或切换年份查看。</div>
+          </div>
+        )}
+      </div>
+
+      <div className={`mt-4 rounded-xl px-4 py-3 text-sm font-semibold ${growth != null && growth < 0 ? "bg-red-50 text-red-700" : "bg-emerald-50 text-emerald-700"}`}>
+        {insight}
+      </div>
+    </div>
+  );
+}
+
+function AnnualTooltip({
+  active,
+  payload,
+  year,
+  metric,
+  comparePreviousYear
+}: {
+  active?: boolean;
+  payload?: Array<{ payload?: AnnualPoint }>;
+  year: number;
+  metric: AnnualMetric;
+  comparePreviousYear: boolean;
+}) {
+  if (!active || !payload?.length) return null;
+  const point = payload[0]?.payload as AnnualPoint | undefined;
+  if (!point) return null;
+
+  return (
+    <div className="rounded-xl border border-line bg-white px-4 py-3 shadow-soft">
+      <div className="text-sm font-semibold text-ink">{year}年{point.month}月</div>
+      <div className="mt-2 grid gap-1 text-sm text-ink/75">
+        <div>销量：<span className="font-semibold text-ink">{point.quantity.toLocaleString("ko-KR")}</span></div>
+        <div>订单数：<span className="font-semibold text-ink">{point.orders.toLocaleString("ko-KR")}</span></div>
+        <div>销售额：<span className="font-semibold text-ink">{won(point.revenue)}</span></div>
+        {comparePreviousYear ? (
+          <div className="mt-1 border-t border-line pt-2 text-ink/60">
+            去年同月：{formatAnnualMetricValue(point[annualPreviousKey(metric)] as number, metric)}
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -820,6 +999,61 @@ function buildDailySalesPoints(salesRows: SaleDaily[], productMap: Map<string, P
   return points;
 }
 
+function buildAnnualTrendPoints(
+  currentRows: SaleDaily[],
+  previousRows: SaleDaily[],
+  productMap: Map<string, ProductWithStock>,
+  year: number
+): AnnualPoint[] {
+  const months: AnnualPoint[] = Array.from({ length: 12 }, (_, index) => ({
+    month: index + 1,
+    date: `${year}-${String(index + 1).padStart(2, "0")}`,
+    label: `${index + 1}月`,
+    orders: 0,
+    quantity: 0,
+    revenue: 0,
+    profit: 0,
+    previousOrders: 0,
+    previousQuantity: 0,
+    previousRevenue: 0,
+    previousProfit: 0
+  }));
+
+  addMonthlySales(months, currentRows, productMap, year, false);
+  addMonthlySales(months, previousRows, productMap, year - 1, true);
+  return months;
+}
+
+function addMonthlySales(
+  months: AnnualPoint[],
+  salesRows: SaleDaily[],
+  productMap: Map<string, ProductWithStock>,
+  year: number,
+  previous: boolean
+) {
+  for (const sale of validSales(salesRows)) {
+    const [saleYear, saleMonth] = sale.sale_date.split("-").map(Number);
+    const product = productMap.get(sale.product_id);
+    if (saleYear !== year || !saleMonth || !product) continue;
+    const point = months[saleMonth - 1];
+    const quantity = Number(sale.quantity);
+    const revenue = quantity * money(product.sale_price);
+    const profit = quantity * (money(product.sale_price) - money(product.purchase_price));
+
+    if (previous) {
+      point.previousOrders += quantity;
+      point.previousQuantity += quantity;
+      point.previousRevenue += revenue;
+      point.previousProfit += profit;
+    } else {
+      point.orders += quantity;
+      point.quantity += quantity;
+      point.revenue += revenue;
+      point.profit += profit;
+    }
+  }
+}
+
 function buildMonthlySalesPoints(salesRows: SaleDaily[], productMap: Map<string, ProductWithStock>, year: number): SalesPoint[] {
   const months = Array.from({ length: 12 }, (_, index) => ({
     date: `${year}-${String(index + 1).padStart(2, "0")}`,
@@ -924,8 +1158,54 @@ function sumMetric(data: SalesPoint[], metric: TrendMetric) {
   return data.reduce((sum, item) => sum + item[metric], 0);
 }
 
+function annualPreviousKey(metric: AnnualMetric) {
+  if (metric === "orders") return "previousOrders";
+  if (metric === "revenue") return "previousRevenue";
+  return "previousQuantity";
+}
+
+function sumAnnualMetric(data: AnnualPoint[], metric: AnnualMetric) {
+  return data.reduce((sum, item) => sum + item[metric], 0);
+}
+
+function sumAnnualPreviousMetric(data: AnnualPoint[], metric: AnnualMetric) {
+  const key = annualPreviousKey(metric);
+  return data.reduce((sum, item) => sum + Number(item[key] ?? 0), 0);
+}
+
+function formatAnnualMetricValue(value: number, metric: AnnualMetric) {
+  if (metric === "revenue") return won(value);
+  return Math.round(value).toLocaleString("ko-KR");
+}
+
+function buildAnnualInsight(data: AnnualPoint[], metric: AnnualMetric, growth: number | null, bestMonth: AnnualPoint, worstMonth: AnnualPoint) {
+  const hasData = data.some((item) => item.quantity > 0 || item.orders > 0 || item.revenue > 0);
+  const metricLabel = metric === "revenue" ? "销售额" : metric === "orders" ? "订单数" : "销量";
+  if (!hasData) return "暂无年度经营数据，建议先导入订单数据后再查看年度趋势。";
+  if (growth == null) return `${bestMonth.label}${metricLabel}最高，建议重点复盘该月主推SKU、广告和库存准备情况。`;
+  if (growth >= 0) return `${yearlessLabel(bestMonth.label)}表现最好，本年度${metricLabel}较去年增长${growth.toFixed(1)}%，趋势健康，可继续关注高转化SKU的补货节奏。`;
+  return `${yearlessLabel(worstMonth.label)}表现最低，本年度${metricLabel}较去年下降${Math.abs(growth).toFixed(1)}%，建议检查库存断货、广告ROI和主推SKU表现。`;
+}
+
+function yearlessLabel(label: string) {
+  return label || "-";
+}
+
 function emptyPoint(): SalesPoint {
   return { date: "", label: "-", orders: 0, quantity: 0, revenue: 0, profit: 0 };
+}
+
+function emptyAnnualPoint(year: number): AnnualPoint {
+  return {
+    ...emptyPoint(),
+    date: `${year}-01`,
+    label: "-",
+    month: 1,
+    previousOrders: 0,
+    previousQuantity: 0,
+    previousRevenue: 0,
+    previousProfit: 0
+  };
 }
 
 function formatSaleableDays(days: number) {
