@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, ArrowDownRight, ArrowUpRight, CircleAlert, CircleCheck } from "lucide-react";
+import { AlertTriangle, ArrowDownRight, ArrowUpRight, CalendarDays, CircleAlert, CircleCheck } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/Card";
 import { PageHeader } from "@/components/PageHeader";
@@ -17,10 +17,11 @@ import {
 } from "@/lib/replenishment";
 import type { ProductWithStock, PurchaseOrder, SaleDaily } from "@/lib/types";
 
+type ViewMode = "today" | "yesterday" | "7d" | "30d" | "month" | "custom";
 type TrendMetric = "quantity" | "revenue";
-type TrendRange = "7d" | "30d" | "90d" | "year";
 type SalesPoint = { date: string; label: string; quantity: number; revenue: number; profit: number };
 type AlertItem = { level: "danger" | "warning" | "success"; text: string };
+type MovementRow = { type: string; quantity: number; happened_at: string; memo: string | null };
 
 export default function DashboardPage() {
   return (
@@ -33,310 +34,366 @@ export default function DashboardPage() {
 function DashboardContent() {
   const { t } = useLanguage();
   const [rows, setRows] = useState<ReplenishmentRow[]>([]);
-  const [sales90Rows, setSales90Rows] = useState<SaleDaily[]>([]);
+  const [salesRows, setSalesRows] = useState<SaleDaily[]>([]);
   const [salesYearRows, setSalesYearRows] = useState<SaleDaily[]>([]);
   const [salesAllRows, setSalesAllRows] = useState<SaleDaily[]>([]);
-  const [returnInboundSaleable, setReturnInboundSaleable] = useState(0);
-  const [lossQuantity, setLossQuantity] = useState(0);
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [movements, setMovements] = useState<MovementRow[]>([]);
+  const [selectedDate, setSelectedDate] = useState(toDateKey(new Date()));
+  const [viewMode, setViewMode] = useState<ViewMode>("today");
   const [trendMetric, setTrendMetric] = useState<TrendMetric>("revenue");
-  const [trendRange, setTrendRange] = useState<TrendRange>("30d");
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [loading, setLoading] = useState(true);
+
+  const anchorDate = parseDateKey(selectedDate);
+  const range = buildRange(viewMode, anchorDate);
+  const comparisonRange = buildComparisonRange(range);
+
+  useEffect(() => {
+    setSelectedYear(parseDateKey(selectedDate).getFullYear());
+  }, [selectedDate]);
 
   useEffect(() => {
     load();
-  }, [selectedYear]);
+  }, [selectedDate, selectedYear]);
 
   async function load() {
     setLoading(true);
 
-    const today = new Date();
-    const todayKey = toDateKey(today);
-    const date90d = daysAgoKey(today, 89);
-    const date30d = daysAgoKey(today, SALES_ANALYSIS_DAYS - 1);
+    const anchor = parseDateKey(selectedDate);
+    const salesStart = daysAgoKey(anchor, 89);
+    const salesEnd = toDateKey(anchor);
+    const replenishStart = daysAgoKey(anchor, SALES_ANALYSIS_DAYS - 1);
     const yearStart = `${selectedYear}-01-01`;
     const yearEnd = `${selectedYear}-12-31`;
 
     const [
       { data: products },
-      { data: sales90dRows },
-      { data: sales30dRows },
-      { data: salesYearRowsData },
+      { data: sales90 },
+      { data: sales30 },
+      { data: salesYear },
       { data: allSales },
       { data: purchases },
-      { data: movements }
+      { data: movementRows }
     ] = await Promise.all([
       supabase.from("products").select("*, inventory_balances(current_stock)").order("created_at", { ascending: false }),
-      supabase.from("sales_daily").select("*").gte("sale_date", date90d).lte("sale_date", todayKey),
-      supabase.from("sales_daily").select("*").gte("sale_date", date30d).lte("sale_date", todayKey),
+      supabase.from("sales_daily").select("*").gte("sale_date", salesStart).lte("sale_date", salesEnd),
+      supabase.from("sales_daily").select("*").gte("sale_date", replenishStart).lte("sale_date", salesEnd),
       supabase.from("sales_daily").select("*").gte("sale_date", yearStart).lte("sale_date", yearEnd),
       supabase.from("sales_daily").select("*"),
       supabase.from("purchase_orders").select("*, products(name, sku)"),
-      supabase.from("stock_movements").select("type, quantity, memo")
+      supabase.from("stock_movements").select("type, quantity, happened_at, memo")
     ]);
 
-    const productRows = (products ?? []) as ProductWithStock[];
-    const sales30 = (sales30dRows ?? []) as SaleDaily[];
-
-    setRows(buildReplenishmentRows(productRows, sales30, (purchases ?? []) as PurchaseOrder[]));
-    setSales90Rows((sales90dRows ?? []) as SaleDaily[]);
-    setSalesYearRows((salesYearRowsData ?? []) as SaleDaily[]);
+    setRows(
+      buildReplenishmentRows(
+        (products ?? []) as ProductWithStock[],
+        (sales30 ?? []) as SaleDaily[],
+        (purchases ?? []) as PurchaseOrder[]
+      )
+    );
+    setSalesRows((sales90 ?? []) as SaleDaily[]);
+    setSalesYearRows((salesYear ?? []) as SaleDaily[]);
     setSalesAllRows((allSales ?? []) as SaleDaily[]);
-    setReturnInboundSaleable(sumTypedMovements(movements ?? [], "return_inbound"));
-    setLossQuantity(sumTypedMovements(movements ?? [], "loss"));
+    setMovements((movementRows ?? []) as MovementRow[]);
     setLoading(false);
   }
 
   const productMap = useMemo(() => new Map(rows.map((row) => [row.product.id, row.product])), [rows]);
-  const todayKey = toDateKey(new Date());
-  const yesterdayKey = daysAgoKey(new Date(), 1);
-  const sales30Rows = sales90Rows.filter((sale) => sale.sale_date >= daysAgoKey(new Date(), 29));
-  const sales7Rows = sales90Rows.filter((sale) => sale.sale_date >= daysAgoKey(new Date(), 6));
-  const salesSummary = summarizeSales(sales30Rows);
+  const rangeSales = salesAllRows.filter((sale) => isBetween(sale.sale_date, range.start, range.end));
+  const comparisonSales = salesAllRows.filter((sale) => isBetween(sale.sale_date, comparisonRange.start, comparisonRange.end));
+  const selectedDayMovements = movements.filter((movement) => movement.happened_at.slice(0, 10) === range.end);
+  const salesWindowRows = salesRows.filter((sale) => isBetween(sale.sale_date, daysAgoKey(anchorDate, 29), range.end));
+  const salesSummary = summarizeSales(salesWindowRows);
+  const trendDays = viewMode === "30d" ? 30 : viewMode === "month" ? daysInRange(range) : 7;
 
   const totalStock = rows.reduce((sum, row) => sum + row.currentStock, 0);
   const skuCount = rows.length;
   const stockValue = rows.reduce((sum, row) => sum + row.currentStock * money(row.product.purchase_price), 0);
   const saleableDays = salesSummary.averageDailySales > 0 ? Math.floor(totalStock / salesSummary.averageDailySales) : 0;
-  const todayMetrics = buildSalesMetrics(salesAllRows.filter((sale) => sale.sale_date === todayKey), productMap);
-  const yesterdayMetrics = buildSalesMetrics(salesAllRows.filter((sale) => sale.sale_date === yesterdayKey), productMap);
-  const monthMetrics = buildSalesMetrics(salesAllRows.filter((sale) => isCurrentMonth(sale.sale_date)), productMap);
-  const previousMonthMetrics = buildSalesMetrics(salesAllRows.filter((sale) => isPreviousMonth(sale.sale_date)), productMap);
-  const sales30Metrics = buildSalesMetrics(sales30Rows, productMap);
-  const sales7Metrics = buildSalesMetrics(sales7Rows, productMap);
+  const rangeMetrics = buildSalesMetrics(rangeSales, productMap);
+  const comparisonMetrics = buildSalesMetrics(comparisonSales, productMap);
+  const refundOrders = countTypedMovements(selectedDayMovements, "return_inbound");
+  const cancelOrders = 0;
   const replenishRows = buildSmartReplenishment(rows);
-  const riskyRows = replenishRows
-    .filter((row) => row.status !== "normal")
-    .sort((a, b) => a.saleableDays - b.saleableDays)
-    .slice(0, 12);
+  const riskyRows = replenishRows.filter((row) => row.status !== "normal").sort((a, b) => a.saleableDays - b.saleableDays).slice(0, 12);
   const alerts = buildAlerts({
     rows: replenishRows,
-    sales7: sales7Metrics.quantity,
-    sales30: sales30Metrics.quantity,
-    monthRevenue: monthMetrics.revenue,
-    previousMonthRevenue: previousMonthMetrics.revenue,
-    monthProfit: monthMetrics.profit,
-    previousMonthProfit: previousMonthMetrics.profit
+    rangeRevenue: rangeMetrics.revenue,
+    comparisonRevenue: comparisonMetrics.revenue,
+    rangeProfit: rangeMetrics.profit,
+    comparisonProfit: comparisonMetrics.profit
   });
-  const trendData = trendRange === "year"
-    ? buildMonthlySalesPoints(salesYearRows, productMap, selectedYear)
-    : buildDailySalesPoints(sales90Rows, productMap, rangeDays(trendRange));
+  const trendData = buildDailySalesPoints(salesRows, productMap, trendDays, anchorDate);
   const annualData = buildMonthlySalesPoints(salesYearRows, productMap, selectedYear);
-  const topSales = buildTopSales(sales30Rows, productMap, "quantity");
-  const topProfit = buildTopSales(sales30Rows, productMap, "profit");
+  const topSales = buildTopSales(rangeSales, productMap, "quantity");
+  const topProfit = buildTopSales(rangeSales, productMap, "profit");
   const slowMoving = rows
-    .filter((row) => row.currentStock > 0 && !hasRecentSale(row.product.id, sales30Rows))
+    .filter((row) => row.currentStock > 0 && !hasRecentSale(row.product.id, salesWindowRows))
     .sort((a, b) => b.currentStock * money(b.product.purchase_price) - a.currentStock * money(a.product.purchase_price))
     .slice(0, 10);
   const health = buildInventoryHealth(replenishRows, slowMoving);
-  const lifecycleRows = buildLifecycleRows(rows, sales90Rows);
+  const lifecycleRows = buildLifecycleRows(rows, salesRows, anchorDate);
 
   return (
     <>
-      <PageHeader title="经营驾驶舱" />
+      <div className="mb-5 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+        <PageHeader title="经营驾驶舱" />
+        <DateControl
+          selectedDate={selectedDate}
+          viewMode={viewMode}
+          rangeLabel={formatRangeLabel(range)}
+          onDateChange={(date) => {
+            setSelectedDate(date);
+            setViewMode("custom");
+          }}
+          onModeChange={(mode) => {
+            setViewMode(mode);
+            if (mode === "today") setSelectedDate(toDateKey(new Date()));
+            if (mode === "yesterday") setSelectedDate(daysAgoKey(new Date(), 1));
+          }}
+        />
+      </div>
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <ExecutiveKpi label="今日销售额" value={won(todayMetrics.revenue)} compare={compare(todayMetrics.revenue, yesterdayMetrics.revenue)} />
-        <ExecutiveKpi label="今日订单数" value={todayMetrics.quantity} compare={compare(todayMetrics.quantity, yesterdayMetrics.quantity)} />
-        <ExecutiveKpi label="本月销售额" value={won(monthMetrics.revenue)} compare={compare(monthMetrics.revenue, previousMonthMetrics.revenue)} />
-        <ExecutiveKpi label="本月利润" value={won(monthMetrics.profit)} compare={compare(monthMetrics.profit, previousMonthMetrics.profit)} />
-        <ExecutiveKpi label="广告ROI" value="未接入" muted />
-        <ExecutiveKpi label="当前库存金额" value={won(stockValue)} />
-        <ExecutiveKpi label="库存可售天数" value={saleableDays > 0 ? `${saleableDays}天` : "暂无销量"} />
-        <ExecutiveKpi label="当前SKU总数" value={skuCount} />
-      </section>
+      <div className={`space-y-6 transition-opacity duration-200 ${loading ? "opacity-60" : "opacity-100"}`}>
+        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <ExecutiveKpi label={`${range.label}销售额`} value={won(rangeMetrics.revenue)} compare={compare(rangeMetrics.revenue, comparisonMetrics.revenue)} />
+          <ExecutiveKpi label={`${range.label}订单数`} value={rangeMetrics.quantity} compare={compare(rangeMetrics.quantity, comparisonMetrics.quantity)} />
+          <ExecutiveKpi label={`${range.label}销量`} value={rangeMetrics.quantity} compare={compare(rangeMetrics.quantity, comparisonMetrics.quantity)} />
+          <ExecutiveKpi label={`${range.label}利润`} value={won(rangeMetrics.profit)} compare={compare(rangeMetrics.profit, comparisonMetrics.profit)} />
+          <ExecutiveKpi label="退款订单" value={refundOrders} />
+          <ExecutiveKpi label="取消订单" value={cancelOrders} muted />
+          <ExecutiveKpi label="当前库存金额" value={won(stockValue)} />
+          <ExecutiveKpi label="当前SKU总数" value={skuCount} />
+        </section>
 
-      <section className="mt-6">
-        <Card>
-          <div className="mb-4 flex items-center justify-between">
-            <div>
-              <div className="text-sm font-medium text-ink/55">今日重点提醒</div>
-              <h2 className="text-xl font-semibold text-ink">需要负责人优先处理的事项</h2>
+        <section>
+          <Card>
+            <div className="mb-4 flex items-center justify-between">
+              <DashboardSectionTitle eyebrow="今日重点提醒" title="需要负责人优先处理的事项" />
+              <span className="rounded bg-panel px-3 py-1 text-sm font-semibold text-ink">{alerts.length} 项</span>
             </div>
-            <span className="rounded bg-panel px-3 py-1 text-sm font-semibold text-ink">{alerts.length} 项</span>
-          </div>
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {alerts.map((alert) => (
-              <AlertPill key={alert.text} alert={alert} />
-            ))}
-            {!alerts.length ? <AlertPill alert={{ level: "success", text: "当前经营和库存状态正常" }} /> : null}
-          </div>
-        </Card>
-      </section>
-
-      <section className="mt-6 grid gap-4 xl:grid-cols-[1.35fr_1fr]">
-        <Card>
-          <DashboardSectionTitle eyebrow="销售趋势中心" title="销售趋势" />
-          <div className="mb-4 flex flex-wrap gap-2">
-            <SegmentButton active={trendMetric === "revenue"} onClick={() => setTrendMetric("revenue")}>销售额</SegmentButton>
-            <SegmentButton active={trendMetric === "quantity"} onClick={() => setTrendMetric("quantity")}>销量</SegmentButton>
-            <span className="mx-1 h-9 w-px bg-line" />
-            {(["7d", "30d", "90d", "year"] as TrendRange[]).map((range) => (
-              <SegmentButton key={range} active={trendRange === range} onClick={() => setTrendRange(range)}>
-                {range === "year" ? "年度" : range.replace("d", "天")}
-              </SegmentButton>
-            ))}
-          </div>
-          <TrendChart data={trendData} metric={trendMetric} />
-        </Card>
-
-        <Card>
-          <div className="mb-4 flex items-end justify-between gap-3">
-            <DashboardSectionTitle eyebrow="年度经营趋势" title="月度经营" />
-            <select className="w-28" value={selectedYear} onChange={(event) => setSelectedYear(Number(event.target.value))}>
-              {buildYearOptions().map((year) => (
-                <option key={year} value={year}>{year}</option>
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {alerts.map((alert) => (
+                <AlertPill key={alert.text} alert={alert} />
               ))}
-            </select>
-          </div>
-          <MonthlyBars data={annualData} metric={trendMetric} />
-        </Card>
-      </section>
+              {!alerts.length ? <AlertPill alert={{ level: "success", text: "当前经营和库存状态正常" }} /> : null}
+            </div>
+          </Card>
+        </section>
 
-      <section className="mt-6">
-        <Card>
-          <DashboardSectionTitle eyebrow="智能补货中心" title="哪些商品要补货" />
-          {loading ? (
-            <div>{t.loading}</div>
-          ) : (
+        <section className="grid gap-4 xl:grid-cols-[1.35fr_1fr]">
+          <Card>
+            <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+              <DashboardSectionTitle eyebrow="销售趋势中心" title={`${trendData[0]?.label ?? ""} - ${trendData[trendData.length - 1]?.label ?? ""}`} />
+              <div className="flex gap-2">
+                <SegmentButton active={trendMetric === "revenue"} onClick={() => setTrendMetric("revenue")}>销售额</SegmentButton>
+                <SegmentButton active={trendMetric === "quantity"} onClick={() => setTrendMetric("quantity")}>销量</SegmentButton>
+              </div>
+            </div>
+            <TrendChart data={trendData} metric={trendMetric} />
+          </Card>
+
+          <Card>
+            <div className="mb-4 flex items-end justify-between gap-3">
+              <DashboardSectionTitle eyebrow="年度经营趋势" title="月度经营" />
+              <select className="w-28" value={selectedYear} onChange={(event) => setSelectedYear(Number(event.target.value))}>
+                {buildYearOptions().map((year) => (
+                  <option key={year} value={year}>{year}</option>
+                ))}
+              </select>
+            </div>
+            <MonthlyBars data={annualData} metric={trendMetric} />
+          </Card>
+        </section>
+
+        <section>
+          <Card>
+            <DashboardSectionTitle eyebrow="智能补货中心" title="哪些商品要补货" />
+            <div className="mt-4">
+              {loading ? (
+                <div className="rounded border border-line bg-panel p-6 text-sm text-ink/60">数据加载中...</div>
+              ) : (
+                <Table>
+                  <thead>
+                    <tr>
+                      <Th>SKU</Th>
+                      <Th>商品名称</Th>
+                      <Th>当前库存</Th>
+                      <Th>日均销量</Th>
+                      <Th>可售天数</Th>
+                      <Th>状态</Th>
+                      <Th>建议动作</Th>
+                      <Th>建议采购数量</Th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {replenishRows.slice(0, 14).map((row) => (
+                      <tr key={row.product.id}>
+                        <Td>{row.product.sku}</Td>
+                        <Td>{row.product.name}</Td>
+                        <Td>{row.currentStock}</Td>
+                        <Td>{row.dailyAverage}</Td>
+                        <Td>{formatSaleableDays(row.saleableDays)}</Td>
+                        <Td><StatusBadge status={row.status} /></Td>
+                        <Td>{row.action}</Td>
+                        <Td>{row.suggestedQty}</Td>
+                      </tr>
+                    ))}
+                    {!replenishRows.length ? <EmptyRow columns={8} /> : null}
+                  </tbody>
+                </Table>
+              )}
+            </div>
+          </Card>
+        </section>
+
+        <section className="grid gap-4 xl:grid-cols-3">
+          <AnalysisTable title="TOP销量商品" rows={topSales} valueLabel="销量" valueKey="quantity" />
+          <AnalysisTable title="TOP利润商品" rows={topProfit} valueLabel="利润" valueKey="profit" />
+          <Card>
+            <DashboardSectionTitle eyebrow="SKU经营分析" title="滞销商品" />
+            <Table>
+              <thead>
+                <tr>
+                  <Th>SKU</Th>
+                  <Th>库存</Th>
+                  <Th>库存金额</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {slowMoving.map((row) => (
+                  <tr key={row.product.id}>
+                    <Td>{row.product.sku}</Td>
+                    <Td>{row.currentStock}</Td>
+                    <Td>{won(row.currentStock * money(row.product.purchase_price))}</Td>
+                  </tr>
+                ))}
+                {!slowMoving.length ? <EmptyRow columns={3} /> : null}
+              </tbody>
+            </Table>
+          </Card>
+        </section>
+
+        <section className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
+          <Card>
+            <DashboardSectionTitle eyebrow="库存健康中心" title="库存健康度" />
+            <div className="mt-4 grid gap-4 md:grid-cols-[180px_1fr]">
+              <DonutChart items={health} />
+              <div className="space-y-3">
+                {health.map((item) => (
+                  <div key={item.label} className="flex items-center justify-between rounded border border-line bg-panel px-3 py-2">
+                    <span className="flex items-center gap-2 text-sm font-semibold text-ink">
+                      <span className="h-3 w-3 rounded-full" style={{ backgroundColor: item.color }} />
+                      {item.label}
+                    </span>
+                    <span className="text-sm font-semibold text-ink">{item.percent}%</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Card>
+
+          <Card>
+            <DashboardSectionTitle eyebrow="库存风险分析" title="库存风险排行榜" />
+            <Table>
+              <thead>
+                <tr>
+                  <Th>SKU</Th>
+                  <Th>库存</Th>
+                  <Th>可售天数</Th>
+                  <Th>预计断货日期</Th>
+                  <Th>预计损失金额</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {riskyRows.map((row) => (
+                  <tr key={row.product.id}>
+                    <Td>{row.product.sku}</Td>
+                    <Td>{row.currentStock}</Td>
+                    <Td>{formatSaleableDays(row.saleableDays)}</Td>
+                    <Td>{stockoutDate(row.saleableDays, anchorDate)}</Td>
+                    <Td>{won(Math.max(0, (REPLENISHMENT_CYCLE_DAYS - row.saleableDays) * row.dailyAverage * money(row.product.sale_price)))}</Td>
+                  </tr>
+                ))}
+                {!riskyRows.length ? <EmptyRow columns={5} /> : null}
+              </tbody>
+            </Table>
+          </Card>
+        </section>
+
+        <section>
+          <Card>
+            <DashboardSectionTitle eyebrow="SKU生命周期分析" title="SKU详细数据表" />
             <Table>
               <thead>
                 <tr>
                   <Th>SKU</Th>
                   <Th>商品名称</Th>
-                  <Th>当前库存</Th>
+                  <Th>库存</Th>
+                  <Th>近期销量</Th>
                   <Th>日均销量</Th>
                   <Th>可售天数</Th>
-                  <Th>状态</Th>
-                  <Th>建议动作</Th>
-                  <Th>建议采购数量</Th>
+                  <Th>生命周期</Th>
                 </tr>
               </thead>
               <tbody>
-                {replenishRows.slice(0, 14).map((row) => (
+                {lifecycleRows.map((row) => (
                   <tr key={row.product.id}>
                     <Td>{row.product.sku}</Td>
                     <Td>{row.product.name}</Td>
                     <Td>{row.currentStock}</Td>
+                    <Td>{row.salesInWindow}</Td>
                     <Td>{row.dailyAverage}</Td>
                     <Td>{formatSaleableDays(row.saleableDays)}</Td>
-                    <Td><StatusBadge status={row.status} /></Td>
-                    <Td>{row.action}</Td>
-                    <Td>{row.suggestedQty}</Td>
+                    <Td><LifecycleBadge label={row.lifecycle} /></Td>
                   </tr>
                 ))}
               </tbody>
             </Table>
-          )}
-        </Card>
-      </section>
-
-      <section className="mt-6 grid gap-4 xl:grid-cols-3">
-        <AnalysisTable title="TOP销量商品" rows={topSales} valueLabel="销量" valueKey="quantity" />
-        <AnalysisTable title="TOP利润商品" rows={topProfit} valueLabel="利润" valueKey="profit" />
-        <Card>
-          <DashboardSectionTitle eyebrow="SKU经营分析" title="滞销商品" />
-          <Table>
-            <thead>
-              <tr>
-                <Th>SKU</Th>
-                <Th>库存</Th>
-                <Th>库存金额</Th>
-              </tr>
-            </thead>
-            <tbody>
-              {slowMoving.map((row) => (
-                <tr key={row.product.id}>
-                  <Td>{row.product.sku}</Td>
-                  <Td>{row.currentStock}</Td>
-                  <Td>{won(row.currentStock * money(row.product.purchase_price))}</Td>
-                </tr>
-              ))}
-              {!slowMoving.length ? <EmptyRow columns={3} /> : null}
-            </tbody>
-          </Table>
-        </Card>
-      </section>
-
-      <section className="mt-6 grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
-        <Card>
-          <DashboardSectionTitle eyebrow="库存健康中心" title="库存健康度" />
-          <div className="grid gap-4 md:grid-cols-[180px_1fr]">
-            <DonutChart items={health} />
-            <div className="space-y-3">
-              {health.map((item) => (
-                <div key={item.label} className="flex items-center justify-between rounded border border-line bg-panel px-3 py-2">
-                  <span className="flex items-center gap-2 text-sm font-semibold text-ink">
-                    <span className="h-3 w-3 rounded-full" style={{ backgroundColor: item.color }} />
-                    {item.label}
-                  </span>
-                  <span className="text-sm font-semibold text-ink">{item.percent}%</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </Card>
-
-        <Card>
-          <DashboardSectionTitle eyebrow="库存风险分析" title="库存风险排行榜" />
-          <Table>
-            <thead>
-              <tr>
-                <Th>SKU</Th>
-                <Th>库存</Th>
-                <Th>可售天数</Th>
-                <Th>预计断货日期</Th>
-                <Th>预计损失金额</Th>
-              </tr>
-            </thead>
-            <tbody>
-              {riskyRows.map((row) => (
-                <tr key={row.product.id}>
-                  <Td>{row.product.sku}</Td>
-                  <Td>{row.currentStock}</Td>
-                  <Td>{formatSaleableDays(row.saleableDays)}</Td>
-                  <Td>{stockoutDate(row.saleableDays)}</Td>
-                  <Td>{won(Math.max(0, (REPLENISHMENT_CYCLE_DAYS - row.saleableDays) * row.dailyAverage * money(row.product.sale_price)))}</Td>
-                </tr>
-              ))}
-              {!riskyRows.length ? <EmptyRow columns={5} /> : null}
-            </tbody>
-          </Table>
-        </Card>
-      </section>
-
-      <section className="mt-6">
-        <Card>
-          <DashboardSectionTitle eyebrow="SKU生命周期分析" title="SKU详细数据表" />
-          <Table>
-            <thead>
-              <tr>
-                <Th>SKU</Th>
-                <Th>商品名称</Th>
-                <Th>库存</Th>
-                <Th>近期销量</Th>
-                <Th>日均销量</Th>
-                <Th>可售天数</Th>
-                <Th>生命周期</Th>
-              </tr>
-            </thead>
-            <tbody>
-              {lifecycleRows.map((row) => (
-                <tr key={row.product.id}>
-                  <Td>{row.product.sku}</Td>
-                  <Td>{row.product.name}</Td>
-                  <Td>{row.currentStock}</Td>
-                  <Td>{row.salesInWindow}</Td>
-                  <Td>{row.dailyAverage}</Td>
-                  <Td>{formatSaleableDays(row.saleableDays)}</Td>
-                  <Td><LifecycleBadge label={row.lifecycle} /></Td>
-                </tr>
-              ))}
-            </tbody>
-          </Table>
-        </Card>
-      </section>
+          </Card>
+        </section>
+      </div>
     </>
+  );
+}
+
+function DateControl({
+  selectedDate,
+  viewMode,
+  rangeLabel,
+  onDateChange,
+  onModeChange
+}: {
+  selectedDate: string;
+  viewMode: ViewMode;
+  rangeLabel: string;
+  onDateChange: (date: string) => void;
+  onModeChange: (mode: ViewMode) => void;
+}) {
+  const buttons: Array<{ key: ViewMode; label: string }> = [
+    { key: "today", label: "今天" },
+    { key: "yesterday", label: "昨天" },
+    { key: "7d", label: "近7天" },
+    { key: "30d", label: "近30天" },
+    { key: "month", label: "本月" }
+  ];
+
+  return (
+    <div className="rounded border border-line bg-white p-3 shadow-soft">
+      <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-ink">
+        <CalendarDays size={16} />
+        日期选择查看模式
+        <span className="ml-auto text-xs font-medium text-ink/55">{rangeLabel}</span>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <input className="w-40" type="date" value={selectedDate} onChange={(event) => onDateChange(event.target.value)} />
+        {buttons.map((button) => (
+          <SegmentButton key={button.key} active={viewMode === button.key} onClick={() => onModeChange(button.key)}>
+            {button.label}
+          </SegmentButton>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -532,27 +589,25 @@ function buildSmartReplenishment(rows: ReplenishmentRow[]): SmartReplenishmentRo
 
 function buildAlerts(input: {
   rows: SmartReplenishmentRow[];
-  sales7: number;
-  sales30: number;
-  monthRevenue: number;
-  previousMonthRevenue: number;
-  monthProfit: number;
-  previousMonthProfit: number;
+  rangeRevenue: number;
+  comparisonRevenue: number;
+  rangeProfit: number;
+  comparisonProfit: number;
 }): AlertItem[] {
   const dangerCount = input.rows.filter((row) => row.saleableDays < 7).length;
   const warningCount = input.rows.filter((row) => row.saleableDays >= 7 && row.saleableDays < 15).length;
   const stockoutCount = input.rows.filter((row) => row.dailyAverage > 0 && row.currentStock <= row.dailyAverage * 3).length;
   const suggestedCount = input.rows.filter((row) => row.suggestedQty > 0).length;
-  const monthRevenueGrowth = compare(input.monthRevenue, input.previousMonthRevenue);
-  const monthProfitGrowth = compare(input.monthProfit, input.previousMonthProfit);
+  const revenueGrowth = compare(input.rangeRevenue, input.comparisonRevenue);
+  const profitGrowth = compare(input.rangeProfit, input.comparisonProfit);
   const alerts: AlertItem[] = [];
 
   if (dangerCount) alerts.push({ level: "danger", text: `${dangerCount}个SKU库存低于7天` });
   if (stockoutCount) alerts.push({ level: "danger", text: `${stockoutCount}个SKU即将断货` });
   if (warningCount) alerts.push({ level: "warning", text: `${warningCount}个SKU需要关注库存` });
   if (suggestedCount) alerts.push({ level: "warning", text: `${suggestedCount}个SKU建议补货` });
-  if (monthRevenueGrowth != null && monthRevenueGrowth > 0) alerts.push({ level: "success", text: `本月销售增长${monthRevenueGrowth.toFixed(1)}%` });
-  if (monthProfitGrowth != null && monthProfitGrowth > 0) alerts.push({ level: "success", text: `本月利润增长${monthProfitGrowth.toFixed(1)}%` });
+  if (revenueGrowth != null && revenueGrowth > 0) alerts.push({ level: "success", text: `销售额增长${revenueGrowth.toFixed(1)}%` });
+  if (profitGrowth != null && profitGrowth > 0) alerts.push({ level: "success", text: `利润增长${profitGrowth.toFixed(1)}%` });
 
   return alerts;
 }
@@ -601,11 +656,10 @@ function buildInventoryHealth(rows: SmartReplenishmentRow[], slowMoving: Repleni
   }));
 }
 
-function buildLifecycleRows(rows: ReplenishmentRow[], salesRows: SaleDaily[]) {
+function buildLifecycleRows(rows: ReplenishmentRow[], salesRows: SaleDaily[], anchorDate: Date) {
   const productSales = new Map<string, { recent: number; previous: number }>();
-  const today = new Date();
-  const recentStart = daysAgoKey(today, 29);
-  const previousStart = daysAgoKey(today, 89);
+  const recentStart = daysAgoKey(anchorDate, 29);
+  const previousStart = daysAgoKey(anchorDate, 89);
 
   for (const sale of validSales(salesRows)) {
     const current = productSales.get(sale.product_id) ?? { recent: 0, previous: 0 };
@@ -640,11 +694,10 @@ function buildSalesMetrics(salesRows: SaleDaily[], productMap: Map<string, Produ
   }, { quantity: 0, revenue: 0, profit: 0 });
 }
 
-function buildDailySalesPoints(salesRows: SaleDaily[], productMap: Map<string, ProductWithStock>, days: number): SalesPoint[] {
-  const today = new Date();
+function buildDailySalesPoints(salesRows: SaleDaily[], productMap: Map<string, ProductWithStock>, days: number, anchorDate: Date): SalesPoint[] {
   const points = Array.from({ length: days }, (_, index) => {
-    const date = new Date(today);
-    date.setDate(today.getDate() - (days - 1 - index));
+    const date = new Date(anchorDate);
+    date.setDate(anchorDate.getDate() - (days - 1 - index));
     const key = toDateKey(date);
     return { date: key, label: `${date.getMonth() + 1}/${date.getDate()}`, quantity: 0, revenue: 0, profit: 0 };
   });
@@ -690,7 +743,7 @@ function validSales(salesRows: SaleDaily[]) {
     .filter((sale) => Boolean(sale.product_id) && Boolean(sale.sale_date) && sale.quantity > 0);
 }
 
-function sumTypedMovements(movements: Array<{ type: string; quantity: number; memo: string | null }>, target: "return_inbound" | "loss") {
+function countTypedMovements(movements: MovementRow[], target: "return_inbound" | "loss") {
   return movements.reduce((sum, movement) => {
     const memo = String(movement.memo ?? "");
     const isReturnInbound =
@@ -712,10 +765,41 @@ function hasRecentSale(productId: string, salesRows: SaleDaily[]) {
   return validSales(salesRows).some((sale) => sale.product_id === productId);
 }
 
-function rangeDays(range: TrendRange) {
-  if (range === "7d") return 7;
-  if (range === "90d") return 90;
-  return 30;
+type DateRange = { start: string; end: string; label: string };
+
+function buildRange(mode: ViewMode, anchorDate: Date): DateRange {
+  const end = toDateKey(anchorDate);
+  if (mode === "7d") return { start: daysAgoKey(anchorDate, 6), end, label: "近7天" };
+  if (mode === "30d") return { start: daysAgoKey(anchorDate, 29), end, label: "近30天" };
+  if (mode === "month") return { start: monthStartKey(anchorDate), end, label: "本月" };
+  if (mode === "yesterday") return { start: end, end, label: "昨日" };
+  if (mode === "custom") return { start: end, end, label: "所选日期" };
+  return { start: end, end, label: "今日" };
+}
+
+function buildComparisonRange(range: DateRange): DateRange {
+  const start = parseDateKey(range.start);
+  const end = parseDateKey(range.end);
+  const days = daysInRange(range);
+  const comparisonEnd = new Date(start);
+  comparisonEnd.setDate(start.getDate() - 1);
+  const comparisonStart = new Date(comparisonEnd);
+  comparisonStart.setDate(comparisonEnd.getDate() - (days - 1));
+  return { start: toDateKey(comparisonStart), end: toDateKey(comparisonEnd), label: "对比周期" };
+}
+
+function daysInRange(range: DateRange) {
+  const start = parseDateKey(range.start).getTime();
+  const end = parseDateKey(range.end).getTime();
+  return Math.max(1, Math.round((end - start) / 86_400_000) + 1);
+}
+
+function formatRangeLabel(range: DateRange) {
+  return range.start === range.end ? range.end : `${range.start} ~ ${range.end}`;
+}
+
+function isBetween(dateKey: string, start: string, end: string) {
+  return dateKey >= start && dateKey <= end;
 }
 
 function compare(current: number, previous: number) {
@@ -733,32 +817,29 @@ function formatSaleableDays(days: number) {
   return days >= 999 ? "暂无销量" : `${days}天`;
 }
 
-function stockoutDate(days: number) {
+function stockoutDate(days: number, anchorDate: Date) {
   if (days >= 999) return "暂无风险";
-  const date = new Date();
-  date.setDate(date.getDate() + Math.max(0, days));
+  const date = new Date(anchorDate);
+  date.setDate(anchorDate.getDate() + Math.max(0, days));
   return toDateKey(date);
-}
-
-function isCurrentMonth(dateKey: string) {
-  const now = new Date();
-  return dateKey.startsWith(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`);
-}
-
-function isPreviousMonth(dateKey: string) {
-  const now = new Date();
-  const month = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  return dateKey.startsWith(`${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, "0")}`);
 }
 
 function buildYearOptions() {
   return [2025, 2026, 2027];
 }
 
+function monthStartKey(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-01`;
+}
+
 function daysAgoKey(today: Date, daysAgo: number) {
   const date = new Date(today);
   date.setDate(today.getDate() - daysAgo);
   return toDateKey(date);
+}
+
+function parseDateKey(dateKey: string) {
+  return new Date(`${dateKey}T12:00:00`);
 }
 
 function toDateKey(date: Date) {
