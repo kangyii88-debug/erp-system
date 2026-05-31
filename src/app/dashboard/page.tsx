@@ -7,7 +7,13 @@ import { PageHeader } from "@/components/PageHeader";
 import { Table, Td, Th } from "@/components/Table";
 import { useLanguage } from "@/components/LanguageProvider";
 import { supabase } from "@/lib/supabase";
-import { buildReplenishmentRows, type ReplenishmentRow } from "@/lib/replenishment";
+import {
+  buildReplenishmentRows,
+  REPLENISHMENT_CYCLE_DAYS,
+  SALES_ANALYSIS_DAYS,
+  summarizeSales,
+  type ReplenishmentRow
+} from "@/lib/replenishment";
 import type { ProductWithStock, PurchaseOrder, SaleDaily } from "@/lib/types";
 
 export default function DashboardPage() {
@@ -22,76 +28,77 @@ function DashboardContent() {
   const { t } = useLanguage();
   const [rows, setRows] = useState<ReplenishmentRow[]>([]);
   const [salesRows, setSalesRows] = useState<SaleDaily[]>([]);
+  const [salesWindowRows, setSalesWindowRows] = useState<SaleDaily[]>([]);
+  const [monthlySalesRows, setMonthlySalesRows] = useState<SaleDaily[]>([]);
   const [totalSales, setTotalSales] = useState(0);
-  const [sales30d, setSales30d] = useState(0);
   const [returnInboundSaleable, setReturnInboundSaleable] = useState(0);
   const [lossQuantity, setLossQuantity] = useState(0);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     load();
-  }, []);
+  }, [selectedYear]);
 
   async function load() {
     setLoading(true);
-    const since7d = new Date();
-    since7d.setDate(since7d.getDate() - 6);
-    const date7d = since7d.toISOString().slice(0, 10);
-    const since30d = new Date();
-    since30d.setDate(since30d.getDate() - 29);
-    const date30d = since30d.toISOString().slice(0, 10);
-    const [{ data: products }, { data: sales }, { data: sales30 }, { data: purchases }, { data: allSales }, { data: movements }] = await Promise.all([
+
+    const today = new Date();
+    const date7d = daysAgoKey(today, 6);
+    const date30d = daysAgoKey(today, SALES_ANALYSIS_DAYS - 1);
+    const todayKey = toDateKey(today);
+    const yearStart = `${selectedYear}-01-01`;
+    const yearEnd = `${selectedYear}-12-31`;
+
+    const [
+      { data: products },
+      { data: sales7dRows },
+      { data: sales30dRows },
+      { data: salesYearRows },
+      { data: purchases },
+      { data: allSales },
+      { data: movements }
+    ] = await Promise.all([
       supabase.from("products").select("*, inventory_balances(current_stock)").order("created_at", { ascending: false }),
-      supabase.from("sales_daily").select("*").gte("sale_date", date7d),
-      supabase.from("sales_daily").select("quantity").gte("sale_date", date30d),
+      supabase.from("sales_daily").select("*").gte("sale_date", date7d).lte("sale_date", todayKey),
+      supabase.from("sales_daily").select("*").gte("sale_date", date30d).lte("sale_date", todayKey),
+      supabase.from("sales_daily").select("*").gte("sale_date", yearStart).lte("sale_date", yearEnd),
       supabase.from("purchase_orders").select("*, products(name, sku)"),
       supabase.from("sales_daily").select("quantity"),
       supabase.from("stock_movements").select("type, quantity, memo")
     ]);
 
-    setTotalSales((allSales ?? []).reduce((sum, sale) => sum + Number(sale.quantity ?? 0), 0));
-    setSales30d((sales30 ?? []).reduce((sum, sale) => sum + Number(sale.quantity ?? 0), 0));
-    setReturnInboundSaleable(
-      (movements ?? []).reduce((sum, movement) => {
-        const memo = String(movement.memo ?? "");
-        const isReturnInbound =
-          movement.type === "return_inbound" ||
-          memo.startsWith("\u9000\u8d27\u5165\u5e93\u5728\u552e") ||
-          memo.startsWith("\ubc18\ud488 \uc785\uace0 \ud310\ub9e4\uac00\ub2a5");
-        return isReturnInbound ? sum + Number(movement.quantity ?? 0) : sum;
-      }, 0)
-    );
-    setLossQuantity(
-      (movements ?? []).reduce((sum, movement) => {
-        const memo = String(movement.memo ?? "");
-        const isLoss =
-          movement.type === "loss" ||
-          memo.startsWith("\u635f\u8017\u4e22\u5931") ||
-          memo.startsWith("\uc190\uc0c1/\ubd84\uc2e4");
-        return isLoss ? sum + Number(movement.quantity ?? 0) : sum;
-      }, 0)
-    );
+    const sales30 = (sales30dRows ?? []) as SaleDaily[];
+    const allSalesRows = (allSales ?? []) as Pick<SaleDaily, "quantity">[];
+
+    setTotalSales(sumPositiveQuantities(allSalesRows));
+    setReturnInboundSaleable(sumTypedMovements(movements ?? [], "return_inbound"));
+    setLossQuantity(sumTypedMovements(movements ?? [], "loss"));
     setRows(
       buildReplenishmentRows(
         (products ?? []) as ProductWithStock[],
-        (sales ?? []) as SaleDaily[],
+        sales30,
         (purchases ?? []) as PurchaseOrder[]
       )
     );
-    setSalesRows((sales ?? []) as SaleDaily[]);
+    setSalesRows((sales7dRows ?? []) as SaleDaily[]);
+    setSalesWindowRows(sales30);
+    setMonthlySalesRows((salesYearRows ?? []) as SaleDaily[]);
     setLoading(false);
   }
 
   const totalStock = rows.reduce((sum, row) => sum + row.currentStock, 0);
   const skuCount = rows.length;
   const lowStock = rows.filter((row) => row.currentStock <= row.product.low_stock_threshold);
-  const sales7d = rows.reduce((sum, row) => sum + row.sales7d, 0);
-  const averageDailySales = Math.round((sales30d / 30) * 10) / 10;
+  const sales7d = sumPositiveQuantities(salesRows);
+  const salesSummary = summarizeSales(salesWindowRows);
+  const monthlySales = buildMonthlySales(monthlySalesRows, selectedYear);
   const suggested = rows.filter((row) => row.suggestedQty > 0).sort((a, b) => b.suggestedQty - a.suggestedQty);
   const stockByColor = buildStockByColor(rows);
   const salesByDate = buildSalesByDate(salesRows);
   const maxColorStock = Math.max(1, ...stockByColor.map((item) => item.stock));
   const maxDailySales = Math.max(1, ...salesByDate.map((item) => item.quantity));
+  const maxMonthlySales = Math.max(1, ...monthlySales.map((item) => item.quantity));
 
   return (
     <>
@@ -100,12 +107,29 @@ function DashboardContent() {
         <KpiCard label={t.totalStock} value={totalStock} />
         <KpiCard label="SKU总数" value={skuCount} />
         <KpiCard label={t.totalSales} value={totalSales} />
-        <KpiCard label="30天销量" value={sales30d} />
-        <KpiCard label="平均一天销量" value={averageDailySales} />
+        <KpiCard label="平均日销量" value={salesSummary.averageDailySales} />
+        <KpiCard label="有效销售天数" value={salesSummary.activeSalesDays} />
         <KpiCard label={t.return_inbound} value={returnInboundSaleable} />
         <KpiCard label={t.loss} value={lossQuantity} />
         <KpiCard label={t.lowStock} value={lowStock.length} />
         <KpiCard label={t.replenishItems} value={suggested.length} />
+      </div>
+
+      <div className="mt-6">
+        <Card>
+          <div className="mb-4 flex items-end justify-between gap-3">
+            <div>
+              <div className="text-sm font-medium text-ink/55">最近 {SALES_ANALYSIS_DAYS} 天有效销量 / 有销量日期</div>
+              <h2 className="text-xl font-semibold text-ink">平均日销量</h2>
+            </div>
+            <div className="rounded bg-panel px-3 py-1 text-sm font-semibold text-ink">
+              {salesSummary.totalQuantity} / {salesSummary.activeSalesDays} 天
+            </div>
+          </div>
+          <div className="text-sm text-ink/70">
+            平均日销量 = 最近 {SALES_ANALYSIS_DAYS} 天有效销量 ÷ 实际有销量的天数。退货入库、损耗丢失不会计入销量。
+          </div>
+        </Card>
       </div>
 
       <div className="mt-6">
@@ -124,6 +148,36 @@ function DashboardContent() {
                 <div className="mt-1 text-xl font-semibold text-ink">{item.quantity}</div>
                 <div className="mt-3 flex h-24 items-end rounded bg-white px-2">
                   <div className="w-full rounded-t bg-brand" style={{ height: `${Math.max(6, (item.quantity / maxDailySales) * 100)}%` }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      </div>
+
+      <div className="mt-6">
+        <Card>
+          <div className="mb-4 flex items-end justify-between gap-3">
+            <div>
+              <div className="text-sm font-medium text-ink/55">订单日期自动统计</div>
+              <h2 className="text-xl font-semibold text-ink">每月销量</h2>
+            </div>
+            <select className="w-32" value={selectedYear} onChange={(event) => setSelectedYear(Number(event.target.value))}>
+              {buildYearOptions().map((year) => (
+                <option key={year} value={year}>
+                  {year}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-6 xl:grid-cols-12">
+            {monthlySales.map((item) => (
+              <div key={item.month} className="rounded border border-line bg-panel p-3">
+                <div className="text-xs font-semibold text-ink/60">{item.label}</div>
+                <div className="mt-1 text-xl font-semibold text-ink">{item.quantity}</div>
+                <div className="mt-3 flex h-24 items-end rounded bg-white px-2">
+                  <div className="w-full rounded-t bg-brand" style={{ height: `${Math.max(4, (item.quantity / maxMonthlySales) * 100)}%` }} />
                 </div>
               </div>
             ))}
@@ -160,7 +214,12 @@ function DashboardContent() {
 
       <div className="mt-6 grid gap-4 xl:grid-cols-[1fr_1fr]">
         <Card>
-          <h2 className="mb-3 font-semibold">{t.replenishItems}</h2>
+          <div className="mb-3">
+            <h2 className="font-semibold">{t.replenishItems}</h2>
+            <div className="mt-1 text-sm text-ink/60">
+              建议补货 = 平均日销量 × {REPLENISHMENT_CYCLE_DAYS} 天 + 安全库存 + 待处理订单 - 当前库存 - 在途采购
+            </div>
+          </div>
           {loading ? (
             <div>{t.loading}</div>
           ) : (
@@ -170,7 +229,10 @@ function DashboardContent() {
                   <Th>{t.sku}</Th>
                   <Th>{t.productName}</Th>
                   <Th>{t.currentStock}</Th>
-                  <Th>{t.sales7d}</Th>
+                  <Th>平均日销量</Th>
+                  <Th>安全库存</Th>
+                  <Th>在途采购</Th>
+                  <Th>待处理订单</Th>
                   <Th>{t.suggestedQty}</Th>
                 </tr>
               </thead>
@@ -180,13 +242,19 @@ function DashboardContent() {
                     <Td>{row.product.sku}</Td>
                     <Td>{row.product.name}</Td>
                     <Td>{row.currentStock}</Td>
-                    <Td>{row.sales7d}</Td>
+                    <Td>{row.dailyAverage}</Td>
+                    <Td>{row.safetyStock}</Td>
+                    <Td>{row.openPurchaseQty}</Td>
+                    <Td>{row.pendingOrderQty}</Td>
                     <Td>{row.suggestedQty}</Td>
                   </tr>
                 ))}
                 {!suggested.length ? (
                   <tr>
                     <Td>{t.empty}</Td>
+                    <Td>{"-"}</Td>
+                    <Td>{"-"}</Td>
+                    <Td>{"-"}</Td>
                     <Td>{"-"}</Td>
                     <Td>{"-"}</Td>
                     <Td>{"-"}</Td>
@@ -226,6 +294,28 @@ function DashboardContent() {
   );
 }
 
+function sumPositiveQuantities(rows: Array<Pick<SaleDaily, "quantity">>) {
+  return rows.reduce((sum, row) => sum + Math.max(0, Number(row.quantity ?? 0)), 0);
+}
+
+function sumTypedMovements(movements: Array<{ type: string; quantity: number; memo: string | null }>, target: "return_inbound" | "loss") {
+  return movements.reduce((sum, movement) => {
+    const memo = String(movement.memo ?? "");
+    const isReturnInbound =
+      target === "return_inbound" &&
+      (movement.type === "return_inbound" ||
+        memo.startsWith("\u9000\u8d27\u5165\u5e93\u5728\u552e") ||
+        memo.startsWith("\ubc18\ud488 \uc785\uace0 \ud310\ub9e4\uac00\ub2a5"));
+    const isLoss =
+      target === "loss" &&
+      (movement.type === "loss" ||
+        memo.startsWith("\u635f\u8017\u4e22\u5931") ||
+        memo.startsWith("\uc190\uc0c1/\ubd84\uc2e4"));
+
+    return isReturnInbound || isLoss ? sum + Math.max(0, Number(movement.quantity ?? 0)) : sum;
+  }, 0);
+}
+
 function buildStockByColor(rows: ReplenishmentRow[]) {
   const groups = new Map<string, { key: string; label: string; stock: number }>();
 
@@ -246,18 +336,52 @@ function colorKey(sku: string) {
 }
 
 function buildSalesByDate(salesRows: SaleDaily[]) {
+  const today = new Date();
   const days = Array.from({ length: 7 }, (_, index) => {
-    const date = new Date();
-    date.setDate(date.getDate() - (6 - index));
-    const key = date.toISOString().slice(0, 10);
+    const date = new Date(today);
+    date.setDate(today.getDate() - (6 - index));
+    const key = toDateKey(date);
     return { date: key, label: `${date.getMonth() + 1}/${date.getDate()}`, quantity: 0 };
   });
   const dayMap = new Map(days.map((day) => [day.date, day]));
 
   for (const sale of salesRows) {
     const day = dayMap.get(sale.sale_date);
-    if (day) day.quantity += Number(sale.quantity ?? 0);
+    if (day) day.quantity += Math.max(0, Number(sale.quantity ?? 0));
   }
 
   return days;
+}
+
+function buildMonthlySales(salesRows: SaleDaily[], year: number) {
+  const months = Array.from({ length: 12 }, (_, index) => ({
+    month: index + 1,
+    label: `${index + 1}月`,
+    quantity: 0
+  }));
+
+  for (const sale of salesRows) {
+    if (!sale.sale_date || Number(sale.quantity ?? 0) <= 0) continue;
+    const [saleYear, saleMonth] = sale.sale_date.split("-").map(Number);
+    if (saleYear !== year || !saleMonth) continue;
+    months[saleMonth - 1].quantity += Number(sale.quantity);
+  }
+
+  return months;
+}
+
+function buildYearOptions() {
+  const currentYear = new Date().getFullYear();
+  return Array.from({ length: 5 }, (_, index) => currentYear - index);
+}
+
+function daysAgoKey(today: Date, daysAgo: number) {
+  const date = new Date(today);
+  date.setDate(today.getDate() - daysAgo);
+  return toDateKey(date);
+}
+
+function toDateKey(date: Date) {
+  const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+  return localDate.toISOString().slice(0, 10);
 }

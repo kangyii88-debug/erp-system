@@ -1,30 +1,51 @@
-import type { ProductWithStock, SaleDaily, PurchaseOrder } from "./types";
+import type { ProductWithStock, PurchaseOrder, SaleDaily } from "./types";
 import { getCurrentStock } from "./stock";
 
-const PRODUCTION_DAYS = 20;
-const SHIPPING_DAYS = 7;
-const PLATFORM_INBOUND_DAYS = 2;
-const TARGET_DAYS = PRODUCTION_DAYS + SHIPPING_DAYS + PLATFORM_INBOUND_DAYS;
+export const REPLENISHMENT_CYCLE_DAYS = 30;
+export const SALES_ANALYSIS_DAYS = 30;
+
+export type SalesSummary = {
+  totalQuantity: number;
+  activeSalesDays: number;
+  averageDailySales: number;
+};
 
 export type ReplenishmentRow = {
   product: ProductWithStock;
   currentStock: number;
-  sales7d: number;
+  salesInWindow: number;
+  activeSalesDays: number;
   dailyAverage: number;
+  safetyStock: number;
   openPurchaseQty: number;
+  pendingOrderQty: number;
   suggestedQty: number;
 };
+
+export function summarizeSales(sales: SaleDaily[]): SalesSummary {
+  const validSales = normalizeSalesRows(sales);
+  const activeDays = new Set(validSales.map((sale) => sale.sale_date));
+  const totalQuantity = validSales.reduce((sum, sale) => sum + sale.quantity, 0);
+  const activeSalesDays = activeDays.size;
+  const averageDailySales = activeSalesDays > 0 ? roundOneDecimal(totalQuantity / activeSalesDays) : 0;
+
+  return { totalQuantity, activeSalesDays, averageDailySales };
+}
 
 export function buildReplenishmentRows(
   products: ProductWithStock[],
   sales: SaleDaily[],
-  purchases: PurchaseOrder[]
+  purchases: PurchaseOrder[],
+  pendingOrdersByProduct = new Map<string, number>()
 ): ReplenishmentRow[] {
-  const salesByProduct = new Map<string, number>();
+  const salesByProduct = new Map<string, { quantity: number; activeDays: Set<string> }>();
   const openPurchases = new Map<string, number>();
 
-  for (const sale of sales) {
-    salesByProduct.set(sale.product_id, (salesByProduct.get(sale.product_id) ?? 0) + sale.quantity);
+  for (const sale of normalizeSalesRows(sales)) {
+    const current = salesByProduct.get(sale.product_id) ?? { quantity: 0, activeDays: new Set<string>() };
+    current.quantity += sale.quantity;
+    current.activeDays.add(sale.sale_date);
+    salesByProduct.set(sale.product_id, current);
   }
 
   for (const po of purchases) {
@@ -34,13 +55,41 @@ export function buildReplenishmentRows(
   }
 
   return products.map((product) => {
+    const salesStats = salesByProduct.get(product.id);
     const currentStock = getCurrentStock(product);
-    const sales7d = salesByProduct.get(product.id) ?? 0;
-    const dailyAverage = sales7d / 7;
+    const salesInWindow = salesStats?.quantity ?? 0;
+    const activeSalesDays = salesStats?.activeDays.size ?? 0;
+    const dailyAverage = activeSalesDays > 0 ? roundOneDecimal(salesInWindow / activeSalesDays) : 0;
+    const safetyStock = Math.max(0, Number(product.low_stock_threshold ?? 0));
     const openPurchaseQty = openPurchases.get(product.id) ?? 0;
-    const targetQty = Math.ceil(dailyAverage * TARGET_DAYS);
+    const pendingOrderQty = pendingOrdersByProduct.get(product.id) ?? 0;
+    const cycleDemand = Math.ceil(dailyAverage * REPLENISHMENT_CYCLE_DAYS);
+    const targetQty = cycleDemand + safetyStock + pendingOrderQty;
     const suggestedQty = Math.max(0, targetQty - currentStock - openPurchaseQty);
 
-    return { product, currentStock, sales7d, dailyAverage, openPurchaseQty, suggestedQty };
+    return {
+      product,
+      currentStock,
+      salesInWindow,
+      activeSalesDays,
+      dailyAverage,
+      safetyStock,
+      openPurchaseQty,
+      pendingOrderQty,
+      suggestedQty
+    };
   });
+}
+
+function normalizeSalesRows(sales: SaleDaily[]) {
+  return sales
+    .map((sale) => ({
+      ...sale,
+      quantity: Math.max(0, Number(sale.quantity ?? 0))
+    }))
+    .filter((sale) => Boolean(sale.product_id) && Boolean(sale.sale_date) && sale.quantity > 0);
+}
+
+function roundOneDecimal(value: number) {
+  return Math.round(value * 10) / 10;
 }
