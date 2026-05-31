@@ -151,8 +151,8 @@ function DashboardContent() {
   const trendData = buildDailySalesPoints(salesRows, productMap, trendDays, anchorDate);
   const comparisonTrendData = buildDailySalesPoints(salesAllRows, productMap, trendDays, parseDateKey(comparisonRange.end));
   const annualData = buildAnnualTrendPoints(salesYearRows, salesPreviousYearRows, productMap, selectedYear);
-  const topSales = buildTopSales(rangeSales, productMap, "quantity");
-  const topProfit = buildTopSales(rangeSales, productMap, "profit");
+  const topSales = buildTopSkuPerformance(rangeSales, productMap, "quantity");
+  const topProfit = buildTopSkuPerformance(rangeSales, productMap, "profit");
   const slowMoving = rows
     .filter((row) => row.currentStock > 0 && !hasRecentSale(row.product.id, salesWindowRows))
     .sort((a, b) => b.currentStock * money(b.product.purchase_price) - a.currentStock * money(a.product.purchase_price))
@@ -295,8 +295,8 @@ function DashboardContent() {
         </section>
 
         <section className="grid gap-4 xl:grid-cols-3">
-          <AnalysisTable title="TOP销量商品" rows={topSales} valueLabel="销量" valueKey="quantity" />
-          <AnalysisTable title="TOP利润商品" rows={topProfit} valueLabel="利润" valueKey="profit" />
+          <TopSalesTable rows={topSales} />
+          <TopProfitTable rows={topProfit} />
           <Card>
             <DashboardSectionTitle eyebrow="SKU经营分析" title="滞销商品" />
             <Table>
@@ -774,7 +774,7 @@ function AnnualTooltip({
   );
 }
 
-function AnalysisTable({ title, rows, valueLabel, valueKey }: { title: string; rows: TopSaleRow[]; valueLabel: string; valueKey: "quantity" | "profit" }) {
+function AnalysisTable({ title, rows, valueLabel, valueKey }: { title: string; rows: TopSkuPerformanceRow[]; valueLabel: string; valueKey: "quantity" | "profit" }) {
   return (
     <Card>
       <DashboardSectionTitle eyebrow="SKU经营分析" title={title} />
@@ -797,6 +797,74 @@ function AnalysisTable({ title, rows, valueLabel, valueKey }: { title: string; r
             </tr>
           ))}
           {!rows.length ? <EmptyRow columns={4} /> : null}
+        </tbody>
+      </Table>
+    </Card>
+  );
+}
+
+function TopSalesTable({ rows }: { rows: TopSkuPerformanceRow[] }) {
+  return (
+    <Card>
+      <DashboardSectionTitle eyebrow="SKU经营分析" title="TOP销量商品" />
+      <Table>
+        <thead>
+          <tr>
+            <Th>排名</Th>
+            <Th>SKU</Th>
+            <Th>商品名称</Th>
+            <Th>销量</Th>
+            <Th>订单数</Th>
+            <Th>销售额</Th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, index) => (
+            <tr key={row.sku}>
+              <Td>{index + 1}</Td>
+              <Td>{row.sku}</Td>
+              <Td>{row.name}</Td>
+              <Td>{row.quantity}</Td>
+              <Td>{row.orders}</Td>
+              <Td>{won(row.revenue)}</Td>
+            </tr>
+          ))}
+          {!rows.length ? <EmptyRow columns={6} /> : null}
+        </tbody>
+      </Table>
+    </Card>
+  );
+}
+
+function TopProfitTable({ rows }: { rows: TopSkuPerformanceRow[] }) {
+  return (
+    <Card>
+      <DashboardSectionTitle eyebrow="SKU经营分析" title="TOP利润商品" />
+      <Table>
+        <thead>
+          <tr>
+            <Th>排名</Th>
+            <Th>SKU</Th>
+            <Th>商品名称</Th>
+            <Th>销量</Th>
+            <Th>销售额</Th>
+            <Th>利润</Th>
+            <Th>利润率</Th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, index) => (
+            <tr key={row.sku}>
+              <Td>{index + 1}</Td>
+              <Td>{row.sku}</Td>
+              <Td>{row.name}</Td>
+              <Td>{row.quantity}</Td>
+              <Td>{won(row.revenue)}</Td>
+              <Td>{won(row.profit)}</Td>
+              <Td>{row.margin.toFixed(1)}%</Td>
+            </tr>
+          ))}
+          {!rows.length ? <EmptyRow columns={7} /> : null}
         </tbody>
       </Table>
     </Card>
@@ -895,19 +963,48 @@ function buildAlerts(input: {
   return alerts;
 }
 
-type TopSaleRow = { sku: string; quantity: number; revenue: number; profit: number };
+type TopSkuPerformanceRow = {
+  sku: string;
+  name: string;
+  quantity: number;
+  orders: number;
+  revenue: number;
+  profit: number;
+  margin: number;
+};
 
-function buildTopSales(salesRows: SaleDaily[], productMap: Map<string, ProductWithStock>, sortBy: "quantity" | "profit") {
-  const map = new Map<string, TopSaleRow>();
+function buildTopSkuPerformance(salesRows: SaleDaily[], productMap: Map<string, ProductWithStock>, sortBy: "quantity" | "profit") {
+  const map = new Map<string, TopSkuPerformanceRow>();
 
   for (const sale of validSales(salesRows)) {
     const product = productMap.get(sale.product_id);
     if (!product) continue;
-    const current = map.get(product.sku) ?? { sku: product.sku, quantity: 0, revenue: 0, profit: 0 };
+    const current = map.get(product.sku) ?? {
+      sku: product.sku,
+      name: product.name,
+      quantity: 0,
+      orders: 0,
+      revenue: 0,
+      profit: 0,
+      margin: 0
+    };
     const quantity = Number(sale.quantity);
+    const revenue = quantity * money(product.sale_price);
+    const productCost = quantity * money(product.purchase_price);
+    // Fallback profit logic:
+    // The current schema stores aggregated valid sales by SKU/day, plus product sale and purchase prices.
+    // It does not yet store order ids, cancel status, refund amounts, platform fees, ad cost, or logistics cost.
+    // Therefore we only calculate contribution profit as revenue - product cost, and keep missing costs at 0.
+    // Do not treat this as final accounting profit until those cost fields are added to the order schema.
+    const platformFee = 0;
+    const adCost = 0;
+    const logisticsCost = 0;
+    const refundAmount = 0;
     current.quantity += quantity;
-    current.revenue += quantity * money(product.sale_price);
-    current.profit += quantity * (money(product.sale_price) - money(product.purchase_price));
+    current.orders += quantity;
+    current.revenue += revenue;
+    current.profit += revenue - productCost - platformFee - adCost - logisticsCost - refundAmount;
+    current.margin = current.revenue > 0 ? (current.profit / current.revenue) * 100 : 0;
     map.set(product.sku, current);
   }
 
