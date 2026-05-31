@@ -9,6 +9,10 @@ export type Product = {
   size: string | null;
   purchase_price: number;
   sale_price: number;
+  platform_fee_rate: number;
+  international_shipping_cost: number;
+  coupang_inbound_shipping_cost: number;
+  ad_cost: number;
   platform: string;
   low_stock_threshold: number;
   memo: string | null;

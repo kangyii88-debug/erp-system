@@ -32,6 +32,10 @@ function ImportExportContent() {
         color: product.color,
         size: product.size,
         purchase_price: product.purchase_price,
+        platform_fee_rate: product.platform_fee_rate,
+        international_shipping_cost: product.international_shipping_cost,
+        coupang_inbound_shipping_cost: product.coupang_inbound_shipping_cost,
+        ad_cost: product.ad_cost,
         sale_price: product.sale_price,
         platform: product.platform,
         low_stock_threshold: product.low_stock_threshold,
@@ -73,6 +77,10 @@ function ImportExportContent() {
         color: row.color ? String(row.color) : null,
         size: row.size ? String(row.size) : null,
         purchase_price: Number(row.purchase_price || 0),
+        platform_fee_rate: Number(row.platform_fee_rate || 11.6),
+        international_shipping_cost: Number(row.international_shipping_cost || 0),
+        coupang_inbound_shipping_cost: Number(row.coupang_inbound_shipping_cost || 0),
+        ad_cost: Number(row.ad_cost || 0),
         sale_price: Number(row.sale_price || 0),
         platform: String(row.platform || "Coupang"),
         low_stock_threshold: Number(row.low_stock_threshold || 10),
@@ -107,7 +115,7 @@ function ImportExportContent() {
       {message ? <div className="mt-4 rounded border border-line bg-white px-4 py-3 text-sm">{message}</div> : null}
       <Card className="mt-4">
         <div className="text-sm text-ink/70">
-          CSV columns: name, sku, color, size, purchase_price, sale_price, platform, low_stock_threshold, memo
+          CSV columns: name, sku, color, size, purchase_price, platform_fee_rate, international_shipping_cost, coupang_inbound_shipping_cost, ad_cost, sale_price, platform, low_stock_threshold, memo
         </div>
       </Card>
     </>

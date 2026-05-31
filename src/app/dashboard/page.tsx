@@ -17,6 +17,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { Table, Td, Th } from "@/components/Table";
 import { useLanguage } from "@/components/LanguageProvider";
 import { supabase } from "@/lib/supabase";
+import { money, profitMargin, totalProfit, unitProfit } from "@/lib/profit";
 import {
   buildReplenishmentRows,
   REPLENISHMENT_CYCLE_DAYS,
@@ -990,21 +991,12 @@ function buildTopSkuPerformance(salesRows: SaleDaily[], productMap: Map<string, 
     };
     const quantity = Number(sale.quantity);
     const revenue = quantity * money(product.sale_price);
-    const productCost = quantity * money(product.purchase_price);
-    // Fallback profit logic:
-    // The current schema stores aggregated valid sales by SKU/day, plus product sale and purchase prices.
-    // It does not yet store order ids, cancel status, refund amounts, platform fees, ad cost, or logistics cost.
-    // Therefore we only calculate contribution profit as revenue - product cost, and keep missing costs at 0.
-    // Do not treat this as final accounting profit until those cost fields are added to the order schema.
-    const platformFee = 0;
-    const adCost = 0;
-    const logisticsCost = 0;
-    const refundAmount = 0;
+    const singleProfit = unitProfit(product);
     current.quantity += quantity;
     current.orders += quantity;
     current.revenue += revenue;
-    current.profit += revenue - productCost - platformFee - adCost - logisticsCost - refundAmount;
-    current.margin = current.revenue > 0 ? (current.profit / current.revenue) * 100 : 0;
+    current.profit += singleProfit * quantity;
+    current.margin = profitMargin(product, singleProfit);
     map.set(product.sku, current);
   }
 
@@ -1063,13 +1055,13 @@ function buildLifecycleRows(rows: ReplenishmentRow[], salesRows: SaleDaily[], an
 function buildSalesMetrics(salesRows: SaleDaily[], productMap: Map<string, ProductWithStock>) {
   return validSales(salesRows).reduce((metrics, sale) => {
     const product = productMap.get(sale.product_id);
+    if (!product) return metrics;
     const quantity = Number(sale.quantity);
-    const salePrice = money(product?.sale_price);
-    const purchasePrice = money(product?.purchase_price);
+    const salePrice = money(product.sale_price);
 
     metrics.quantity += quantity;
     metrics.revenue += quantity * salePrice;
-    metrics.profit += quantity * (salePrice - purchasePrice);
+    metrics.profit += totalProfit(product, quantity);
     return metrics;
   }, { quantity: 0, revenue: 0, profit: 0 });
 }
@@ -1090,7 +1082,7 @@ function buildDailySalesPoints(salesRows: SaleDaily[], productMap: Map<string, P
     point.orders += sale.quantity;
     point.quantity += sale.quantity;
     point.revenue += sale.quantity * money(product.sale_price);
-    point.profit += sale.quantity * (money(product.sale_price) - money(product.purchase_price));
+    point.profit += totalProfit(product, sale.quantity);
   }
 
   return points;
@@ -1135,7 +1127,7 @@ function addMonthlySales(
     const point = months[saleMonth - 1];
     const quantity = Number(sale.quantity);
     const revenue = quantity * money(product.sale_price);
-    const profit = quantity * (money(product.sale_price) - money(product.purchase_price));
+    const profit = totalProfit(product, quantity);
 
     if (previous) {
       point.previousOrders += quantity;
@@ -1169,7 +1161,7 @@ function buildMonthlySalesPoints(salesRows: SaleDaily[], productMap: Map<string,
     point.orders += sale.quantity;
     point.quantity += sale.quantity;
     point.revenue += sale.quantity * money(product.sale_price);
-    point.profit += sale.quantity * (money(product.sale_price) - money(product.purchase_price));
+    point.profit += totalProfit(product, sale.quantity);
   }
 
   return months;
@@ -1337,10 +1329,6 @@ function parseDateKey(dateKey: string) {
 function toDateKey(date: Date) {
   const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
   return localDate.toISOString().slice(0, 10);
-}
-
-function money(value: number | null | undefined) {
-  return Number(value ?? 0);
 }
 
 function won(value: number) {
