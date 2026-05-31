@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, ReactNode, useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/Card";
 import { PageHeader } from "@/components/PageHeader";
@@ -17,12 +17,13 @@ const emptyForm = {
   color: "",
   size: "",
   purchase_price: "0",
+  sale_price: "0",
   platform_fee_rate: "11.6",
+  platform: "Coupang",
   international_shipping_cost: "0",
   coupang_inbound_shipping_cost: "0",
   ad_cost: "0",
-  sale_price: "0",
-  platform: "Coupang",
+  initial_stock: "0",
   low_stock_threshold: "10",
   memo: ""
 };
@@ -64,23 +65,47 @@ function ProductsContent() {
       sku: form.sku,
       color: form.color || null,
       size: form.size || null,
-      purchase_price: Number(form.purchase_price),
+      purchase_price: Number(form.purchase_price || 0),
+      sale_price: Number(form.sale_price || 0),
       platform_fee_rate: Number(form.platform_fee_rate || 11.6),
       international_shipping_cost: Number(form.international_shipping_cost || 0),
       coupang_inbound_shipping_cost: Number(form.coupang_inbound_shipping_cost || 0),
       ad_cost: Number(form.ad_cost || 0),
-      sale_price: Number(form.sale_price),
       platform: form.platform,
-      low_stock_threshold: Number(form.low_stock_threshold),
+      low_stock_threshold: Number(form.low_stock_threshold || 10),
       memo: form.memo || null
     };
 
-    const { error } = editingId
-      ? await supabase.from("products").update(payload).eq("id", editingId)
-      : await supabase.from("products").insert({ user_id: auth.user.id, ...payload });
+    let productId = editingId;
+    let errorMessage = "";
 
-    if (error) {
-      setMessage(error.message);
+    if (editingId) {
+      const { error } = await supabase.from("products").update(payload).eq("id", editingId);
+      errorMessage = error?.message ?? "";
+    } else {
+      const { data, error } = await supabase
+        .from("products")
+        .insert({ user_id: auth.user.id, ...payload })
+        .select("id")
+        .single();
+      errorMessage = error?.message ?? "";
+      productId = data?.id ?? null;
+    }
+
+    const initialStock = Math.max(0, Number(form.initial_stock || 0));
+    if (!errorMessage && !editingId && productId && initialStock > 0) {
+      const { error } = await supabase.from("stock_movements").insert({
+        user_id: auth.user.id,
+        product_id: productId,
+        type: "inbound",
+        quantity: initialStock,
+        memo: "初始库存"
+      });
+      errorMessage = error?.message ?? "";
+    }
+
+    if (errorMessage) {
+      setMessage(errorMessage);
       return;
     }
 
@@ -98,14 +123,15 @@ function ProductsContent() {
       sku: product.sku,
       color: product.color ?? "",
       size: product.size ?? "",
-      purchase_price: String(product.purchase_price),
+      purchase_price: String(product.purchase_price ?? 0),
+      sale_price: String(product.sale_price ?? 0),
       platform_fee_rate: String(product.platform_fee_rate ?? 11.6),
+      platform: product.platform,
       international_shipping_cost: String(product.international_shipping_cost ?? 0),
       coupang_inbound_shipping_cost: String(product.coupang_inbound_shipping_cost ?? 0),
       ad_cost: String(product.ad_cost ?? 0),
-      sale_price: String(product.sale_price),
-      platform: product.platform,
-      low_stock_threshold: String(product.low_stock_threshold),
+      initial_stock: String(getCurrentStock(product)),
+      low_stock_threshold: String(product.low_stock_threshold ?? 10),
       memo: product.memo ?? ""
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -133,7 +159,7 @@ function ProductsContent() {
     <>
       <PageHeader title={t.products} />
       <Card className="mb-5">
-        <div className="mb-3 flex items-center justify-between gap-3">
+        <div className="mb-4 flex items-center justify-between gap-3">
           <h2 className="font-semibold">{editingId ? t.updateProduct : t.addProduct}</h2>
           {editingId ? (
             <button className="rounded border border-line bg-white px-3 py-1.5 text-sm font-medium" type="button" onClick={cancelEdit}>
@@ -141,57 +167,82 @@ function ProductsContent() {
             </button>
           ) : null}
         </div>
-        <form onSubmit={submit} className="grid gap-3 md:grid-cols-4">
-          <input placeholder={t.productName} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
-          <input placeholder={t.sku} value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} required />
-          <input placeholder={t.color} value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })} />
-          <input placeholder={t.size} value={form.size} onChange={(e) => setForm({ ...form, size: e.target.value })} />
-          <select value={form.platform} onChange={(e) => setForm({ ...form, platform: e.target.value })}>
-            <option>Coupang</option>
-            <option>Naver</option>
-            <option>11st</option>
-            <option>Gmarket</option>
-            <option>Other</option>
-          </select>
-          <input placeholder={t.lowStockThreshold} type="number" value={form.low_stock_threshold} onChange={(e) => setForm({ ...form, low_stock_threshold: e.target.value })} />
-          <div className="md:col-span-4 rounded border border-line bg-panel p-4">
-            <div className="mb-3 flex flex-col gap-1 md:flex-row md:items-end md:justify-between">
+
+        <form onSubmit={submit} className="grid gap-4">
+          <div className="grid gap-3 md:grid-cols-4">
+            <Field label="商品名">
+              <input placeholder="商品名" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} required />
+            </Field>
+            <Field label="SKU">
+              <input placeholder="SKU" value={form.sku} onChange={(event) => setForm({ ...form, sku: event.target.value })} required />
+            </Field>
+            <Field label="颜色">
+              <input placeholder="颜色" value={form.color} onChange={(event) => setForm({ ...form, color: event.target.value })} />
+            </Field>
+            <Field label="尺寸">
+              <input placeholder="尺寸" value={form.size} onChange={(event) => setForm({ ...form, size: event.target.value })} />
+            </Field>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-4">
+            <Field label="商品进货成本">
+              <input placeholder="0" type="number" min="0" value={form.purchase_price} onChange={(event) => setForm({ ...form, purchase_price: event.target.value })} />
+            </Field>
+            <Field label="销售价格">
+              <input placeholder="0" type="number" min="0" value={form.sale_price} onChange={(event) => setForm({ ...form, sale_price: event.target.value })} />
+            </Field>
+            <Field label="平台服务费率 %">
+              <input placeholder="11.6" type="number" min="0" step="0.1" value={form.platform_fee_rate} onChange={(event) => setForm({ ...form, platform_fee_rate: event.target.value })} />
+            </Field>
+            <Field label="销售平台">
+              <select value={form.platform} onChange={(event) => setForm({ ...form, platform: event.target.value })}>
+                <option>Coupang</option>
+                <option>Naver</option>
+                <option>11st</option>
+                <option>Gmarket</option>
+                <option>Other</option>
+              </select>
+            </Field>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-4">
+            <Field label="国际运输成本">
+              <input placeholder="0" type="number" min="0" value={form.international_shipping_cost} onChange={(event) => setForm({ ...form, international_shipping_cost: event.target.value })} />
+            </Field>
+            <Field label="Coupang入仓运费">
+              <input placeholder="0" type="number" min="0" value={form.coupang_inbound_shipping_cost} onChange={(event) => setForm({ ...form, coupang_inbound_shipping_cost: event.target.value })} />
+            </Field>
+            <Field label="广告费用">
+              <input placeholder="0" type="number" min="0" value={form.ad_cost} onChange={(event) => setForm({ ...form, ad_cost: event.target.value })} />
+            </Field>
+            <Field label={editingId ? "当前库存" : "初始库存"}>
+              <input
+                placeholder="0"
+                type="number"
+                min="0"
+                value={form.initial_stock}
+                disabled={Boolean(editingId)}
+                onChange={(event) => setForm({ ...form, initial_stock: event.target.value })}
+              />
+            </Field>
+          </div>
+
+          <div className="rounded border border-line bg-panel p-4">
+            <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
               <div>
                 <h3 className="font-semibold text-ink">成本与利润设置</h3>
-                <p className="text-xs text-ink/55">用于单件利润、利润率、TOP利润商品和数据看板利润统计。</p>
+                <p className="text-xs text-ink/55">这些字段会参与单件利润、利润率、TOP利润商品和数据看板利润统计。</p>
               </div>
               <div className="rounded bg-white px-3 py-2 text-sm font-semibold text-ink">
                 单件利润 {won(previewUnitProfit)} · 利润率 {previewMargin.toFixed(1)}%
               </div>
             </div>
-            <div className="grid gap-3 md:grid-cols-6">
-              <label className="grid gap-1 text-xs font-medium text-ink/65">
-                商品进货成本
-                <input placeholder={t.purchasePrice} type="number" value={form.purchase_price} onChange={(e) => setForm({ ...form, purchase_price: e.target.value })} />
-              </label>
-              <label className="grid gap-1 text-xs font-medium text-ink/65">
-                平台手续费 %
-                <input type="number" step="0.1" value={form.platform_fee_rate} onChange={(e) => setForm({ ...form, platform_fee_rate: e.target.value })} />
-              </label>
-              <label className="grid gap-1 text-xs font-medium text-ink/65">
-                国际物流费用
-                <input type="number" value={form.international_shipping_cost} onChange={(e) => setForm({ ...form, international_shipping_cost: e.target.value })} />
-              </label>
-              <label className="grid gap-1 text-xs font-medium text-ink/65">
-                Coupang 入仓运费
-                <input type="number" value={form.coupang_inbound_shipping_cost} onChange={(e) => setForm({ ...form, coupang_inbound_shipping_cost: e.target.value })} />
-              </label>
-              <label className="grid gap-1 text-xs font-medium text-ink/65">
-                广告费用
-                <input type="number" value={form.ad_cost} onChange={(e) => setForm({ ...form, ad_cost: e.target.value })} />
-              </label>
-              <label className="grid gap-1 text-xs font-medium text-ink/65">
-                销售价格
-                <input placeholder={t.salePrice} type="number" value={form.sale_price} onChange={(e) => setForm({ ...form, sale_price: e.target.value })} />
-              </label>
-            </div>
           </div>
-          <textarea className="md:col-span-3" placeholder={t.memo} value={form.memo} onChange={(e) => setForm({ ...form, memo: e.target.value })} />
+
+          <Field label="备注">
+            <textarea placeholder={t.memo} value={form.memo} onChange={(event) => setForm({ ...form, memo: event.target.value })} />
+          </Field>
+
           <button className="rounded bg-brand px-4 py-2 text-sm font-semibold text-white">{t.save}</button>
         </form>
         {message ? <div className="mt-3 rounded bg-red-50 px-3 py-2 text-sm text-red-700">{message}</div> : null}
@@ -229,37 +280,49 @@ function ProductsContent() {
                 </tr>
               </thead>
               <tbody>
-                {group.products.map((product) => (
-                  <tr key={product.id}>
-                    <Td>{product.sku}</Td>
-                    <Td>{product.name}</Td>
-                    <Td>{normalizedSize(product.size)}</Td>
-                    <Td>{won(product.purchase_price)}</Td>
-                    <Td>{Number(product.platform_fee_rate ?? 11.6).toFixed(1)}%</Td>
-                    <Td>{won(product.international_shipping_cost ?? 0)}</Td>
-                    <Td>{won(product.coupang_inbound_shipping_cost ?? 0)}</Td>
-                    <Td>{won(product.ad_cost ?? 0)}</Td>
-                    <Td>{won(product.sale_price)}</Td>
-                    <Td>{won(unitProfit(product))}</Td>
-                    <Td>{profitMargin(product, unitProfit(product)).toFixed(1)}%</Td>
-                    <Td>
-                      <span className="text-base font-semibold text-ink">{getCurrentStock(product)}</span>
-                    </Td>
-                    <Td>{product.platform}</Td>
-                    <Td>{product.memo}</Td>
-                    <Td>
-                      <button className="rounded border border-line bg-white px-3 py-1.5 text-sm font-medium" onClick={() => startEdit(product)}>
-                        {t.edit}
-                      </button>
-                    </Td>
-                  </tr>
-                ))}
+                {group.products.map((product) => {
+                  const singleProfit = unitProfit(product);
+                  return (
+                    <tr key={product.id}>
+                      <Td>{product.sku}</Td>
+                      <Td>{product.name}</Td>
+                      <Td>{normalizedSize(product.size)}</Td>
+                      <Td>{won(product.purchase_price)}</Td>
+                      <Td>{Number(product.platform_fee_rate ?? 11.6).toFixed(1)}%</Td>
+                      <Td>{won(product.international_shipping_cost ?? 0)}</Td>
+                      <Td>{won(product.coupang_inbound_shipping_cost ?? 0)}</Td>
+                      <Td>{won(product.ad_cost ?? 0)}</Td>
+                      <Td>{won(product.sale_price)}</Td>
+                      <Td>{won(singleProfit)}</Td>
+                      <Td>{profitMargin(product, singleProfit).toFixed(1)}%</Td>
+                      <Td>
+                        <span className="text-base font-semibold text-ink">{getCurrentStock(product)}</span>
+                      </Td>
+                      <Td>{product.platform}</Td>
+                      <Td>{product.memo}</Td>
+                      <Td>
+                        <button className="rounded border border-line bg-white px-3 py-1.5 text-sm font-medium" onClick={() => startEdit(product)}>
+                          {t.edit}
+                        </button>
+                      </Td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </Table>
           </div>
         ))}
       </section>
     </>
+  );
+}
+
+function Field({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <label className="grid gap-1 text-xs font-medium text-ink/65">
+      <span>{label}</span>
+      {children}
+    </label>
   );
 }
 
@@ -315,23 +378,18 @@ function colorRank(product: ProductWithStock) {
   return 9;
 }
 
-function displayColorName(product: ProductWithStock) {
-  return product.color || skuSuffix(product) || "-";
+function colorLabel(key: string, products: ProductWithStock[]) {
+  return products[0]?.color || colorName(key);
 }
 
-function colorLabel(key: string, products: ProductWithStock[]) {
-  return products[0]?.color || key;
+function colorName(key: string) {
+  if (key === "WH") return "白色";
+  if (key === "BL") return "黑色";
+  if (key === "GR") return "灰色";
+  if (key === "BE") return "米色";
+  return "其他";
 }
 
 function won(value: number | null | undefined) {
   return `₩${Math.round(Number(value ?? 0)).toLocaleString("ko-KR")}`;
-}
-
-function displayColor(product: ProductWithStock) {
-  const suffix = skuSuffix(product);
-  if (suffix === "WH") return product.color || "白色";
-  if (suffix === "BL") return product.color || "黑色";
-  if (suffix === "GR") return product.color || "灰色";
-  if (suffix === "BE") return product.color || "米色";
-  return product.color || "-";
 }
