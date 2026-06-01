@@ -24,7 +24,7 @@ export default function InventoryPage() {
 }
 
 function InventoryContent() {
-  const { t } = useLanguage();
+  const { t, formatDate } = useLanguage();
   const [products, setProducts] = useState<ProductWithStock[]>([]);
   const [movements, setMovements] = useState<StockMovement[]>([]);
   const [form, setForm] = useState({ product_id: "", type: "inbound", movement_date: today(), quantity: "1", memo: "" });
@@ -55,9 +55,9 @@ function InventoryContent() {
     const dbType = form.type === "return_inbound" ? "inbound" : form.type === "loss" ? "outbound" : form.type;
     const businessMemo =
       form.type === "return_inbound"
-        ? `${t.return_inbound}${form.memo ? ` - ${form.memo}` : ""}`
+        ? `${t("movement.returnInbound")}${form.memo ? ` - ${form.memo}` : ""}`
         : form.type === "loss"
-          ? `${t.loss}${form.memo ? ` - ${form.memo}` : ""}`
+          ? `${t("movement.loss")}${form.memo ? ` - ${form.memo}` : ""}`
           : form.memo || null;
 
     const quantity = Number(form.quantity);
@@ -97,7 +97,7 @@ function InventoryContent() {
     payload: { product_id: string; type: string; quantity: number; happened_at: string; memo: string | null }
   ) {
     const original = movements.find((movement) => movement.id === id);
-    if (!original) return { message: "Original movement not found" };
+    if (!original) return { message: t("common.originalMovementMissing") };
 
     const originalSigned = signedQuantity(original.type, original.quantity);
     const nextSigned = signedQuantity(payload.type, payload.quantity);
@@ -197,21 +197,30 @@ function InventoryContent() {
   }
 
   function displayType(movement: StockMovement) {
-    if (movement.type === "inbound" && movement.memo?.startsWith(t.return_inbound)) return t.return_inbound;
-    if (movement.type === "outbound" && movement.memo?.startsWith(t.loss)) return t.loss;
-    return t[movement.type];
+    if (movement.type === "inbound" && isBusinessMemo(movement.memo, "return_inbound")) return t("movement.returnInbound");
+    if (movement.type === "outbound" && isBusinessMemo(movement.memo, "loss")) return t("movement.loss");
+    return movementLabel(movement.type, t);
   }
 
   function editableType(movement: StockMovement) {
-    if (movement.type === "inbound" && movement.memo?.startsWith(t.return_inbound)) return "return_inbound";
-    if (movement.type === "outbound" && movement.memo?.startsWith(t.loss)) return "loss";
+    if (movement.type === "inbound" && isBusinessMemo(movement.memo, "return_inbound")) return "return_inbound";
+    if (movement.type === "outbound" && isBusinessMemo(movement.memo, "loss")) return "loss";
     return movement.type;
   }
 
   function editableMemo(movement: StockMovement) {
-    const typeLabel = displayType(movement);
-    if (movement.memo?.startsWith(`${typeLabel} - `)) return movement.memo.replace(`${typeLabel} - `, "");
-    if (movement.memo === typeLabel) return "";
+    const labels = [
+      t("movement.returnInbound"),
+      t("movement.loss"),
+      "\u9000\u8d27\u5165\u5e93\u5728\u552e",
+      "\ubc18\ud488 \uc785\uace0 \ud310\ub9e4\uac00\ub2a5",
+      "\u635f\u8017\u4e22\u5931",
+      "\uc190\uc0c1/\ubd84\uc2e4"
+    ];
+    for (const label of labels) {
+      if (movement.memo?.startsWith(`${label} - `)) return movement.memo.replace(`${label} - `, "");
+      if (movement.memo === label) return "";
+    }
     return movement.memo ?? "";
   }
 
@@ -234,11 +243,11 @@ function InventoryContent() {
     setMessage("");
   }
 
-  const inventoryGroups = groupProductsByColor(products);
-  const movementGroups = groupMovementsByColor(movements);
+  const inventoryGroups = groupProductsByColor(products, t);
+  const movementGroups = groupMovementsByColor(movements, t);
 
   async function deleteMovement(movement: StockMovement) {
-    if (!window.confirm(`${t.delete}: ${movement.products?.sku ?? ""} ${movement.quantity}`)) return;
+    if (!window.confirm(`${t("common.confirmDelete")}: ${movement.products?.sku ?? ""} ${movement.quantity}`)) return;
 
     const current = products.find((product) => product.id === movement.product_id);
     const rollbackStock = Math.max(0, safeStock(current) - signedQuantity(movement.type, movement.quantity));
@@ -272,16 +281,16 @@ function InventoryContent() {
 
   return (
     <>
-      <PageHeader title={t.inventory} />
+      <PageHeader title={t("inventory.title")} />
       <section className="mb-6">
         <div className="mb-3 flex items-end justify-between gap-3">
           <div>
-            <div className="text-sm font-medium text-ink/55">{t.movementType}</div>
-            <h2 className="text-xl font-semibold text-ink">{editingId ? t.updateMovement : t.recordMovement}</h2>
+            <div className="text-sm font-medium text-ink/55">{t("movement.type")}</div>
+            <h2 className="text-xl font-semibold text-ink">{editingId ? t("inventory.update") : t("inventory.record")}</h2>
           </div>
           {editingId ? (
             <button className="rounded border border-line bg-white px-3 py-1.5 text-sm font-medium" type="button" onClick={cancelEdit}>
-              {t.cancel}
+              {t("common.cancel")}
             </button>
           ) : null}
         </div>
@@ -289,38 +298,38 @@ function InventoryContent() {
         <form onSubmit={submit} className="rounded border border-line bg-white p-4 shadow-soft">
           <div className="grid gap-4 lg:grid-cols-[1.4fr_0.9fr_0.8fr_0.6fr_1fr_auto]">
             <label className="block">
-              <span className="mb-1 block text-xs font-semibold text-ink/60">{t.productName}</span>
+              <span className="mb-1 block text-xs font-semibold text-ink/60">{t("common.productName")}</span>
               <ProductSelect products={products} value={form.product_id} onChange={(value) => setForm({ ...form, product_id: value })} />
             </label>
 
             <label className="block">
-              <span className="mb-1 block text-xs font-semibold text-ink/60">{t.movementType}</span>
+              <span className="mb-1 block text-xs font-semibold text-ink/60">{t("movement.type")}</span>
               <select className="w-full" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>
-                <option value="inbound">{t.inbound}</option>
-                <option value="outbound">{t.outbound}</option>
-                <option value="sale">{t.sale}</option>
-                <option value="return_inbound">{t.return_inbound}</option>
-                <option value="loss">{t.loss}</option>
-                <option value="adjustment">{t.adjustment}</option>
+                <option value="inbound">{t("movement.inbound")}</option>
+                <option value="outbound">{t("movement.outbound")}</option>
+                <option value="sale">{t("movement.sale")}</option>
+                <option value="return_inbound">{t("movement.returnInbound")}</option>
+                <option value="loss">{t("movement.loss")}</option>
+                <option value="adjustment">{t("movement.adjustment")}</option>
               </select>
             </label>
 
             <label className="block">
-              <span className="mb-1 block text-xs font-semibold text-ink/60">Date</span>
+              <span className="mb-1 block text-xs font-semibold text-ink/60">{t("common.date")}</span>
               <input className="w-full" type="date" value={form.movement_date} onChange={(e) => setForm({ ...form, movement_date: e.target.value })} />
             </label>
 
             <label className="block">
-              <span className="mb-1 block text-xs font-semibold text-ink/60">{t.quantity}</span>
+              <span className="mb-1 block text-xs font-semibold text-ink/60">{t("common.quantity")}</span>
               <input className="w-full" type="number" min="1" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} />
             </label>
 
             <label className="block">
-              <span className="mb-1 block text-xs font-semibold text-ink/60">{t.memo}</span>
-              <input className="w-full" placeholder={t.memo} value={form.memo} onChange={(e) => setForm({ ...form, memo: e.target.value })} />
+              <span className="mb-1 block text-xs font-semibold text-ink/60">{t("common.memo")}</span>
+              <input className="w-full" placeholder={t("common.memo")} value={form.memo} onChange={(e) => setForm({ ...form, memo: e.target.value })} />
             </label>
 
-            <button className="self-end rounded bg-brand px-8 py-2 text-sm font-semibold text-white">{t.save}</button>
+            <button className="self-end rounded bg-brand px-8 py-2 text-sm font-semibold text-white">{t("common.save")}</button>
           </div>
         </form>
         {message ? <div className="mt-3 rounded bg-red-50 px-3 py-2 text-sm text-red-700">{message}</div> : null}
@@ -328,15 +337,15 @@ function InventoryContent() {
 
       <section className="mb-6">
         <div className="mb-3">
-          <div className="text-sm font-medium text-ink/55">{t.currentStock}</div>
-          <h2 className="text-xl font-semibold text-ink">{t.currentStock}</h2>
+          <div className="text-sm font-medium text-ink/55">{t("common.currentStock")}</div>
+          <h2 className="text-xl font-semibold text-ink">{t("common.currentStock")}</h2>
         </div>
 
         <div className="space-y-5">
           {inventoryGroups.map((group) => (
             <div key={group.key}>
               <div className="mb-2 flex items-center justify-between gap-3">
-                <h3 className="text-lg font-semibold text-ink">{group.products[0]?.color || group.key}</h3>
+                <h3 className="text-lg font-semibold text-ink">{group.products[0]?.color || group.label}</h3>
                 <div className="rounded bg-white px-3 py-1 text-sm font-medium text-ink/60">{group.products.length} SKU</div>
               </div>
 
@@ -361,8 +370,8 @@ function InventoryContent() {
 
       <section>
         <div className="mb-3">
-          <div className="text-sm font-medium text-ink/55">{t.movementType}</div>
-          <h2 className="text-xl font-semibold text-ink">{t.movementHistory}</h2>
+          <div className="text-sm font-medium text-ink/55">{t("movement.type")}</div>
+          <h2 className="text-xl font-semibold text-ink">{t("inventory.history")}</h2>
         </div>
 
         <div className="space-y-5">
@@ -376,13 +385,13 @@ function InventoryContent() {
               <Table>
                 <thead>
                   <tr>
-                    <Th>{t.sku}</Th>
-                    <Th>{t.productName}</Th>
-                    <Th>{t.movementType}</Th>
-                    <Th>{t.quantity}</Th>
-                    <Th>{t.memo}</Th>
-                    <Th>Date</Th>
-                    <Th>{t.edit}</Th>
+                    <Th>{t("common.sku")}</Th>
+                    <Th>{t("common.productName")}</Th>
+                    <Th>{t("movement.type")}</Th>
+                    <Th>{t("common.quantity")}</Th>
+                    <Th>{t("common.memo")}</Th>
+                    <Th>{t("common.date")}</Th>
+                    <Th>{t("common.actions")}</Th>
                   </tr>
                 </thead>
                 <tbody>
@@ -393,14 +402,14 @@ function InventoryContent() {
                       <Td>{displayType(movement)}</Td>
                       <Td>{movement.quantity}</Td>
                       <Td>{movement.memo}</Td>
-                      <Td>{new Date(movement.happened_at).toLocaleString()}</Td>
+                      <Td>{formatDate(movement.happened_at, { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })}</Td>
                       <Td>
                         <div className="flex gap-2">
                           <button className="rounded border border-line bg-white px-3 py-1.5 text-sm font-medium" onClick={() => startEdit(movement)}>
-                            {t.edit}
+                            {t("common.edit")}
                           </button>
                           <button className="rounded border border-red-200 bg-red-50 px-3 py-1.5 text-sm font-medium text-red-700" onClick={() => deleteMovement(movement)}>
-                            {t.delete}
+                            {t("common.delete")}
                           </button>
                         </div>
                       </Td>
@@ -416,7 +425,7 @@ function InventoryContent() {
   );
 }
 
-function groupProductsByColor(products: ProductWithStock[]) {
+function groupProductsByColor(products: ProductWithStock[], t: ReturnType<typeof useLanguage>["t"]) {
   const sortedProducts = [...products].sort(compareInventoryProducts);
   const groups = new Map<string, ProductWithStock[]>();
 
@@ -426,11 +435,11 @@ function groupProductsByColor(products: ProductWithStock[]) {
   }
 
   return colorOrder
-    .map((key) => ({ key, label: colorLabel(key), products: groups.get(key) ?? [] }))
+    .map((key) => ({ key, label: colorLabel(key, t), products: groups.get(key) ?? [] }))
     .filter((group) => group.products.length > 0);
 }
 
-function groupMovementsByColor(movements: StockMovement[]) {
+function groupMovementsByColor(movements: StockMovement[], t: ReturnType<typeof useLanguage>["t"]) {
   const sortedMovements = [...movements].sort((a, b) => {
     const colorDiff =
       colorOrder.indexOf(colorKeyFromSku(a.products?.sku ?? "")) -
@@ -446,7 +455,7 @@ function groupMovementsByColor(movements: StockMovement[]) {
   }
 
   return colorOrder
-    .map((key) => ({ key, label: colorLabel(key), movements: groups.get(key) ?? [] }))
+    .map((key) => ({ key, label: colorLabel(key, t), movements: groups.get(key) ?? [] }))
     .filter((group) => group.movements.length > 0);
 }
 
@@ -471,12 +480,32 @@ function colorKeyFromSku(sku: string) {
   return sku.match(/-(WH|BL|GR|BE)$/i)?.[1]?.toUpperCase() ?? "OTHER";
 }
 
-function colorLabel(key: string) {
-  if (key === "WH") return "白色";
-  if (key === "BL") return "黑色";
-  if (key === "GR") return "灰色";
-  if (key === "BE") return "米色";
-  return "其他";
+function colorLabel(key: string, t: ReturnType<typeof useLanguage>["t"]) {
+  if (key === "WH") return t("color.white");
+  if (key === "BL") return t("color.black");
+  if (key === "GR") return t("color.gray");
+  if (key === "BE") return t("color.beige");
+  return t("color.other");
+}
+
+function movementLabel(type: StockMovement["type"] | string, t: ReturnType<typeof useLanguage>["t"]) {
+  const labels: Record<string, Parameters<typeof t>[0]> = {
+    inbound: "movement.inbound",
+    outbound: "movement.outbound",
+    sale: "movement.sale",
+    return_inbound: "movement.returnInbound",
+    loss: "movement.loss",
+    adjustment: "movement.adjustment"
+  };
+  return t(labels[type] ?? "movement.type");
+}
+
+function isBusinessMemo(memo: string | null, type: "return_inbound" | "loss") {
+  const prefixes =
+    type === "return_inbound"
+      ? ["\u9000\u8d27\u5165\u5e93\u5728\u552e", "\ubc18\ud488 \uc785\uace0 \ud310\ub9e4\uac00\ub2a5"]
+      : ["\u635f\u8017\u4e22\u5931", "\uc190\uc0c1/\ubd84\uc2e4"];
+  return prefixes.some((prefix) => memo?.startsWith(prefix));
 }
 
 function baseSku(sku: string) {

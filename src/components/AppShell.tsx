@@ -8,12 +8,12 @@ import { supabase } from "@/lib/supabase";
 import { LanguageProvider, useLanguage } from "./LanguageProvider";
 
 const navItems = [
-  { href: "/dashboard", key: "dashboard", icon: BarChart3 },
-  { href: "/products", key: "products", icon: Package },
-  { href: "/inventory", key: "inventory", icon: Boxes },
-  { href: "/sales", key: "sales", icon: ShoppingCart },
-  { href: "/purchases", key: "purchases", icon: ClipboardList },
-  { href: "/import-export", key: "importExport", icon: FileSpreadsheet }
+  { href: "/dashboard", key: "nav.dashboard", icon: BarChart3 },
+  { href: "/products", key: "nav.products", icon: Package },
+  { href: "/inventory", key: "nav.inventory", icon: Boxes },
+  { href: "/sales", key: "nav.sales", icon: ShoppingCart },
+  { href: "/purchases", key: "nav.purchases", icon: ClipboardList },
+  { href: "/import-export", key: "nav.importExport", icon: FileSpreadsheet }
 ] as const;
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -43,12 +43,12 @@ function ProtectedShell({ children }: { children: React.ReactNode }) {
   }, [pathname, router]);
 
   if (pathname === "/login") return <>{children}</>;
-  if (!ready) return <div className="flex min-h-screen items-center justify-center">{t.loading}</div>;
+  if (!ready) return <div className="flex min-h-screen items-center justify-center">{t("common.loading")}</div>;
 
   return (
     <div className="min-h-screen">
       <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-line bg-panel px-4 py-5 lg:block">
-        <div className="mb-8 text-xl font-semibold text-ink">{t.appName}</div>
+        <div className="mb-8 text-xl font-semibold text-ink">{t("app.name")}</div>
         <nav className="space-y-1">
           {navItems.map((item) => {
             const Icon = item.icon;
@@ -62,7 +62,7 @@ function ProtectedShell({ children }: { children: React.ReactNode }) {
                 }`}
               >
                 <Icon size={18} />
-                {t[item.key]}
+                {t(item.key)}
               </Link>
             );
           })}
@@ -75,14 +75,14 @@ function ProtectedShell({ children }: { children: React.ReactNode }) {
             <div className="flex gap-2 overflow-x-auto lg:hidden">
               {navItems.map((item) => (
                 <Link key={item.href} href={item.href} className="whitespace-nowrap rounded bg-white px-3 py-2 text-xs">
-                  {t[item.key]}
+                  {t(item.key)}
                 </Link>
               ))}
             </div>
             <div className="ml-auto flex items-center gap-2">
               <select value={language} onChange={(event) => setLanguage(event.target.value as "zh" | "ko")}>
-                <option value="zh">中文</option>
-                <option value="ko">한국어</option>
+                <option value="zh">{t("language.zh")}</option>
+                <option value="ko">{t("language.ko")}</option>
               </select>
               <button
                 className="inline-flex items-center gap-2 rounded bg-ink px-3 py-2 text-sm font-medium text-white"
@@ -92,7 +92,7 @@ function ProtectedShell({ children }: { children: React.ReactNode }) {
                 }}
               >
                 <LogOut size={16} />
-                {t.logout}
+                {t("nav.logout")}
               </button>
             </div>
           </div>

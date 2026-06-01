@@ -1,150 +1,42 @@
+import zh from "../../locales/zh/common.json";
+import ko from "../../locales/ko/common.json";
 import type { Language } from "./types";
 
+export const STORAGE_KEY = "coupang-erp-language";
+export const DEFAULT_LANGUAGE: Language = "zh";
+
 export const dictionaries = {
-  zh: {
-    appName: "Coupang 库存 ERP",
-    login: "登录",
-    logout: "退出",
-    email: "邮箱",
-    password: "密码",
-    signIn: "登录",
-    signUp: "注册",
-    dashboard: "数据看板",
-    products: "商品管理",
-    inventory: "库存管理",
-    sales: "销量管理",
-    purchases: "采购管理",
-    importExport: "导入导出",
-    totalStock: "Coupang总可售",
-    totalSales: "累计总销售",
-    lowStock: "低库存商品",
-    sales7d: "最近7天销量",
-    replenishItems: "建议补货商品",
-    productName: "商品名",
-    sku: "SKU",
-    color: "颜色",
-    size: "尺寸",
-    purchasePrice: "采购价",
-    salePrice: "售价",
-    platform: "平台",
-    memo: "备注",
-    lowStockThreshold: "低库存阈值",
-    edit: "编辑",
-    delete: "删除",
-    cancel: "取消",
-    updateProduct: "修改商品",
-    save: "保存",
-    addProduct: "新增商品",
-    currentStock: "当前库存",
-    movementType: "类型",
-    quantity: "数量",
-    inbound: "入库",
-    outbound: "出库",
-    sale: "销售出库",
-    return_inbound: "退货入库在售",
-    loss: "损耗丢失",
-    saleDate: "销售日期",
-    recordSale: "记录每日销量",
-    salesHistory: "销量记录",
-    adjustment: "库存调整",
-    recordMovement: "记录库存变动",
-    updateMovement: "修改库存变动",
-    movementHistory: "库存变动记录",
-    factory: "中国工厂",
-    productionStatus: "生产状态",
-    shippingStatus: "发货状态",
-    eta: "预计到仓日期",
-    addPurchase: "新增采购单",
-    pending: "待生产",
-    producing: "生产中",
-    completed: "已完成",
-    delayed: "延迟",
-    cancelled: "取消",
-    not_shipped: "未发货",
-    shipped_from_china: "中国已发货",
-    customs: "清关中",
-    in_korea: "韩国运输中",
-    received: "已入仓",
-    suggestedQty: "建议补货",
-    dailyAvg: "日均销量",
-    importProducts: "导入商品 CSV",
-    exportProducts: "导出商品 CSV",
-    exportInventory: "导出库存 CSV",
-    empty: "暂无数据",
-    loading: "加载中"
-  },
-  ko: {
-    appName: "Coupang 재고 ERP",
-    login: "로그인",
-    logout: "로그아웃",
-    email: "이메일",
-    password: "비밀번호",
-    signIn: "로그인",
-    signUp: "회원가입",
-    dashboard: "대시보드",
-    products: "상품 관리",
-    inventory: "재고 관리",
-    sales: "판매량 관리",
-    purchases: "구매 관리",
-    importExport: "가져오기/내보내기",
-    totalStock: "총 재고",
-    totalSales: "총 판매량",
-    lowStock: "부족 재고 상품",
-    sales7d: "최근 7일 판매",
-    replenishItems: "보충 추천 상품",
-    productName: "상품명",
-    sku: "SKU",
-    color: "색상",
-    size: "사이즈",
-    purchasePrice: "매입가",
-    salePrice: "판매가",
-    platform: "플랫폼",
-    memo: "메모",
-    lowStockThreshold: "부족 재고 기준",
-    edit: "수정",
-    delete: "삭제",
-    cancel: "취소",
-    updateProduct: "상품 수정",
-    save: "저장",
-    addProduct: "상품 추가",
-    currentStock: "현재 재고",
-    movementType: "유형",
-    quantity: "수량",
-    inbound: "입고",
-    outbound: "출고",
-    sale: "판매 출고",
-    return_inbound: "반품 입고 판매가능",
-    loss: "손상/분실",
-    saleDate: "판매일",
-    recordSale: "일별 판매량 기록",
-    salesHistory: "판매량 기록",
-    adjustment: "재고 조정",
-    recordMovement: "재고 변동 기록",
-    updateMovement: "재고 변동 수정",
-    movementHistory: "재고 변동 내역",
-    factory: "중국 공장",
-    productionStatus: "생산 상태",
-    shippingStatus: "배송 상태",
-    eta: "입고 예정일",
-    addPurchase: "구매 오더 추가",
-    pending: "대기",
-    producing: "생산 중",
-    completed: "완료",
-    delayed: "지연",
-    cancelled: "취소",
-    not_shipped: "미발송",
-    shipped_from_china: "중국 출고",
-    customs: "통관 중",
-    in_korea: "한국 운송 중",
-    received: "입고 완료",
-    suggestedQty: "보충 추천",
-    dailyAvg: "일평균 판매",
-    importProducts: "상품 CSV 가져오기",
-    exportProducts: "상품 CSV 내보내기",
-    exportInventory: "재고 CSV 내보내기",
-    empty: "데이터 없음",
-    loading: "불러오는 중"
-  }
+  zh,
+  ko
 } as const;
 
-export type Dictionary = (typeof dictionaries)[Language];
+export type Dictionary = typeof zh;
+export type TranslationKey = keyof Dictionary;
+
+export function isLanguage(value: unknown): value is Language {
+  return value === "zh" || value === "ko";
+}
+
+export function detectBrowserLanguage(): Language {
+  if (typeof window === "undefined") return DEFAULT_LANGUAGE;
+
+  const stored = window.localStorage.getItem(STORAGE_KEY);
+  if (isLanguage(stored)) return stored;
+
+  const languages = window.navigator.languages?.length ? window.navigator.languages : [window.navigator.language];
+  const normalized = languages.map((item) => item.toLowerCase());
+  if (normalized.some((item) => item.startsWith("ko"))) return "ko";
+  return "zh";
+}
+
+export function translate(language: Language, key: TranslationKey, params?: Record<string, string | number>) {
+  let value = dictionaries[language][key] ?? dictionaries[DEFAULT_LANGUAGE][key] ?? key;
+
+  if (params) {
+    for (const [paramKey, paramValue] of Object.entries(params)) {
+      value = value.replaceAll(`{{${paramKey}}}`, String(paramValue));
+    }
+  }
+
+  return value;
+}

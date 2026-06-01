@@ -40,6 +40,7 @@ type AnnualPoint = SalesPoint & {
 };
 type AlertItem = { level: "danger" | "warning" | "success"; text: string };
 type MovementRow = { type: string; quantity: number; happened_at: string; memo: string | null };
+type TFunction = ReturnType<typeof useLanguage>["t"];
 
 export default function DashboardPage() {
   return (
@@ -50,7 +51,7 @@ export default function DashboardPage() {
 }
 
 function DashboardContent() {
-  const { t } = useLanguage();
+  const { t, formatCurrency, formatDate } = useLanguage();
   const [rows, setRows] = useState<ReplenishmentRow[]>([]);
   const [salesRows, setSalesRows] = useState<SaleDaily[]>([]);
   const [salesYearRows, setSalesYearRows] = useState<SaleDaily[]>([]);
@@ -66,7 +67,7 @@ function DashboardContent() {
   const [loading, setLoading] = useState(true);
 
   const anchorDate = parseDateKey(selectedDate);
-  const range = buildRange(viewMode, anchorDate);
+  const range = buildRange(viewMode, anchorDate, t);
   const comparisonRange = buildComparisonRange(range);
 
   useEffect(() => {
@@ -140,7 +141,7 @@ function DashboardContent() {
   const comparisonMetrics = buildSalesMetrics(comparisonSales, productMap);
   const refundOrders = countTypedMovements(selectedDayMovements, "return_inbound");
   const cancelOrders = 0;
-  const replenishRows = buildSmartReplenishment(rows);
+  const replenishRows = buildSmartReplenishment(rows, t);
   const riskyRows = replenishRows.filter((row) => row.status !== "normal").sort((a, b) => a.saleableDays - b.saleableDays).slice(0, 12);
   const alerts = buildAlerts({
     rows: replenishRows,
@@ -148,27 +149,27 @@ function DashboardContent() {
     comparisonRevenue: comparisonMetrics.revenue,
     rangeProfit: rangeMetrics.profit,
     comparisonProfit: comparisonMetrics.profit
-  });
+  }, t);
   const trendData = buildDailySalesPoints(salesRows, productMap, trendDays, anchorDate);
   const comparisonTrendData = buildDailySalesPoints(salesAllRows, productMap, trendDays, parseDateKey(comparisonRange.end));
-  const annualData = buildAnnualTrendPoints(salesYearRows, salesPreviousYearRows, productMap, selectedYear);
+  const annualData = buildAnnualTrendPoints(salesYearRows, salesPreviousYearRows, productMap, selectedYear, t);
   const topSales = buildTopSkuPerformance(rangeSales, productMap, "quantity");
   const topProfit = buildTopSkuPerformance(rangeSales, productMap, "profit");
   const slowMoving = rows
     .filter((row) => row.currentStock > 0 && !hasRecentSale(row.product.id, salesWindowRows))
     .sort((a, b) => b.currentStock * money(b.product.purchase_price) - a.currentStock * money(a.product.purchase_price))
     .slice(0, 10);
-  const health = buildInventoryHealth(replenishRows, slowMoving);
-  const lifecycleRows = buildLifecycleRows(rows, salesRows, anchorDate);
+  const health = buildInventoryHealth(replenishRows, slowMoving, t);
+  const lifecycleRows = buildLifecycleRows(rows, salesRows, anchorDate, t);
 
   return (
     <>
       <div className="mb-5 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-        <PageHeader title="经营驾驶舱" />
+        <PageHeader title={t("dashboard.title")} />
         <DateControl
           selectedDate={selectedDate}
           viewMode={viewMode}
-          rangeLabel={formatRangeLabel(range)}
+          rangeLabel={formatRangeLabel(range, formatDate)}
           onDateChange={(date) => {
             setSelectedDate(date);
             setViewMode("custom");
@@ -183,27 +184,27 @@ function DashboardContent() {
 
       <div className={`space-y-6 transition-opacity duration-200 ${loading ? "opacity-60" : "opacity-100"}`}>
         <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <ExecutiveKpi label={`${range.label}销售额`} value={won(rangeMetrics.revenue)} compare={compare(rangeMetrics.revenue, comparisonMetrics.revenue)} />
-          <ExecutiveKpi label={`${range.label}订单数`} value={rangeMetrics.quantity} compare={compare(rangeMetrics.quantity, comparisonMetrics.quantity)} />
-          <ExecutiveKpi label={`${range.label}销量`} value={rangeMetrics.quantity} compare={compare(rangeMetrics.quantity, comparisonMetrics.quantity)} />
-          <ExecutiveKpi label={`${range.label}利润`} value={won(rangeMetrics.profit)} compare={compare(rangeMetrics.profit, comparisonMetrics.profit)} />
-          <ExecutiveKpi label="退款订单" value={refundOrders} />
-          <ExecutiveKpi label="取消订单" value={cancelOrders} muted />
-          <ExecutiveKpi label="当前库存金额" value={won(stockValue)} />
-          <ExecutiveKpi label="当前SKU总数" value={skuCount} />
+          <ExecutiveKpi label={`${range.label}${t("common.revenue")}`} value={formatCurrency(rangeMetrics.revenue)} compare={compare(rangeMetrics.revenue, comparisonMetrics.revenue)} />
+          <ExecutiveKpi label={`${range.label}${t("common.orderCount")}`} value={rangeMetrics.quantity} compare={compare(rangeMetrics.quantity, comparisonMetrics.quantity)} />
+          <ExecutiveKpi label={`${range.label}${t("common.salesQuantity")}`} value={rangeMetrics.quantity} compare={compare(rangeMetrics.quantity, comparisonMetrics.quantity)} />
+          <ExecutiveKpi label={`${range.label}${t("common.profit")}`} value={formatCurrency(rangeMetrics.profit)} compare={compare(rangeMetrics.profit, comparisonMetrics.profit)} />
+          <ExecutiveKpi label={t("dashboard.kpi.refundOrders")} value={refundOrders} />
+          <ExecutiveKpi label={t("dashboard.kpi.cancelOrders")} value={cancelOrders} muted />
+          <ExecutiveKpi label={t("dashboard.kpi.stockValue")} value={formatCurrency(stockValue)} />
+          <ExecutiveKpi label={t("dashboard.kpi.currentSkuCount")} value={skuCount} />
         </section>
 
         <section>
           <Card>
             <div className="mb-4 flex items-center justify-between">
-              <DashboardSectionTitle eyebrow="今日重点提醒" title="需要负责人优先处理的事项" />
-              <span className="rounded bg-panel px-3 py-1 text-sm font-semibold text-ink">{alerts.length} 项</span>
+              <DashboardSectionTitle eyebrow={t("dashboard.section.reminders")} title={t("dashboard.section.remindersTitle")} />
+              <span className="rounded bg-panel px-3 py-1 text-sm font-semibold text-ink">{alerts.length} {t("unit.item")}</span>
             </div>
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               {alerts.map((alert) => (
                 <AlertPill key={alert.text} alert={alert} />
               ))}
-              {!alerts.length ? <AlertPill alert={{ level: "success", text: "当前经营和库存状态正常" }} /> : null}
+              {!alerts.length ? <AlertPill alert={{ level: "success", text: t("dashboard.alert.allGood") }} /> : null}
             </div>
           </Card>
         </section>
@@ -211,14 +212,14 @@ function DashboardContent() {
         <section className="grid gap-4">
           <Card>
             <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-              <DashboardSectionTitle eyebrow="销售趋势中心" title={`${trendData[0]?.label ?? ""} - ${trendData[trendData.length - 1]?.label ?? ""}`} />
+              <DashboardSectionTitle eyebrow={t("dashboard.trend.center")} title={`${trendData[0]?.label ?? ""} - ${trendData[trendData.length - 1]?.label ?? ""}`} />
               <div className="flex flex-wrap gap-2">
-                <SegmentButton active={trendMetric === "orders"} onClick={() => setTrendMetric("orders")}>订单数</SegmentButton>
-                <SegmentButton active={trendMetric === "quantity"} onClick={() => setTrendMetric("quantity")}>销量</SegmentButton>
+                <SegmentButton active={trendMetric === "orders"} onClick={() => setTrendMetric("orders")}>{t("common.orderCount")}</SegmentButton>
+                <SegmentButton active={trendMetric === "quantity"} onClick={() => setTrendMetric("quantity")}>{t("common.salesQuantity")}</SegmentButton>
                 <span className="mx-1 h-9 w-px bg-line" />
                 {(["7d", "30d", "month", "custom"] as ViewMode[]).map((mode) => (
                   <SegmentButton key={mode} active={viewMode === mode} onClick={() => setViewMode(mode)}>
-                    {mode === "7d" ? "7天" : mode === "30d" ? "30天" : mode === "month" ? "本月" : "自定义日期"}
+                    {mode === "7d" ? t("period.7d") : mode === "30d" ? t("period.30d") : mode === "month" ? t("period.month") : t("period.custom")}
                   </SegmentButton>
                 ))}
               </div>
@@ -228,7 +229,7 @@ function DashboardContent() {
 
           <Card>
             <div className="hidden">
-              <DashboardSectionTitle eyebrow="年度经营趋势" title="月度经营" />
+              <DashboardSectionTitle eyebrow={t("dashboard.annual.trend")} title={t("dashboard.annual.trend")} />
               <div className="flex rounded-xl border border-line bg-panel p-1">
                 {buildYearOptions().map((year) => (
                   <button
@@ -256,22 +257,22 @@ function DashboardContent() {
 
         <section>
           <Card>
-            <DashboardSectionTitle eyebrow="智能补货中心" title="哪些商品要补货" />
+            <DashboardSectionTitle eyebrow={t("dashboard.replenishment.section")} title={t("dashboard.replenishment.title")} />
             <div className="mt-4">
               {loading ? (
-                <div className="rounded border border-line bg-panel p-6 text-sm text-ink/60">数据加载中...</div>
+                <div className="rounded border border-line bg-panel p-6 text-sm text-ink/60">{t("common.loading")}...</div>
               ) : (
                 <Table>
                   <thead>
                     <tr>
-                      <Th>SKU</Th>
-                      <Th>商品名称</Th>
-                      <Th>当前库存</Th>
-                      <Th>日均销量</Th>
-                      <Th>可售天数</Th>
-                      <Th>状态</Th>
-                      <Th>建议动作</Th>
-                      <Th>建议采购数量</Th>
+                      <Th>{t("common.sku")}</Th>
+                      <Th>{t("common.productName")}</Th>
+                      <Th>{t("common.currentStock")}</Th>
+                      <Th>{t("common.salesQuantity")}</Th>
+                      <Th>{t("unit.day")}</Th>
+                      <Th>{t("common.status")}</Th>
+                      <Th>{t("dashboard.replenishment.action")}</Th>
+                      <Th>{t("common.quantity")}</Th>
                     </tr>
                   </thead>
                   <tbody>
@@ -281,7 +282,7 @@ function DashboardContent() {
                         <Td>{row.product.name}</Td>
                         <Td>{row.currentStock}</Td>
                         <Td>{row.dailyAverage}</Td>
-                        <Td>{formatSaleableDays(row.saleableDays)}</Td>
+                        <Td>{formatSaleableDays(row.saleableDays, t)}</Td>
                         <Td><StatusBadge status={row.status} /></Td>
                         <Td>{row.action}</Td>
                         <Td>{row.suggestedQty}</Td>
@@ -299,13 +300,13 @@ function DashboardContent() {
           <TopSalesTable rows={topSales} />
           <TopProfitTable rows={topProfit} />
           <Card>
-            <DashboardSectionTitle eyebrow="SKU经营分析" title="滞销商品" />
+            <DashboardSectionTitle eyebrow={t("dashboard.section.skuAnalysis")} title={t("dashboard.slowMoving.title")} />
             <Table>
               <thead>
                 <tr>
-                  <Th>SKU</Th>
-                  <Th>库存</Th>
-                  <Th>库存金额</Th>
+                  <Th>{t("common.sku")}</Th>
+                  <Th>{t("common.currentStock")}</Th>
+                  <Th>{t("dashboard.kpi.stockValue")}</Th>
                 </tr>
               </thead>
               <tbody>
@@ -313,7 +314,7 @@ function DashboardContent() {
                   <tr key={row.product.id}>
                     <Td>{row.product.sku}</Td>
                     <Td>{row.currentStock}</Td>
-                    <Td>{won(row.currentStock * money(row.product.purchase_price))}</Td>
+                    <Td>{formatCurrency(row.currentStock * money(row.product.purchase_price))}</Td>
                   </tr>
                 ))}
                 {!slowMoving.length ? <EmptyRow columns={3} /> : null}
@@ -324,7 +325,7 @@ function DashboardContent() {
 
         <section className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
           <Card>
-            <DashboardSectionTitle eyebrow="库存健康中心" title="库存健康度" />
+            <DashboardSectionTitle eyebrow={t("dashboard.section.health")} title={t("dashboard.section.healthTitle")} />
             <div className="mt-4 grid gap-4 md:grid-cols-[180px_1fr]">
               <DonutChart items={health} />
               <div className="space-y-3">
@@ -342,15 +343,15 @@ function DashboardContent() {
           </Card>
 
           <Card>
-            <DashboardSectionTitle eyebrow="库存风险分析" title="库存风险排行榜" />
+            <DashboardSectionTitle eyebrow={t("dashboard.risk.title")} title={t("dashboard.risk.title")} />
             <Table>
               <thead>
                 <tr>
-                  <Th>SKU</Th>
-                  <Th>库存</Th>
-                  <Th>可售天数</Th>
-                  <Th>预计断货日期</Th>
-                  <Th>预计损失金额</Th>
+                  <Th>{t("common.sku")}</Th>
+                  <Th>{t("common.currentStock")}</Th>
+                  <Th>{t("unit.day")}</Th>
+                  <Th>{t("dashboard.risk.stockoutDate")}</Th>
+                  <Th>{t("dashboard.risk.lostRevenue")}</Th>
                 </tr>
               </thead>
               <tbody>
@@ -358,9 +359,9 @@ function DashboardContent() {
                   <tr key={row.product.id}>
                     <Td>{row.product.sku}</Td>
                     <Td>{row.currentStock}</Td>
-                    <Td>{formatSaleableDays(row.saleableDays)}</Td>
-                    <Td>{stockoutDate(row.saleableDays, anchorDate)}</Td>
-                    <Td>{won(Math.max(0, (REPLENISHMENT_CYCLE_DAYS - row.saleableDays) * row.dailyAverage * money(row.product.sale_price)))}</Td>
+                    <Td>{formatSaleableDays(row.saleableDays, t)}</Td>
+                    <Td>{stockoutDate(row.saleableDays, anchorDate, t)}</Td>
+                    <Td>{formatCurrency(Math.max(0, (REPLENISHMENT_CYCLE_DAYS - row.saleableDays) * row.dailyAverage * money(row.product.sale_price)))}</Td>
                   </tr>
                 ))}
                 {!riskyRows.length ? <EmptyRow columns={5} /> : null}
@@ -371,17 +372,17 @@ function DashboardContent() {
 
         <section>
           <Card>
-            <DashboardSectionTitle eyebrow="SKU生命周期分析" title="SKU详细数据表" />
+            <DashboardSectionTitle eyebrow={t("dashboard.lifecycle.title")} title={t("dashboard.lifecycle.title")} />
             <Table>
               <thead>
                 <tr>
-                  <Th>SKU</Th>
-                  <Th>商品名称</Th>
-                  <Th>库存</Th>
-                  <Th>近期销量</Th>
-                  <Th>日均销量</Th>
-                  <Th>可售天数</Th>
-                  <Th>生命周期</Th>
+                  <Th>{t("common.sku")}</Th>
+                  <Th>{t("common.productName")}</Th>
+                  <Th>{t("common.currentStock")}</Th>
+                  <Th>{t("common.salesQuantity")}</Th>
+                  <Th>{t("common.salesQuantity")}</Th>
+                  <Th>{t("unit.day")}</Th>
+                  <Th>{t("dashboard.lifecycle.trend")}</Th>
                 </tr>
               </thead>
               <tbody>
@@ -392,7 +393,7 @@ function DashboardContent() {
                     <Td>{row.currentStock}</Td>
                     <Td>{row.salesInWindow}</Td>
                     <Td>{row.dailyAverage}</Td>
-                    <Td>{formatSaleableDays(row.saleableDays)}</Td>
+                    <Td>{formatSaleableDays(row.saleableDays, t)}</Td>
                     <Td><LifecycleBadge label={row.lifecycle} /></Td>
                   </tr>
                 ))}
@@ -418,19 +419,20 @@ function DateControl({
   onDateChange: (date: string) => void;
   onModeChange: (mode: ViewMode) => void;
 }) {
+  const { t } = useLanguage();
   const buttons: Array<{ key: ViewMode; label: string }> = [
-    { key: "today", label: "今天" },
-    { key: "yesterday", label: "昨天" },
-    { key: "7d", label: "近7天" },
-    { key: "30d", label: "近30天" },
-    { key: "month", label: "本月" }
+    { key: "today", label: t("period.today") },
+    { key: "yesterday", label: t("period.yesterday") },
+    { key: "7d", label: t("period.7d") },
+    { key: "30d", label: t("period.30d") },
+    { key: "month", label: t("period.month") }
   ];
 
   return (
     <div className="rounded border border-line bg-white p-3 shadow-soft">
       <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-ink">
         <CalendarDays size={16} />
-        日期选择查看模式
+        {t("dashboard.dateControl")}
         <span className="ml-auto text-xs font-medium text-ink/55">{rangeLabel}</span>
       </div>
       <div className="flex flex-wrap items-center gap-2">
@@ -499,26 +501,27 @@ function SegmentButton({ active, onClick, children }: { active: boolean; onClick
 }
 
 function TrendChart({ data, comparisonData, metric }: { data: SalesPoint[]; comparisonData: SalesPoint[]; metric: TrendMetric }) {
+  const { t } = useLanguage();
   const currentTotal = sumMetric(data, metric);
   const previousTotal = sumMetric(comparisonData, metric);
   const growth = compare(currentTotal, previousTotal);
   const bestDay = data.reduce((best, item) => item[metric] > best[metric] ? item : best, data[0] ?? emptyPoint());
   const worstDay = data.reduce((worst, item) => item[metric] < worst[metric] ? item : worst, data[0] ?? emptyPoint());
   const hasData = data.some((item) => item.quantity > 0 || item.orders > 0);
-  const trendLabel = metric === "orders" ? "订单数" : "销量";
+  const trendLabel = metric === "orders" ? t("common.orderCount") : t("common.salesQuantity");
   const analysisText = growth == null
-    ? "当前周期暂无可对比数据。"
+    ? t("dashboard.trend.analysisNoComparison")
     : growth >= 0
-      ? `本周期${trendLabel}较上一周期增长${growth.toFixed(1)}%，趋势健康。`
-      : `本周期${trendLabel}下降${Math.abs(growth).toFixed(1)}%，建议检查库存与广告表现。`;
+      ? t("dashboard.trend.analysisGrowth", { metric: trendLabel, growth: growth.toFixed(1) })
+      : t("dashboard.trend.analysisDecline", { metric: trendLabel, growth: Math.abs(growth).toFixed(1) });
 
   if (!hasData) {
     return (
       <div className="rounded-2xl border border-line bg-gradient-to-br from-white to-panel p-6">
         <TrendSummary data={data} metric={metric} growth={growth} bestDay={bestDay} worstDay={worstDay} />
         <div className="mt-6 flex h-72 flex-col items-center justify-center rounded-xl border border-dashed border-line bg-white/70 text-center">
-          <div className="text-lg font-semibold text-ink">暂无销售数据</div>
-          <div className="mt-2 text-sm text-ink/55">请导入订单数据或切换日期范围。</div>
+          <div className="text-lg font-semibold text-ink">{t("dashboard.sales.emptyTitle")}</div>
+          <div className="mt-2 text-sm text-ink/55">{t("dashboard.sales.emptyHint")}</div>
         </div>
       </div>
     );
@@ -573,12 +576,14 @@ function TrendSummary({
   bestDay: SalesPoint;
   worstDay: SalesPoint;
 }) {
+  const { t } = useLanguage();
+  const peakLabel = metric === "orders" ? t("common.orderCount") : t("common.salesQuantity");
   return (
     <div className="grid gap-3 md:grid-cols-4">
-      <MiniTrendCard label="当前周期订单数" value={sumMetric(data, "orders")} />
-      <MiniTrendCard label="当前周期销量" value={sumMetric(data, "quantity")} />
-      <MiniTrendCard label="同比增长" value={growth == null ? "-" : `${growth >= 0 ? "+" : ""}${growth.toFixed(1)}%`} tone={growth != null && growth < 0 ? "down" : "up"} />
-      <MiniTrendCard label={metric === "orders" ? "订单峰值" : "销量峰值"} value={`${bestDay.label} / ${bestDay[metric]}`} sub={`低点 ${worstDay.label} / ${worstDay[metric]}`} />
+      <MiniTrendCard label={t("dashboard.trend.currentOrders")} value={sumMetric(data, "orders")} />
+      <MiniTrendCard label={t("dashboard.trend.currentQuantity")} value={sumMetric(data, "quantity")} />
+      <MiniTrendCard label={t("dashboard.trend.periodGrowth")} value={growth == null ? "-" : `${growth >= 0 ? "+" : ""}${growth.toFixed(1)}%`} tone={growth != null && growth < 0 ? "down" : "up"} />
+      <MiniTrendCard label={t("dashboard.trend.bestMetric", { metric: peakLabel })} value={`${bestDay.label} / ${bestDay[metric]}`} sub={t("dashboard.trend.lowPoint", { label: worstDay.label, value: worstDay[metric] })} />
     </div>
   );
 }
@@ -594,6 +599,7 @@ function MiniTrendCard({ label, value, sub, tone }: { label: string; value: stri
 }
 
 function TrendTooltip({ active, payload }: { active?: boolean; payload?: Array<{ payload?: SalesPoint }> }) {
+  const { t, formatCurrency } = useLanguage();
   if (!active || !payload?.length) return null;
   const point = payload[0]?.payload as SalesPoint | undefined;
   if (!point) return null;
@@ -602,9 +608,9 @@ function TrendTooltip({ active, payload }: { active?: boolean; payload?: Array<{
     <div className="rounded-xl border border-line bg-white px-4 py-3 shadow-soft">
       <div className="text-sm font-semibold text-ink">{point.date}</div>
       <div className="mt-2 grid gap-1 text-sm text-ink/75">
-        <div>订单数：<span className="font-semibold text-ink">{point.orders}</span></div>
-        <div>销量：<span className="font-semibold text-ink">{point.quantity}</span></div>
-        <div>销售额：<span className="font-semibold text-ink">{won(point.revenue)}</span></div>
+        <div>{t("dashboard.tooltip.orders")}: <span className="font-semibold text-ink">{point.orders}</span></div>
+        <div>{t("dashboard.tooltip.quantity")}: <span className="font-semibold text-ink">{point.quantity}</span></div>
+        <div>{t("dashboard.tooltip.revenue")}: <span className="font-semibold text-ink">{formatCurrency(point.revenue)}</span></div>
       </div>
     </div>
   );
@@ -627,6 +633,7 @@ function AnnualTrendModule({
   onYearChange: (year: number) => void;
   onCompareChange: (enabled: boolean) => void;
 }) {
+  const { t, formatCurrency, formatNumber } = useLanguage();
   const metricKey = metric;
   const previousKey = annualPreviousKey(metric);
   const annualQuantity = sumAnnualMetric(data, "quantity");
@@ -637,12 +644,12 @@ function AnnualTrendModule({
   const hasData = data.some((item) => item.quantity > 0 || item.orders > 0 || item.revenue > 0);
   const bestMonth = data.reduce((best, item) => item[metricKey] > best[metricKey] ? item : best, data[0] ?? emptyAnnualPoint(year));
   const worstMonth = data.reduce((worst, item) => item[metricKey] < worst[metricKey] ? item : worst, data[0] ?? emptyAnnualPoint(year));
-  const insight = buildAnnualInsight(data, metric, growth, bestMonth, worstMonth);
+  const insight = buildAnnualInsight(data, metric, growth, bestMonth, worstMonth, t);
 
   return (
     <div className="rounded-2xl border border-line bg-gradient-to-br from-white via-white to-emerald-50/70 p-5 shadow-soft">
       <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <DashboardSectionTitle eyebrow="年度经营趋势" title={`${year} 年度经营分析`} />
+        <DashboardSectionTitle eyebrow={t("dashboard.annual.trend")} title={t("dashboard.annual.title", { year })} />
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex rounded-xl border border-line bg-panel p-1">
             {buildYearOptions().map((optionYear) => (
@@ -656,25 +663,25 @@ function AnnualTrendModule({
               </button>
             ))}
           </div>
-          <SegmentButton active={metric === "quantity"} onClick={() => onMetricChange("quantity")}>月销量</SegmentButton>
-          <SegmentButton active={metric === "orders"} onClick={() => onMetricChange("orders")}>月订单数</SegmentButton>
-          <SegmentButton active={metric === "revenue"} onClick={() => onMetricChange("revenue")}>月销售额</SegmentButton>
+          <SegmentButton active={metric === "quantity"} onClick={() => onMetricChange("quantity")}>{t("dashboard.annual.metricQuantity")}</SegmentButton>
+          <SegmentButton active={metric === "orders"} onClick={() => onMetricChange("orders")}>{t("dashboard.annual.metricOrders")}</SegmentButton>
+          <SegmentButton active={metric === "revenue"} onClick={() => onMetricChange("revenue")}>{t("dashboard.annual.metricRevenue")}</SegmentButton>
           <button
             type="button"
             onClick={() => onCompareChange(!comparePreviousYear)}
             className={`rounded border px-3 py-2 text-sm font-semibold transition ${comparePreviousYear ? "border-brand bg-brand text-white" : "border-line bg-white text-ink"}`}
           >
-            对比去年
+            {t("dashboard.annual.comparePreviousYear")}
           </button>
         </div>
       </div>
 
       <div className="grid gap-3 md:grid-cols-5">
-        <MiniTrendCard label="年度总销量" value={annualQuantity.toLocaleString("ko-KR")} />
-        <MiniTrendCard label="年度总订单数" value={annualOrders.toLocaleString("ko-KR")} />
-        <MiniTrendCard label="年度增长率" value={growth == null ? "-" : `${growth >= 0 ? "+" : ""}${growth.toFixed(1)}%`} tone={growth != null && growth < 0 ? "down" : "up"} />
-        <MiniTrendCard label="最佳销售月份" value={bestMonth.label} sub={formatAnnualMetricValue(bestMonth[metricKey], metric)} />
-        <MiniTrendCard label="最差销售月份" value={worstMonth.label} sub={formatAnnualMetricValue(worstMonth[metricKey], metric)} />
+        <MiniTrendCard label={t("dashboard.annual.totalQuantity")} value={formatNumber(annualQuantity)} />
+        <MiniTrendCard label={t("dashboard.annual.totalOrders")} value={formatNumber(annualOrders)} />
+        <MiniTrendCard label={t("dashboard.annual.totalGrowth")} value={growth == null ? "-" : `${growth >= 0 ? "+" : ""}${growth.toFixed(1)}%`} tone={growth != null && growth < 0 ? "down" : "up"} />
+        <MiniTrendCard label={t("dashboard.annual.bestMonth")} value={bestMonth.label} sub={formatAnnualMetricValue(bestMonth[metricKey], metric, formatCurrency, formatNumber)} />
+        <MiniTrendCard label={t("dashboard.annual.worstMonth")} value={worstMonth.label} sub={formatAnnualMetricValue(worstMonth[metricKey], metric, formatCurrency, formatNumber)} />
       </div>
 
       <div className="mt-6 h-[360px] rounded-2xl border border-line bg-white/80 p-4">
@@ -699,7 +706,7 @@ function AnnualTrendModule({
                 axisLine={false}
                 tick={{ fill: "#66736b", fontSize: 12 }}
                 width={metric === "revenue" ? 78 : 44}
-                tickFormatter={(value) => metric === "revenue" ? shortWon(Number(value)) : Number(value).toLocaleString("ko-KR")}
+                tickFormatter={(value) => metric === "revenue" ? shortWon(Number(value)) : formatNumber(Number(value))}
               />
               <Tooltip content={<AnnualTooltip year={year} metric={metric} comparePreviousYear={comparePreviousYear} />} cursor={{ stroke: "#217f57", strokeWidth: 1, strokeDasharray: "4 4" }} />
               {comparePreviousYear ? (
@@ -728,8 +735,8 @@ function AnnualTrendModule({
           </ResponsiveContainer>
         ) : (
           <div className="flex h-full flex-col items-center justify-center rounded-xl border border-dashed border-line bg-panel/60 text-center">
-            <div className="text-lg font-semibold text-ink">暂无年度经营数据</div>
-            <div className="mt-2 text-sm text-ink/55">请导入订单数据，或切换年份查看。</div>
+            <div className="text-lg font-semibold text-ink">{t("dashboard.annual.emptyTitle")}</div>
+            <div className="mt-2 text-sm text-ink/55">{t("dashboard.annual.emptyHint")}</div>
           </div>
         )}
       </div>
@@ -754,20 +761,21 @@ function AnnualTooltip({
   metric: AnnualMetric;
   comparePreviousYear: boolean;
 }) {
+  const { t, formatCurrency, formatNumber } = useLanguage();
   if (!active || !payload?.length) return null;
   const point = payload[0]?.payload as AnnualPoint | undefined;
   if (!point) return null;
 
   return (
     <div className="rounded-xl border border-line bg-white px-4 py-3 shadow-soft">
-      <div className="text-sm font-semibold text-ink">{year}年{point.month}月</div>
+      <div className="text-sm font-semibold text-ink">{year}{t("unit.month")} {point.month}</div>
       <div className="mt-2 grid gap-1 text-sm text-ink/75">
-        <div>销量：<span className="font-semibold text-ink">{point.quantity.toLocaleString("ko-KR")}</span></div>
-        <div>订单数：<span className="font-semibold text-ink">{point.orders.toLocaleString("ko-KR")}</span></div>
-        <div>销售额：<span className="font-semibold text-ink">{won(point.revenue)}</span></div>
+        <div>{t("common.salesQuantity")}: <span className="font-semibold text-ink">{formatNumber(point.quantity)}</span></div>
+        <div>{t("common.orderCount")}: <span className="font-semibold text-ink">{formatNumber(point.orders)}</span></div>
+        <div>{t("common.revenue")}: <span className="font-semibold text-ink">{formatCurrency(point.revenue)}</span></div>
         {comparePreviousYear ? (
           <div className="mt-1 border-t border-line pt-2 text-ink/60">
-            去年同月：{formatAnnualMetricValue(point[annualPreviousKey(metric)] as number, metric)}
+            {t("dashboard.annual.previousMonth")}: {formatAnnualMetricValue(point[annualPreviousKey(metric)] as number, metric, formatCurrency, formatNumber)}
           </div>
         ) : null}
       </div>
@@ -776,15 +784,16 @@ function AnnualTooltip({
 }
 
 function AnalysisTable({ title, rows, valueLabel, valueKey }: { title: string; rows: TopSkuPerformanceRow[]; valueLabel: string; valueKey: "quantity" | "profit" }) {
+  const { t, formatCurrency } = useLanguage();
   return (
     <Card>
-      <DashboardSectionTitle eyebrow="SKU经营分析" title={title} />
+      <DashboardSectionTitle eyebrow={t("dashboard.section.skuAnalysis")} title={title} />
       <Table>
         <thead>
           <tr>
-            <Th>排名</Th>
-            <Th>SKU</Th>
-            <Th>销量</Th>
+            <Th>{t("common.rank")}</Th>
+            <Th>{t("common.sku")}</Th>
+            <Th>{t("common.salesQuantity")}</Th>
             <Th>{valueLabel}</Th>
           </tr>
         </thead>
@@ -794,7 +803,7 @@ function AnalysisTable({ title, rows, valueLabel, valueKey }: { title: string; r
               <Td>{index + 1}</Td>
               <Td>{row.sku}</Td>
               <Td>{row.quantity}</Td>
-              <Td>{valueKey === "profit" ? won(row.profit) : row[valueKey]}</Td>
+              <Td>{valueKey === "profit" ? formatCurrency(row.profit) : row[valueKey]}</Td>
             </tr>
           ))}
           {!rows.length ? <EmptyRow columns={4} /> : null}
@@ -805,18 +814,19 @@ function AnalysisTable({ title, rows, valueLabel, valueKey }: { title: string; r
 }
 
 function TopSalesTable({ rows }: { rows: TopSkuPerformanceRow[] }) {
+  const { t, formatCurrency } = useLanguage();
   return (
     <Card>
-      <DashboardSectionTitle eyebrow="SKU经营分析" title="TOP销量商品" />
+      <DashboardSectionTitle eyebrow={t("dashboard.section.skuAnalysis")} title={t("dashboard.topSales.title")} />
       <Table>
         <thead>
           <tr>
-            <Th>排名</Th>
-            <Th>SKU</Th>
-            <Th>商品名称</Th>
-            <Th>销量</Th>
-            <Th>订单数</Th>
-            <Th>销售额</Th>
+            <Th>{t("common.rank")}</Th>
+            <Th>{t("common.sku")}</Th>
+            <Th>{t("common.productName")}</Th>
+            <Th>{t("common.salesQuantity")}</Th>
+            <Th>{t("common.orderCount")}</Th>
+            <Th>{t("common.revenue")}</Th>
           </tr>
         </thead>
         <tbody>
@@ -827,7 +837,7 @@ function TopSalesTable({ rows }: { rows: TopSkuPerformanceRow[] }) {
               <Td>{row.name}</Td>
               <Td>{row.quantity}</Td>
               <Td>{row.orders}</Td>
-              <Td>{won(row.revenue)}</Td>
+              <Td>{formatCurrency(row.revenue)}</Td>
             </tr>
           ))}
           {!rows.length ? <EmptyRow columns={6} /> : null}
@@ -838,19 +848,20 @@ function TopSalesTable({ rows }: { rows: TopSkuPerformanceRow[] }) {
 }
 
 function TopProfitTable({ rows }: { rows: TopSkuPerformanceRow[] }) {
+  const { t, formatCurrency } = useLanguage();
   return (
     <Card>
-      <DashboardSectionTitle eyebrow="SKU经营分析" title="TOP利润商品" />
+      <DashboardSectionTitle eyebrow={t("dashboard.section.skuAnalysis")} title={t("dashboard.topProfit.title")} />
       <Table>
         <thead>
           <tr>
-            <Th>排名</Th>
-            <Th>SKU</Th>
-            <Th>商品名称</Th>
-            <Th>销量</Th>
-            <Th>销售额</Th>
-            <Th>利润</Th>
-            <Th>利润率</Th>
+            <Th>{t("common.rank")}</Th>
+            <Th>{t("common.sku")}</Th>
+            <Th>{t("common.productName")}</Th>
+            <Th>{t("common.salesQuantity")}</Th>
+            <Th>{t("common.revenue")}</Th>
+            <Th>{t("common.profit")}</Th>
+            <Th>{t("common.profitMargin")}</Th>
           </tr>
         </thead>
         <tbody>
@@ -860,8 +871,8 @@ function TopProfitTable({ rows }: { rows: TopSkuPerformanceRow[] }) {
               <Td>{row.sku}</Td>
               <Td>{row.name}</Td>
               <Td>{row.quantity}</Td>
-              <Td>{won(row.revenue)}</Td>
-              <Td>{won(row.profit)}</Td>
+              <Td>{formatCurrency(row.revenue)}</Td>
+              <Td>{formatCurrency(row.profit)}</Td>
               <Td>{row.margin.toFixed(1)}%</Td>
             </tr>
           ))}
@@ -873,6 +884,7 @@ function TopProfitTable({ rows }: { rows: TopSkuPerformanceRow[] }) {
 }
 
 function DonutChart({ items }: { items: HealthItem[] }) {
+  const { t } = useLanguage();
   let start = 0;
   const stops = items.map((item) => {
     const end = start + item.percent;
@@ -885,7 +897,7 @@ function DonutChart({ items }: { items: HealthItem[] }) {
     <div className="flex h-44 w-44 items-center justify-center rounded-full" style={{ background: `conic-gradient(${stops || "#e6ece6 0% 100%"})` }}>
       <div className="flex h-28 w-28 items-center justify-center rounded-full bg-white text-center">
         <div>
-          <div className="text-xs text-ink/55">健康库存</div>
+          <div className="text-xs text-ink/55">{t("dashboard.health.healthy")}</div>
           <div className="text-2xl font-semibold text-ink">{items[0]?.percent ?? 0}%</div>
         </div>
       </div>
@@ -894,27 +906,30 @@ function DonutChart({ items }: { items: HealthItem[] }) {
 }
 
 function StatusBadge({ status }: { status: SmartReplenishmentRow["status"] }) {
+  const { t } = useLanguage();
   const config = {
-    danger: ["危险", "bg-red-50 text-red-700 border-red-200"],
-    warning: ["注意", "bg-amber-50 text-amber-700 border-amber-200"],
-    normal: ["正常", "bg-emerald-50 text-emerald-700 border-emerald-200"]
+    danger: [t("dashboard.status.danger"), "bg-red-50 text-red-700 border-red-200"],
+    warning: [t("dashboard.status.warning"), "bg-amber-50 text-amber-700 border-amber-200"],
+    normal: [t("dashboard.status.normal"), "bg-emerald-50 text-emerald-700 border-emerald-200"]
   }[status];
   return <span className={`rounded border px-2 py-1 text-xs font-semibold ${config[1]}`}>{config[0]}</span>;
 }
 
 function LifecycleBadge({ label }: { label: string }) {
-  const color = label === "爆款增长" ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
-    label === "销量下降" ? "bg-amber-50 text-amber-700 border-amber-200" :
-      label === "滞销" ? "bg-red-50 text-red-700 border-red-200" :
+  const { t } = useLanguage();
+  const color = label === t("dashboard.lifecycle.growing") ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
+    label === t("dashboard.lifecycle.warning") ? "bg-amber-50 text-amber-700 border-amber-200" :
+      label === t("dashboard.lifecycle.slow") ? "bg-red-50 text-red-700 border-red-200" :
         "bg-panel text-ink border-line";
   return <span className={`rounded border px-2 py-1 text-xs font-semibold ${color}`}>{label}</span>;
 }
 
 function EmptyRow({ columns }: { columns: number }) {
+  const { t } = useLanguage();
   return (
     <tr>
       {Array.from({ length: columns }, (_, index) => (
-        <Td key={index}>{index === 0 ? "暂无数据" : "-"}</Td>
+        <Td key={index}>{index === 0 ? t("common.empty") : "-"}</Td>
       ))}
     </tr>
   );
@@ -926,11 +941,11 @@ type SmartReplenishmentRow = ReplenishmentRow & {
   action: string;
 };
 
-function buildSmartReplenishment(rows: ReplenishmentRow[]): SmartReplenishmentRow[] {
+function buildSmartReplenishment(rows: ReplenishmentRow[], t: TFunction): SmartReplenishmentRow[] {
   return rows.map((row) => {
     const saleableDays = row.dailyAverage > 0 ? Math.floor(row.currentStock / row.dailyAverage) : 999;
     const status: SmartReplenishmentRow["status"] = saleableDays < 7 ? "danger" : saleableDays < 15 ? "warning" : "normal";
-    const action = status === "danger" ? "立即采购" : status === "warning" ? "7天内采购" : "无需采购";
+    const action = status === "danger" ? t("dashboard.replenishment.immediate") : status === "warning" ? t("dashboard.replenishment.within7Days") : t("dashboard.replenishment.noNeed");
 
     return { ...row, saleableDays, status, action };
   }).sort((a, b) => {
@@ -945,7 +960,7 @@ function buildAlerts(input: {
   comparisonRevenue: number;
   rangeProfit: number;
   comparisonProfit: number;
-}): AlertItem[] {
+}, t: TFunction): AlertItem[] {
   const dangerCount = input.rows.filter((row) => row.saleableDays < 7).length;
   const warningCount = input.rows.filter((row) => row.saleableDays >= 7 && row.saleableDays < 15).length;
   const stockoutCount = input.rows.filter((row) => row.dailyAverage > 0 && row.currentStock <= row.dailyAverage * 3).length;
@@ -954,12 +969,12 @@ function buildAlerts(input: {
   const profitGrowth = compare(input.rangeProfit, input.comparisonProfit);
   const alerts: AlertItem[] = [];
 
-  if (dangerCount) alerts.push({ level: "danger", text: `${dangerCount}个SKU库存低于7天` });
-  if (stockoutCount) alerts.push({ level: "danger", text: `${stockoutCount}个SKU即将断货` });
-  if (warningCount) alerts.push({ level: "warning", text: `${warningCount}个SKU需要关注库存` });
-  if (suggestedCount) alerts.push({ level: "warning", text: `${suggestedCount}个SKU建议补货` });
-  if (revenueGrowth != null && revenueGrowth > 0) alerts.push({ level: "success", text: `销售额增长${revenueGrowth.toFixed(1)}%` });
-  if (profitGrowth != null && profitGrowth > 0) alerts.push({ level: "success", text: `利润增长${profitGrowth.toFixed(1)}%` });
+  if (dangerCount) alerts.push({ level: "danger", text: t("dashboard.alert.dangerSku", { count: dangerCount }) });
+  if (stockoutCount) alerts.push({ level: "danger", text: t("dashboard.alert.stockoutSku", { count: stockoutCount }) });
+  if (warningCount) alerts.push({ level: "warning", text: t("dashboard.alert.warningSku", { count: warningCount }) });
+  if (suggestedCount) alerts.push({ level: "warning", text: t("dashboard.alert.suggestedSku", { count: suggestedCount }) });
+  if (revenueGrowth != null && revenueGrowth > 0) alerts.push({ level: "success", text: t("dashboard.alert.revenueGrowth", { value: revenueGrowth.toFixed(1) }) });
+  if (profitGrowth != null && profitGrowth > 0) alerts.push({ level: "success", text: t("dashboard.alert.profitGrowth", { value: profitGrowth.toFixed(1) }) });
 
   return alerts;
 }
@@ -1005,7 +1020,7 @@ function buildTopSkuPerformance(salesRows: SaleDaily[], productMap: Map<string, 
 
 type HealthItem = { label: string; value: number; percent: number; color: string };
 
-function buildInventoryHealth(rows: SmartReplenishmentRow[], slowMoving: ReplenishmentRow[]): HealthItem[] {
+function buildInventoryHealth(rows: SmartReplenishmentRow[], slowMoving: ReplenishmentRow[], t: TFunction): HealthItem[] {
   const total = Math.max(1, rows.length);
   const slowIds = new Set(slowMoving.map((row) => row.product.id));
   const danger = rows.filter((row) => row.status === "danger").length;
@@ -1014,11 +1029,11 @@ function buildInventoryHealth(rows: SmartReplenishmentRow[], slowMoving: Repleni
   const healthy = Math.max(0, total - danger - warning - slow);
   const inTransit = rows.reduce((sum, row) => sum + row.openPurchaseQty, 0);
   const items = [
-    { label: "健康库存", value: healthy, color: "#217f57" },
-    { label: "危险库存", value: danger, color: "#dc2626" },
-    { label: "即将缺货", value: warning, color: "#d97706" },
-    { label: "滞销库存", value: slow, color: "#64748b" },
-    { label: "在途库存", value: inTransit, color: "#2563eb" }
+    { label: t("dashboard.health.healthy"), value: healthy, color: "#217f57" },
+    { label: t("dashboard.health.danger"), value: danger, color: "#dc2626" },
+    { label: t("dashboard.health.warning"), value: warning, color: "#d97706" },
+    { label: t("dashboard.health.slow"), value: slow, color: "#64748b" },
+    { label: t("dashboard.health.inTransit"), value: inTransit, color: "#2563eb" }
   ];
   const denominator = Math.max(1, healthy + danger + warning + slow + inTransit);
 
@@ -1028,7 +1043,7 @@ function buildInventoryHealth(rows: SmartReplenishmentRow[], slowMoving: Repleni
   }));
 }
 
-function buildLifecycleRows(rows: ReplenishmentRow[], salesRows: SaleDaily[], anchorDate: Date) {
+function buildLifecycleRows(rows: ReplenishmentRow[], salesRows: SaleDaily[], anchorDate: Date, t: TFunction) {
   const productSales = new Map<string, { recent: number; previous: number }>();
   const recentStart = daysAgoKey(anchorDate, 29);
   const previousStart = daysAgoKey(anchorDate, 89);
@@ -1042,10 +1057,10 @@ function buildLifecycleRows(rows: ReplenishmentRow[], salesRows: SaleDaily[], an
 
   return rows.map((row) => {
     const stats = productSales.get(row.product.id) ?? { recent: 0, previous: 0 };
-    const lifecycle = stats.recent === 0 ? "滞销" :
-      stats.previous > 0 && stats.recent >= stats.previous * 1.3 ? "爆款增长" :
-        stats.previous > 0 && stats.recent <= stats.previous * 0.7 ? "销量下降" :
-          "稳定销售";
+    const lifecycle = stats.recent === 0 ? t("dashboard.lifecycle.slow") :
+      stats.previous > 0 && stats.recent >= stats.previous * 1.3 ? t("dashboard.lifecycle.growing") :
+        stats.previous > 0 && stats.recent <= stats.previous * 0.7 ? t("dashboard.lifecycle.warning") :
+          t("dashboard.lifecycle.stable");
     const saleableDays = row.dailyAverage > 0 ? Math.floor(row.currentStock / row.dailyAverage) : 999;
 
     return { ...row, saleableDays, lifecycle };
@@ -1092,12 +1107,13 @@ function buildAnnualTrendPoints(
   currentRows: SaleDaily[],
   previousRows: SaleDaily[],
   productMap: Map<string, ProductWithStock>,
-  year: number
+  year: number,
+  t: TFunction
 ): AnnualPoint[] {
   const months: AnnualPoint[] = Array.from({ length: 12 }, (_, index) => ({
     month: index + 1,
     date: `${year}-${String(index + 1).padStart(2, "0")}`,
-    label: `${index + 1}月`,
+    label: `${index + 1}${t("unit.month")}`,
     orders: 0,
     quantity: 0,
     revenue: 0,
@@ -1146,7 +1162,7 @@ function addMonthlySales(
 function buildMonthlySalesPoints(salesRows: SaleDaily[], productMap: Map<string, ProductWithStock>, year: number): SalesPoint[] {
   const months = Array.from({ length: 12 }, (_, index) => ({
     date: `${year}-${String(index + 1).padStart(2, "0")}`,
-    label: `${index + 1}月`,
+    label: String(index + 1),
     orders: 0,
     quantity: 0,
     revenue: 0,
@@ -1197,14 +1213,14 @@ function hasRecentSale(productId: string, salesRows: SaleDaily[]) {
 
 type DateRange = { start: string; end: string; label: string };
 
-function buildRange(mode: ViewMode, anchorDate: Date): DateRange {
+function buildRange(mode: ViewMode, anchorDate: Date, t: TFunction): DateRange {
   const end = toDateKey(anchorDate);
-  if (mode === "7d") return { start: daysAgoKey(anchorDate, 6), end, label: "近7天" };
-  if (mode === "30d") return { start: daysAgoKey(anchorDate, 29), end, label: "近30天" };
-  if (mode === "month") return { start: monthStartKey(anchorDate), end, label: "本月" };
-  if (mode === "yesterday") return { start: end, end, label: "昨日" };
-  if (mode === "custom") return { start: end, end, label: "所选日期" };
-  return { start: end, end, label: "今日" };
+  if (mode === "7d") return { start: daysAgoKey(anchorDate, 6), end, label: t("period.7d") };
+  if (mode === "30d") return { start: daysAgoKey(anchorDate, 29), end, label: t("period.30d") };
+  if (mode === "month") return { start: monthStartKey(anchorDate), end, label: t("period.month") };
+  if (mode === "yesterday") return { start: end, end, label: t("period.yesterday") };
+  if (mode === "custom") return { start: end, end, label: t("period.custom") };
+  return { start: end, end, label: t("period.today") };
 }
 
 function buildComparisonRange(range: DateRange): DateRange {
@@ -1215,7 +1231,7 @@ function buildComparisonRange(range: DateRange): DateRange {
   comparisonEnd.setDate(start.getDate() - 1);
   const comparisonStart = new Date(comparisonEnd);
   comparisonStart.setDate(comparisonEnd.getDate() - (days - 1));
-  return { start: toDateKey(comparisonStart), end: toDateKey(comparisonEnd), label: "对比周期" };
+  return { start: toDateKey(comparisonStart), end: toDateKey(comparisonEnd), label: "" };
 }
 
 function daysInRange(range: DateRange) {
@@ -1224,8 +1240,8 @@ function daysInRange(range: DateRange) {
   return Math.max(1, Math.round((end - start) / 86_400_000) + 1);
 }
 
-function formatRangeLabel(range: DateRange) {
-  return range.start === range.end ? range.end : `${range.start} ~ ${range.end}`;
+function formatRangeLabel(range: DateRange, formatDate: (value: string | Date, options?: Intl.DateTimeFormatOptions) => string) {
+  return range.start === range.end ? formatDate(`${range.end}T12:00:00`) : `${formatDate(`${range.start}T12:00:00`)} ~ ${formatDate(`${range.end}T12:00:00`)}`;
 }
 
 function isBetween(dateKey: string, start: string, end: string) {
@@ -1262,18 +1278,23 @@ function sumAnnualPreviousMetric(data: AnnualPoint[], metric: AnnualMetric) {
   return data.reduce((sum, item) => sum + Number(item[key] ?? 0), 0);
 }
 
-function formatAnnualMetricValue(value: number, metric: AnnualMetric) {
-  if (metric === "revenue") return won(value);
-  return Math.round(value).toLocaleString("ko-KR");
+function formatAnnualMetricValue(
+  value: number,
+  metric: AnnualMetric,
+  formatCurrency: (value: number) => string,
+  formatNumber: (value: number, options?: Intl.NumberFormatOptions) => string
+) {
+  if (metric === "revenue") return formatCurrency(value);
+  return formatNumber(Math.round(value));
 }
 
-function buildAnnualInsight(data: AnnualPoint[], metric: AnnualMetric, growth: number | null, bestMonth: AnnualPoint, worstMonth: AnnualPoint) {
+function buildAnnualInsight(data: AnnualPoint[], metric: AnnualMetric, growth: number | null, bestMonth: AnnualPoint, worstMonth: AnnualPoint, t: TFunction) {
   const hasData = data.some((item) => item.quantity > 0 || item.orders > 0 || item.revenue > 0);
-  const metricLabel = metric === "revenue" ? "销售额" : metric === "orders" ? "订单数" : "销量";
-  if (!hasData) return "暂无年度经营数据，建议先导入订单数据后再查看年度趋势。";
-  if (growth == null) return `${bestMonth.label}${metricLabel}最高，建议重点复盘该月主推SKU、广告和库存准备情况。`;
-  if (growth >= 0) return `${yearlessLabel(bestMonth.label)}表现最好，本年度${metricLabel}较去年增长${growth.toFixed(1)}%，趋势健康，可继续关注高转化SKU的补货节奏。`;
-  return `${yearlessLabel(worstMonth.label)}表现最低，本年度${metricLabel}较去年下降${Math.abs(growth).toFixed(1)}%，建议检查库存断货、广告ROI和主推SKU表现。`;
+  const metricLabel = metric === "revenue" ? t("common.revenue") : metric === "orders" ? t("common.orderCount") : t("common.salesQuantity");
+  if (!hasData) return t("dashboard.annual.insightNoData");
+  if (growth == null) return t("dashboard.annual.insightNoComparison", { month: bestMonth.label, metric: metricLabel });
+  if (growth >= 0) return t("dashboard.annual.insightGrowth", { month: yearlessLabel(bestMonth.label), metric: metricLabel, growth: growth.toFixed(1) });
+  return t("dashboard.annual.insightDecline", { month: yearlessLabel(worstMonth.label), metric: metricLabel, growth: Math.abs(growth).toFixed(1) });
 }
 
 function yearlessLabel(label: string) {
@@ -1297,12 +1318,12 @@ function emptyAnnualPoint(year: number): AnnualPoint {
   };
 }
 
-function formatSaleableDays(days: number) {
-  return days >= 999 ? "暂无销量" : `${days}天`;
+function formatSaleableDays(days: number, t: TFunction) {
+  return days >= 999 ? t("unit.noSales") : `${days}${t("unit.day")}`;
 }
 
-function stockoutDate(days: number, anchorDate: Date) {
-  if (days >= 999) return "暂无风险";
+function stockoutDate(days: number, anchorDate: Date, t: TFunction) {
+  if (days >= 999) return t("unit.noRisk");
   const date = new Date(anchorDate);
   date.setDate(anchorDate.getDate() + Math.max(0, days));
   return toDateKey(date);

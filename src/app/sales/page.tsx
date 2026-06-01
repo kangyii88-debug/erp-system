@@ -24,7 +24,7 @@ export default function SalesPage() {
 }
 
 function SalesContent() {
-  const { t } = useLanguage();
+  const { t, formatDate } = useLanguage();
   const [products, setProducts] = useState<ProductWithStock[]>([]);
   const [sales, setSales] = useState<StockMovement[]>([]);
   const [form, setForm] = useState({ product_id: "", sale_date: today(), quantity: "1", memo: "" });
@@ -87,7 +87,7 @@ function SalesContent() {
     payload: { product_id: string; type: string; quantity: number; happened_at: string; memo: string | null }
   ) {
     const original = sales.find((sale) => sale.id === id);
-    if (!original) return { message: "Original sale not found" };
+    if (!original) return { message: t("common.originalSaleMissing") };
 
     const originalDate = original.happened_at.slice(0, 10);
     const nextDate = payload.happened_at.slice(0, 10);
@@ -169,7 +169,7 @@ function SalesContent() {
   }
 
   async function deleteSale(sale: StockMovement) {
-    if (!window.confirm(`${t.delete}: ${sale.products?.sku ?? ""} ${sale.quantity}`)) return;
+    if (!window.confirm(`${t("common.confirmDelete")}: ${sale.products?.sku ?? ""} ${sale.quantity}`)) return;
 
     const product = products.find((item) => item.id === sale.product_id);
     const { error: stockError } = await supabase
@@ -220,13 +220,13 @@ function SalesContent() {
 
   return (
     <>
-      <PageHeader title={t.sales} />
+      <PageHeader title={t("sales.title")} />
       <Card className="mb-5">
         <div className="mb-3 flex items-center justify-between gap-3">
-          <h2 className="font-semibold">{editingId ? t.updateMovement : t.recordSale}</h2>
+          <h2 className="font-semibold">{editingId ? t("inventory.update") : t("sales.record")}</h2>
           {editingId ? (
             <button className="rounded border border-line bg-white px-3 py-1.5 text-sm font-medium" type="button" onClick={cancelEdit}>
-              {t.cancel}
+              {t("common.cancel")}
             </button>
           ) : null}
         </div>
@@ -234,37 +234,37 @@ function SalesContent() {
           <ProductSelect products={products} value={form.product_id} onChange={(value) => setForm({ ...form, product_id: value })} />
           <input type="date" value={form.sale_date} onChange={(e) => setForm({ ...form, sale_date: e.target.value })} />
           <input type="number" min="1" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} />
-          <input placeholder={t.memo} value={form.memo} onChange={(e) => setForm({ ...form, memo: e.target.value })} />
-          <button className="rounded bg-brand px-4 py-2 text-sm font-semibold text-white">{t.save}</button>
+          <input placeholder={t("common.memo")} value={form.memo} onChange={(e) => setForm({ ...form, memo: e.target.value })} />
+          <button className="rounded bg-brand px-4 py-2 text-sm font-semibold text-white">{t("common.save")}</button>
         </form>
         {message ? <div className="mt-3 rounded bg-red-50 px-3 py-2 text-sm text-red-700">{message}</div> : null}
       </Card>
 
       <section>
-        <h2 className="mb-3 font-semibold">{t.salesHistory}</h2>
+        <h2 className="mb-3 font-semibold">{t("sales.history")}</h2>
         <div className="space-y-5">
           {salesGroups.map((group) => (
             <div key={group.key}>
               <div className="mb-2 flex items-center justify-between gap-3">
-                <h3 className="text-lg font-semibold text-ink">{group.label}</h3>
+                <h3 className="text-lg font-semibold text-ink">{formatDate(`${group.key}T12:00:00`)}</h3>
                 <div className="rounded bg-white px-3 py-1 text-sm font-medium text-ink/60">{group.sales.length}</div>
               </div>
 
               <Table>
                 <thead>
                   <tr>
-                    <Th>{t.saleDate}</Th>
-                    <Th>{t.sku}</Th>
-                    <Th>{t.productName}</Th>
-                    <Th>{t.quantity}</Th>
-                    <Th>{t.memo}</Th>
-                    <Th>{t.edit}</Th>
+                    <Th>{t("sales.saleDate")}</Th>
+                    <Th>{t("common.sku")}</Th>
+                    <Th>{t("common.productName")}</Th>
+                    <Th>{t("common.quantity")}</Th>
+                    <Th>{t("common.memo")}</Th>
+                    <Th>{t("common.actions")}</Th>
                   </tr>
                 </thead>
                 <tbody>
                   {group.sales.map((sale) => (
                     <tr key={sale.id}>
-                      <Td>{new Date(sale.happened_at).toLocaleDateString()}</Td>
+                      <Td>{formatDate(sale.happened_at)}</Td>
                       <Td>{sale.products?.sku}</Td>
                       <Td>{sale.products?.name}</Td>
                       <Td>{sale.quantity}</Td>
@@ -272,10 +272,10 @@ function SalesContent() {
                       <Td>
                         <div className="flex gap-2">
                           <button className="rounded border border-line bg-white px-3 py-1.5 text-sm font-medium" onClick={() => startEdit(sale)}>
-                            {t.edit}
+                            {t("common.edit")}
                           </button>
                           <button className="rounded border border-red-200 bg-red-50 px-3 py-1.5 text-sm font-medium text-red-700" onClick={() => deleteSale(sale)}>
-                            {t.delete}
+                            {t("common.delete")}
                           </button>
                         </div>
                       </Td>
@@ -289,7 +289,7 @@ function SalesContent() {
             <Table>
               <tbody>
                 <tr>
-                  <Td>{t.empty}</Td>
+                  <Td>{t("common.empty")}</Td>
                   <Td>{"-"}</Td>
                   <Td>{"-"}</Td>
                   <Td>{"-"}</Td>
@@ -318,7 +318,7 @@ function groupSalesByDate(sales: StockMovement[]) {
 
   return Array.from(groups.entries()).map(([key, groupSales]) => ({
     key,
-    label: new Date(`${key}T12:00:00`).toLocaleDateString(),
+    label: key,
     sales: groupSales
   }));
 }

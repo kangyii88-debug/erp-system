@@ -88,34 +88,34 @@ function ImportExportContent() {
       }));
 
     const { error } = await supabase.from("products").upsert(payload, { onConflict: "user_id,sku" });
-    setMessage(error ? error.message : `Imported ${payload.length} products`);
+    setMessage(error ? error.message : t("import.imported", { count: payload.length }));
   }
 
   return (
     <>
-      <PageHeader title={t.importExport} />
+      <PageHeader title={t("import.title")} />
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
-          <h2 className="mb-2 font-semibold">{t.importProducts}</h2>
+          <h2 className="mb-2 font-semibold">{t("import.importProducts")}</h2>
           <input type="file" accept=".csv,text/csv" onChange={importProducts} />
         </Card>
         <Card>
-          <h2 className="mb-2 font-semibold">{t.exportProducts}</h2>
+          <h2 className="mb-2 font-semibold">{t("import.exportProducts")}</h2>
           <button className="rounded bg-brand px-4 py-2 text-sm font-semibold text-white" onClick={exportProducts}>
-            {t.exportProducts}
+            {t("import.exportProducts")}
           </button>
         </Card>
         <Card>
-          <h2 className="mb-2 font-semibold">{t.exportInventory}</h2>
+          <h2 className="mb-2 font-semibold">{t("import.exportInventory")}</h2>
           <button className="rounded bg-ink px-4 py-2 text-sm font-semibold text-white" onClick={exportInventory}>
-            {t.exportInventory}
+            {t("import.exportInventory")}
           </button>
         </Card>
       </div>
       {message ? <div className="mt-4 rounded border border-line bg-white px-4 py-3 text-sm">{message}</div> : null}
       <Card className="mt-4">
         <div className="text-sm text-ink/70">
-          CSV columns: name, sku, color, size, purchase_price, platform_fee_rate, international_shipping_cost, coupang_inbound_shipping_cost, ad_cost, sale_price, platform, low_stock_threshold, memo
+          {t("import.columnsHelp")}
         </div>
       </Card>
     </>

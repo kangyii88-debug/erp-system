@@ -37,7 +37,7 @@ export default function ProductsPage() {
 }
 
 function ProductsContent() {
-  const { t } = useLanguage();
+  const { t, formatCurrency } = useLanguage();
   const [products, setProducts] = useState<ProductWithStock[]>([]);
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -99,7 +99,7 @@ function ProductsContent() {
         product_id: productId,
         type: "inbound",
         quantity: initialStock,
-        memo: "初始库存"
+        memo: t("product.initialStock")
       });
       errorMessage = error?.message ?? "";
     }
@@ -143,7 +143,7 @@ function ProductsContent() {
     setMessage("");
   }
 
-  const productGroups = groupProducts(products);
+  const productGroups = groupProducts(products, t);
   const profitPreviewProduct = {
     purchase_price: Number(form.purchase_price || 0),
     sale_price: Number(form.sale_price || 0),
@@ -157,65 +157,65 @@ function ProductsContent() {
 
   return (
     <>
-      <PageHeader title={t.products} />
+      <PageHeader title={t("product.title")} />
       <Card className="mb-5">
         <div className="mb-4 flex items-center justify-between gap-3">
-          <h2 className="font-semibold">{editingId ? t.updateProduct : t.addProduct}</h2>
+          <h2 className="font-semibold">{editingId ? t("product.update") : t("product.add")}</h2>
           {editingId ? (
             <button className="rounded border border-line bg-white px-3 py-1.5 text-sm font-medium" type="button" onClick={cancelEdit}>
-              {t.cancel}
+              {t("common.cancel")}
             </button>
           ) : null}
         </div>
 
         <form onSubmit={submit} className="grid gap-4">
           <div className="grid gap-3 md:grid-cols-4">
-            <Field label="商品名">
-              <input placeholder="商品名" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} required />
+            <Field label={t("common.productName")}>
+              <input placeholder={t("common.productName")} value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} required />
             </Field>
-            <Field label="SKU">
-              <input placeholder="SKU" value={form.sku} onChange={(event) => setForm({ ...form, sku: event.target.value })} required />
+            <Field label={t("common.sku")}>
+              <input placeholder={t("common.sku")} value={form.sku} onChange={(event) => setForm({ ...form, sku: event.target.value })} required />
             </Field>
-            <Field label="颜色">
-              <input placeholder="颜色" value={form.color} onChange={(event) => setForm({ ...form, color: event.target.value })} />
+            <Field label={t("common.color")}>
+              <input placeholder={t("common.color")} value={form.color} onChange={(event) => setForm({ ...form, color: event.target.value })} />
             </Field>
-            <Field label="尺寸">
-              <input placeholder="尺寸" value={form.size} onChange={(event) => setForm({ ...form, size: event.target.value })} />
+            <Field label={t("common.size")}>
+              <input placeholder={t("common.size")} value={form.size} onChange={(event) => setForm({ ...form, size: event.target.value })} />
             </Field>
           </div>
 
           <div className="grid gap-3 md:grid-cols-4">
-            <Field label="商品进货成本">
+            <Field label={t("common.purchasePrice")}>
               <input placeholder="0" type="number" min="0" value={form.purchase_price} onChange={(event) => setForm({ ...form, purchase_price: event.target.value })} />
             </Field>
-            <Field label="销售价格">
+            <Field label={t("common.salePrice")}>
               <input placeholder="0" type="number" min="0" value={form.sale_price} onChange={(event) => setForm({ ...form, sale_price: event.target.value })} />
             </Field>
-            <Field label="平台服务费率 %">
+            <Field label={`${t("common.feeRate")} %`}>
               <input placeholder="11.6" type="number" min="0" step="0.1" value={form.platform_fee_rate} onChange={(event) => setForm({ ...form, platform_fee_rate: event.target.value })} />
             </Field>
-            <Field label="销售平台">
+            <Field label={t("common.platform")}>
               <select value={form.platform} onChange={(event) => setForm({ ...form, platform: event.target.value })}>
                 <option>Coupang</option>
                 <option>Naver</option>
                 <option>11st</option>
                 <option>Gmarket</option>
-                <option>Other</option>
+                <option value="Other">{t("common.platformOther")}</option>
               </select>
             </Field>
           </div>
 
           <div className="grid gap-3 md:grid-cols-4">
-            <Field label="国际运输成本">
+            <Field label={t("common.internationalShipping")}>
               <input placeholder="0" type="number" min="0" value={form.international_shipping_cost} onChange={(event) => setForm({ ...form, international_shipping_cost: event.target.value })} />
             </Field>
-            <Field label="Coupang入仓运费">
+            <Field label={`Coupang ${t("common.inboundShipping")}`}>
               <input placeholder="0" type="number" min="0" value={form.coupang_inbound_shipping_cost} onChange={(event) => setForm({ ...form, coupang_inbound_shipping_cost: event.target.value })} />
             </Field>
-            <Field label="广告费用">
+            <Field label={t("common.adCost")}>
               <input placeholder="0" type="number" min="0" value={form.ad_cost} onChange={(event) => setForm({ ...form, ad_cost: event.target.value })} />
             </Field>
-            <Field label={editingId ? "当前库存" : "初始库存"}>
+            <Field label={editingId ? t("common.currentStock") : t("product.initialStock")}>
               <input
                 placeholder="0"
                 type="number"
@@ -230,20 +230,20 @@ function ProductsContent() {
           <div className="rounded border border-line bg-panel p-4">
             <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
               <div>
-                <h3 className="font-semibold text-ink">成本与利润设置</h3>
-                <p className="text-xs text-ink/55">这些字段会参与单件利润、利润率、TOP利润商品和数据看板利润统计。</p>
+                <h3 className="font-semibold text-ink">{t("product.costTitle")}</h3>
+                <p className="text-xs text-ink/55">{t("product.costDescription")}</p>
               </div>
               <div className="rounded bg-white px-3 py-2 text-sm font-semibold text-ink">
-                单件利润 {won(previewUnitProfit)} · 利润率 {previewMargin.toFixed(1)}%
+                {t("common.unitProfit")} {formatCurrency(previewUnitProfit)} · {t("common.profitMargin")} {previewMargin.toFixed(1)}%
               </div>
             </div>
           </div>
 
-          <Field label="备注">
-            <textarea placeholder={t.memo} value={form.memo} onChange={(event) => setForm({ ...form, memo: event.target.value })} />
+          <Field label={t("common.memo")}>
+            <textarea placeholder={t("common.memo")} value={form.memo} onChange={(event) => setForm({ ...form, memo: event.target.value })} />
           </Field>
 
-          <button className="rounded bg-brand px-4 py-2 text-sm font-semibold text-white">{t.save}</button>
+          <button className="rounded bg-brand px-4 py-2 text-sm font-semibold text-white">{t("common.save")}</button>
         </form>
         {message ? <div className="mt-3 rounded bg-red-50 px-3 py-2 text-sm text-red-700">{message}</div> : null}
       </Card>
@@ -253,7 +253,7 @@ function ProductsContent() {
           <div key={group.key}>
             <div className="mb-2 flex items-center justify-between gap-3">
               <div>
-                <div className="text-sm font-medium text-ink/55">{t.color}</div>
+                <div className="text-sm font-medium text-ink/55">{t("common.color")}</div>
                 <h2 className="text-xl font-semibold text-ink">{group.label}</h2>
               </div>
               <div className="rounded bg-white px-3 py-1 text-sm font-medium text-ink/60">{group.products.length} SKU</div>
@@ -262,21 +262,21 @@ function ProductsContent() {
             <Table>
               <thead>
                 <tr>
-                  <Th>{t.sku}</Th>
-                  <Th>{t.productName}</Th>
-                  <Th>{t.size}</Th>
-                  <Th>{t.purchasePrice}</Th>
-                  <Th>手续费</Th>
-                  <Th>国际物流</Th>
-                  <Th>入仓运费</Th>
-                  <Th>广告费</Th>
-                  <Th>{t.salePrice}</Th>
-                  <Th>单件利润</Th>
-                  <Th>利润率</Th>
-                  <Th>{t.currentStock}</Th>
-                  <Th>{t.platform}</Th>
-                  <Th>{t.memo}</Th>
-                  <Th>{t.edit}</Th>
+                  <Th>{t("common.sku")}</Th>
+                  <Th>{t("common.productName")}</Th>
+                  <Th>{t("common.size")}</Th>
+                  <Th>{t("common.purchasePrice")}</Th>
+                  <Th>{t("common.feeRate")}</Th>
+                  <Th>{t("common.internationalShipping")}</Th>
+                  <Th>{t("common.inboundShipping")}</Th>
+                  <Th>{t("common.adCost")}</Th>
+                  <Th>{t("common.salePrice")}</Th>
+                  <Th>{t("common.unitProfit")}</Th>
+                  <Th>{t("common.profitMargin")}</Th>
+                  <Th>{t("common.currentStock")}</Th>
+                  <Th>{t("common.platform")}</Th>
+                  <Th>{t("common.memo")}</Th>
+                  <Th>{t("common.edit")}</Th>
                 </tr>
               </thead>
               <tbody>
@@ -287,13 +287,13 @@ function ProductsContent() {
                       <Td>{product.sku}</Td>
                       <Td>{product.name}</Td>
                       <Td>{normalizedSize(product.size)}</Td>
-                      <Td>{won(product.purchase_price)}</Td>
+                      <Td>{formatCurrency(product.purchase_price)}</Td>
                       <Td>{Number(product.platform_fee_rate ?? 11.6).toFixed(1)}%</Td>
-                      <Td>{won(product.international_shipping_cost ?? 0)}</Td>
-                      <Td>{won(product.coupang_inbound_shipping_cost ?? 0)}</Td>
-                      <Td>{won(product.ad_cost ?? 0)}</Td>
-                      <Td>{won(product.sale_price)}</Td>
-                      <Td>{won(singleProfit)}</Td>
+                      <Td>{formatCurrency(product.international_shipping_cost ?? 0)}</Td>
+                      <Td>{formatCurrency(product.coupang_inbound_shipping_cost ?? 0)}</Td>
+                      <Td>{formatCurrency(product.ad_cost ?? 0)}</Td>
+                      <Td>{formatCurrency(product.sale_price)}</Td>
+                      <Td>{formatCurrency(singleProfit)}</Td>
                       <Td>{profitMargin(product, singleProfit).toFixed(1)}%</Td>
                       <Td>
                         <span className="text-base font-semibold text-ink">{getCurrentStock(product)}</span>
@@ -302,7 +302,7 @@ function ProductsContent() {
                       <Td>{product.memo}</Td>
                       <Td>
                         <button className="rounded border border-line bg-white px-3 py-1.5 text-sm font-medium" onClick={() => startEdit(product)}>
-                          {t.edit}
+                          {t("common.edit")}
                         </button>
                       </Td>
                     </tr>
@@ -326,7 +326,7 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-function groupProducts(products: ProductWithStock[]) {
+function groupProducts(products: ProductWithStock[], t: ReturnType<typeof useLanguage>["t"]) {
   const sortedProducts = [...products].sort(compareProducts);
   const groups = new Map<string, ProductWithStock[]>();
 
@@ -336,7 +336,7 @@ function groupProducts(products: ProductWithStock[]) {
   }
 
   return colorOrder
-    .map((key) => ({ key, label: colorLabel(key, groups.get(key) ?? []), products: groups.get(key) ?? [] }))
+    .map((key) => ({ key, label: colorLabel(key, groups.get(key) ?? [], t), products: groups.get(key) ?? [] }))
     .filter((group) => group.products.length > 0);
 }
 
@@ -378,18 +378,14 @@ function colorRank(product: ProductWithStock) {
   return 9;
 }
 
-function colorLabel(key: string, products: ProductWithStock[]) {
-  return products[0]?.color || colorName(key);
+function colorLabel(key: string, products: ProductWithStock[], t: ReturnType<typeof useLanguage>["t"]) {
+  return products[0]?.color || colorName(key, t);
 }
 
-function colorName(key: string) {
-  if (key === "WH") return "白色";
-  if (key === "BL") return "黑色";
-  if (key === "GR") return "灰色";
-  if (key === "BE") return "米色";
-  return "其他";
-}
-
-function won(value: number | null | undefined) {
-  return `₩${Math.round(Number(value ?? 0)).toLocaleString("ko-KR")}`;
+function colorName(key: string, t: ReturnType<typeof useLanguage>["t"]) {
+  if (key === "WH") return t("color.white");
+  if (key === "BL") return t("color.black");
+  if (key === "GR") return t("color.gray");
+  if (key === "BE") return t("color.beige");
+  return t("color.other");
 }

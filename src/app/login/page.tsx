@@ -48,23 +48,23 @@ function LoginForm() {
               <Boxes size={22} />
             </div>
             <div>
-              <div className="text-lg font-semibold">{t.appName}</div>
-              <div className="text-sm text-ink/60">Korea ecommerce operations</div>
+              <div className="text-lg font-semibold">{t("app.name")}</div>
+              <div className="text-sm text-ink/60">{t("auth.subtitle")}</div>
             </div>
           </div>
           <select value={language} onChange={(event) => setLanguage(event.target.value as "zh" | "ko")}>
-            <option value="zh">中文</option>
-            <option value="ko">한국어</option>
+            <option value="zh">{t("language.zh")}</option>
+            <option value="ko">{t("language.ko")}</option>
           </select>
         </div>
 
         <div className="space-y-3">
           <label className="block">
-            <span className="mb-1 block text-sm font-medium">{t.email}</span>
+            <span className="mb-1 block text-sm font-medium">{t("auth.email")}</span>
             <input className="w-full" type="email" value={email} onChange={(event) => setEmail(event.target.value)} />
           </label>
           <label className="block">
-            <span className="mb-1 block text-sm font-medium">{t.password}</span>
+            <span className="mb-1 block text-sm font-medium">{t("auth.password")}</span>
             <input
               className="w-full"
               type="password"
@@ -79,14 +79,14 @@ function LoginForm() {
               className="rounded bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
               onClick={() => submit("signin")}
             >
-              {t.signIn}
+              {t("auth.signIn")}
             </button>
             <button
               disabled={busy}
               className="rounded border border-line bg-white px-4 py-2 text-sm font-semibold disabled:opacity-50"
               onClick={() => submit("signup")}
             >
-              {t.signUp}
+              {t("auth.signUp")}
             </button>
           </div>
         </div>

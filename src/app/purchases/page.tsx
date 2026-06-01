@@ -19,7 +19,7 @@ export default function PurchasesPage() {
 }
 
 function PurchasesContent() {
-  const { t } = useLanguage();
+  const { t, formatDate } = useLanguage();
   const [products, setProducts] = useState<ProductWithStock[]>([]);
   const [orders, setOrders] = useState<PurchaseOrder[]>([]);
   const [form, setForm] = useState({
@@ -89,30 +89,30 @@ function PurchasesContent() {
 
   return (
     <>
-      <PageHeader title={t.purchases} />
+      <PageHeader title={t("purchase.title")} />
       <Card className="mb-5">
-        <h2 className="mb-3 font-semibold">{t.addPurchase}</h2>
+        <h2 className="mb-3 font-semibold">{t("purchase.add")}</h2>
         <form onSubmit={submit} className="grid gap-3 md:grid-cols-4">
           <ProductSelect products={products} value={form.product_id} onChange={(value) => setForm({ ...form, product_id: value })} />
-          <input placeholder={t.factory} value={form.factory_name} onChange={(e) => setForm({ ...form, factory_name: e.target.value })} required />
+          <input placeholder={t("common.factory")} value={form.factory_name} onChange={(e) => setForm({ ...form, factory_name: e.target.value })} required />
           <input type="number" min="1" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} />
           <input type="date" value={form.expected_arrival_date} onChange={(e) => setForm({ ...form, expected_arrival_date: e.target.value })} />
           <select value={form.production_status} onChange={(e) => setForm({ ...form, production_status: e.target.value })}>
             {productionStatuses.map((status) => (
               <option key={status} value={status}>
-                {t[status]}
+                {productionStatusLabel(status, t)}
               </option>
             ))}
           </select>
           <select value={form.shipping_status} onChange={(e) => setForm({ ...form, shipping_status: e.target.value })}>
             {shippingStatuses.map((status) => (
               <option key={status} value={status}>
-                {t[status]}
+                {shippingStatusLabel(status, t)}
               </option>
             ))}
           </select>
-          <input className="md:col-span-1" placeholder={t.memo} value={form.memo} onChange={(e) => setForm({ ...form, memo: e.target.value })} />
-          <button className="rounded bg-brand px-4 py-2 text-sm font-semibold text-white">{t.save}</button>
+          <input className="md:col-span-1" placeholder={t("common.memo")} value={form.memo} onChange={(e) => setForm({ ...form, memo: e.target.value })} />
+          <button className="rounded bg-brand px-4 py-2 text-sm font-semibold text-white">{t("common.save")}</button>
         </form>
         {message ? <div className="mt-3 rounded bg-red-50 px-3 py-2 text-sm text-red-700">{message}</div> : null}
       </Card>
@@ -120,14 +120,14 @@ function PurchasesContent() {
       <Table>
         <thead>
           <tr>
-            <Th>{t.sku}</Th>
-            <Th>{t.productName}</Th>
-            <Th>{t.factory}</Th>
-            <Th>{t.quantity}</Th>
-            <Th>{t.productionStatus}</Th>
-            <Th>{t.shippingStatus}</Th>
-            <Th>{t.eta}</Th>
-            <Th>{t.memo}</Th>
+            <Th>{t("common.sku")}</Th>
+            <Th>{t("common.productName")}</Th>
+            <Th>{t("common.factory")}</Th>
+            <Th>{t("common.quantity")}</Th>
+            <Th>{t("purchase.productionStatus")}</Th>
+            <Th>{t("purchase.shippingStatus")}</Th>
+            <Th>{t("purchase.eta")}</Th>
+            <Th>{t("common.memo")}</Th>
           </tr>
         </thead>
         <tbody>
@@ -141,7 +141,7 @@ function PurchasesContent() {
                 <select value={order.production_status} onChange={(e) => updateOrder(order.id, { production_status: e.target.value })}>
                   {productionStatuses.map((status) => (
                     <option key={status} value={status}>
-                      {t[status]}
+                      {productionStatusLabel(status, t)}
                     </option>
                   ))}
                 </select>
@@ -150,12 +150,12 @@ function PurchasesContent() {
                 <select value={order.shipping_status} onChange={(e) => updateOrder(order.id, { shipping_status: e.target.value })}>
                   {shippingStatuses.map((status) => (
                     <option key={status} value={status}>
-                      {t[status]}
+                      {shippingStatusLabel(status, t)}
                     </option>
                   ))}
                 </select>
               </Td>
-              <Td>{order.expected_arrival_date}</Td>
+              <Td>{order.expected_arrival_date ? formatDate(`${order.expected_arrival_date}T12:00:00`) : "-"}</Td>
               <Td>{order.memo}</Td>
             </tr>
           ))}
@@ -163,4 +163,26 @@ function PurchasesContent() {
       </Table>
     </>
   );
+}
+
+function productionStatusLabel(status: string, t: ReturnType<typeof useLanguage>["t"]) {
+  const labels: Record<string, Parameters<typeof t>[0]> = {
+    pending: "status.pending",
+    producing: "status.producing",
+    completed: "status.completed",
+    delayed: "status.delayed",
+    cancelled: "status.cancelled"
+  };
+  return t(labels[status] ?? "common.status");
+}
+
+function shippingStatusLabel(status: string, t: ReturnType<typeof useLanguage>["t"]) {
+  const labels: Record<string, Parameters<typeof t>[0]> = {
+    not_shipped: "status.notShipped",
+    shipped_from_china: "status.shippedFromChina",
+    customs: "status.customs",
+    in_korea: "status.inKorea",
+    received: "status.received"
+  };
+  return t(labels[status] ?? "common.status");
 }

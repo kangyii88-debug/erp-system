@@ -1,6 +1,7 @@
 "use client";
 
 import type { ProductWithStock } from "@/lib/types";
+import { useLanguage } from "./LanguageProvider";
 
 const colorOrder = ["WH", "BL", "GR", "BE", "OTHER"];
 
@@ -13,11 +14,12 @@ export function ProductSelect({
   value: string;
   onChange: (value: string) => void;
 }) {
-  const groupedProducts = groupProductsByColor(products);
+  const { t } = useLanguage();
+  const groupedProducts = groupProductsByColor(products, t);
 
   return (
     <select value={value} onChange={(event) => onChange(event.target.value)} required>
-      <option value="">Select</option>
+      <option value="">{t("common.select")}</option>
       {groupedProducts.map((group) => (
         <optgroup key={group.key} label={group.label}>
           {group.products.map((product) => (
@@ -31,7 +33,7 @@ export function ProductSelect({
   );
 }
 
-function groupProductsByColor(products: ProductWithStock[]) {
+function groupProductsByColor(products: ProductWithStock[], t: ReturnType<typeof useLanguage>["t"]) {
   const sortedProducts = [...products].sort(compareProducts);
   const groups = new Map<string, ProductWithStock[]>();
 
@@ -41,7 +43,7 @@ function groupProductsByColor(products: ProductWithStock[]) {
   }
 
   return colorOrder
-    .map((key) => ({ key, label: colorGroupLabel(key, groups.get(key) ?? []), products: groups.get(key) ?? [] }))
+    .map((key) => ({ key, label: colorGroupLabel(key, t), products: groups.get(key) ?? [] }))
     .filter((group) => group.products.length > 0);
 }
 
@@ -68,6 +70,10 @@ function colorKey(product: ProductWithStock) {
   return product.sku.match(/-(WH|BL|GR|BE)$/i)?.[1]?.toUpperCase() ?? "OTHER";
 }
 
-function colorGroupLabel(key: string, products: ProductWithStock[]) {
-  return products[0]?.color || key;
+function colorGroupLabel(key: string, t: ReturnType<typeof useLanguage>["t"]) {
+  if (key === "WH") return t("color.white");
+  if (key === "BL") return t("color.black");
+  if (key === "GR") return t("color.gray");
+  if (key === "BE") return t("color.beige");
+  return t("color.other");
 }
