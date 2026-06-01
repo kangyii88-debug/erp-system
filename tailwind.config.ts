@@ -5,13 +5,16 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        ink: "#17201b",
-        line: "#d8dfd7",
-        panel: "#f8faf7",
-        brand: "#1f7a55"
+        ink: "var(--color-text-main)",
+        line: "var(--color-border)",
+        panel: "var(--color-bg-soft)",
+        brand: "var(--color-primary)",
+        card: "var(--color-card)",
+        muted: "var(--color-text-muted)"
       },
       boxShadow: {
-        soft: "0 8px 24px rgba(23, 32, 27, 0.08)"
+        soft: "var(--shadow-card)",
+        lift: "var(--shadow-lift)"
       }
     }
   },

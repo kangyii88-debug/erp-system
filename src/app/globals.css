@@ -4,24 +4,151 @@
 
 :root {
   color-scheme: light;
+  --color-primary: #17483f;
+  --color-primary-strong: #0f342f;
+  --color-primary-soft: #e6efeb;
+  --color-bg: #edf0eb;
+  --color-bg-soft: #f6f5f0;
+  --color-card: #fffdf8;
+  --color-border: #d7d9cf;
+  --color-border-strong: #c5c9bd;
+  --color-text-main: #17211d;
+  --color-text-muted: #66706a;
+  --color-success: #23614f;
+  --color-success-bg: #e8f1ed;
+  --color-warning: #8a6834;
+  --color-warning-bg: #f4ebda;
+  --color-danger: #9a3f3f;
+  --color-danger-bg: #f5e6e3;
+  --shadow-card: 0 1px 1px rgba(23, 33, 29, 0.04), 0 14px 36px rgba(23, 33, 29, 0.08);
+  --shadow-lift: 0 18px 48px rgba(23, 33, 29, 0.12);
+  --radius-card: 14px;
+  --radius-control: 10px;
 }
 
 body {
-  background: #eef3ee;
-  color: #17201b;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top right, rgba(23, 72, 63, 0.08), transparent 30rem),
+    linear-gradient(180deg, #f3f1ea 0%, var(--color-bg) 38%, #e9ede7 100%);
+  color: var(--color-text-main);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
 }
 
 input,
 select,
 textarea {
-  @apply rounded border border-line bg-white px-3 py-2 text-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/15;
+  @apply border border-line bg-card px-3 py-2 text-sm outline-none transition;
+  border-radius: var(--radius-control);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(23, 72, 63, 0.13);
 }
 
 button {
   @apply transition;
+  border-radius: var(--radius-control);
+}
+
+button:hover {
+  transform: translateY(-1px);
+}
+
+button:active {
+  transform: translateY(0);
 }
 
 table {
   border-collapse: separate;
   border-spacing: 0;
+}
+
+.bg-white {
+  background-color: var(--color-card) !important;
+}
+
+.rounded {
+  border-radius: var(--radius-control) !important;
+}
+
+.rounded-xl {
+  border-radius: 14px !important;
+}
+
+.rounded-2xl {
+  border-radius: 18px !important;
+}
+
+.bg-red-50 {
+  background-color: var(--color-danger-bg) !important;
+}
+
+.text-red-600,
+.text-red-700 {
+  color: var(--color-danger) !important;
+}
+
+.border-red-200 {
+  border-color: rgba(154, 63, 63, 0.24) !important;
+}
+
+.bg-emerald-50 {
+  background-color: var(--color-success-bg) !important;
+}
+
+.text-emerald-700 {
+  color: var(--color-success) !important;
+}
+
+.border-emerald-200 {
+  border-color: rgba(35, 97, 79, 0.24) !important;
+}
+
+.bg-yellow-50 {
+  background-color: var(--color-warning-bg) !important;
+}
+
+.text-yellow-700,
+.text-yellow-800 {
+  color: var(--color-warning) !important;
+}
+
+.border-yellow-200 {
+  border-color: rgba(138, 104, 52, 0.24) !important;
+}
+
+@layer components {
+  .erp-card {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-card);
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(255, 253, 248, 0.98)),
+      var(--color-card);
+    box-shadow: var(--shadow-card);
+  }
+
+  .erp-button-primary {
+    background: linear-gradient(135deg, var(--color-primary), var(--color-primary-strong));
+    color: white;
+    box-shadow: 0 8px 18px rgba(23, 72, 63, 0.18);
+  }
+
+  .erp-button-subtle {
+    border: 1px solid var(--color-border);
+    background: rgba(255, 253, 248, 0.82);
+    color: var(--color-text-main);
+  }
+
+  .erp-chip {
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    background: rgba(255, 253, 248, 0.82);
+    color: var(--color-text-muted);
+  }
 }

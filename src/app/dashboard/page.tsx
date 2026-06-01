@@ -528,30 +528,30 @@ function TrendChart({ data, comparisonData, metric }: { data: SalesPoint[]; comp
   }
 
   return (
-    <div className="rounded-2xl border border-line bg-gradient-to-br from-white via-white to-emerald-50/60 p-5 shadow-soft">
+    <div className="rounded-2xl border border-line bg-gradient-to-br from-card via-card to-[#eef3ee] p-5 shadow-soft">
       <TrendSummary data={data} metric={metric} growth={growth} bestDay={bestDay} worstDay={worstDay} />
       <div className="mt-5 h-80">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data} margin={{ top: 12, right: 18, left: 0, bottom: 6 }}>
             <defs>
               <linearGradient id="salesTrendFill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#217f57" stopOpacity={0.35} />
-                <stop offset="55%" stopColor="#217f57" stopOpacity={0.1} />
-                <stop offset="100%" stopColor="#217f57" stopOpacity={0.01} />
+                <stop offset="5%" stopColor="#17483f" stopOpacity={0.34} />
+                <stop offset="55%" stopColor="#17483f" stopOpacity={0.1} />
+                <stop offset="100%" stopColor="#17483f" stopOpacity={0.01} />
               </linearGradient>
             </defs>
-            <CartesianGrid stroke="#d9e3dc" strokeDasharray="4 6" vertical={false} />
-            <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fill: "#66736b", fontSize: 12 }} />
-            <YAxis tickLine={false} axisLine={false} tick={{ fill: "#66736b", fontSize: 12 }} width={36} />
-            <Tooltip content={<TrendTooltip />} cursor={{ stroke: "#217f57", strokeWidth: 1, strokeDasharray: "4 4" }} />
+            <CartesianGrid stroke="#d7d9cf" strokeDasharray="4 7" vertical={false} />
+            <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fill: "#66706a", fontSize: 12 }} />
+            <YAxis tickLine={false} axisLine={false} tick={{ fill: "#66706a", fontSize: 12 }} width={36} />
+            <Tooltip content={<TrendTooltip />} cursor={{ stroke: "#17483f", strokeWidth: 1, strokeDasharray: "4 4" }} />
             <Area
               type="monotone"
               dataKey={metric}
-              stroke="#217f57"
+              stroke="#17483f"
               strokeWidth={3}
               fill="url(#salesTrendFill)"
-              activeDot={{ r: 6, stroke: "#ffffff", strokeWidth: 3, fill: "#217f57" }}
-              dot={{ r: 3, stroke: "#217f57", strokeWidth: 2, fill: "#ffffff" }}
+              activeDot={{ r: 6, stroke: "#fffdf8", strokeWidth: 3, fill: "#17483f" }}
+              dot={{ r: 3, stroke: "#17483f", strokeWidth: 2, fill: "#fffdf8" }}
             />
           </AreaChart>
         </ResponsiveContainer>
@@ -647,7 +647,7 @@ function AnnualTrendModule({
   const insight = buildAnnualInsight(data, metric, growth, bestMonth, worstMonth, t);
 
   return (
-    <div className="rounded-2xl border border-line bg-gradient-to-br from-white via-white to-emerald-50/70 p-5 shadow-soft">
+    <div className="rounded-2xl border border-line bg-gradient-to-br from-card via-card to-[#eef3ee] p-5 shadow-soft">
       <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <DashboardSectionTitle eyebrow={t("dashboard.annual.trend")} title={t("dashboard.annual.title", { year })} />
         <div className="flex flex-wrap items-center gap-2">
@@ -690,46 +690,46 @@ function AnnualTrendModule({
             <AreaChart data={data} margin={{ top: 16, right: 24, left: 4, bottom: 8 }}>
               <defs>
                 <linearGradient id="annualTrendFill" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#217f57" stopOpacity={0.32} />
-                  <stop offset="55%" stopColor="#217f57" stopOpacity={0.1} />
-                  <stop offset="100%" stopColor="#217f57" stopOpacity={0.01} />
+                  <stop offset="0%" stopColor="#17483f" stopOpacity={0.32} />
+                  <stop offset="55%" stopColor="#17483f" stopOpacity={0.1} />
+                  <stop offset="100%" stopColor="#17483f" stopOpacity={0.01} />
                 </linearGradient>
                 <linearGradient id="annualPreviousFill" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#94a3b8" stopOpacity={0.18} />
-                  <stop offset="100%" stopColor="#94a3b8" stopOpacity={0.01} />
+                  <stop offset="0%" stopColor="#8b9489" stopOpacity={0.18} />
+                  <stop offset="100%" stopColor="#8b9489" stopOpacity={0.01} />
                 </linearGradient>
               </defs>
-              <CartesianGrid stroke="#d9e3dc" strokeDasharray="4 6" vertical={false} />
-              <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fill: "#66736b", fontSize: 12 }} />
+              <CartesianGrid stroke="#d7d9cf" strokeDasharray="4 7" vertical={false} />
+              <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fill: "#66706a", fontSize: 12 }} />
               <YAxis
                 tickLine={false}
                 axisLine={false}
-                tick={{ fill: "#66736b", fontSize: 12 }}
+                tick={{ fill: "#66706a", fontSize: 12 }}
                 width={metric === "revenue" ? 78 : 44}
                 tickFormatter={(value) => metric === "revenue" ? shortWon(Number(value)) : formatNumber(Number(value))}
               />
-              <Tooltip content={<AnnualTooltip year={year} metric={metric} comparePreviousYear={comparePreviousYear} />} cursor={{ stroke: "#217f57", strokeWidth: 1, strokeDasharray: "4 4" }} />
+              <Tooltip content={<AnnualTooltip year={year} metric={metric} comparePreviousYear={comparePreviousYear} />} cursor={{ stroke: "#17483f", strokeWidth: 1, strokeDasharray: "4 4" }} />
               {comparePreviousYear ? (
                 <Area
                   type="monotone"
                   dataKey={previousKey}
                   name={`${year - 1}`}
-                  stroke="#94a3b8"
+                  stroke="#8b9489"
                   strokeWidth={2}
                   fill="url(#annualPreviousFill)"
-                  activeDot={{ r: 5, stroke: "#ffffff", strokeWidth: 2, fill: "#94a3b8" }}
-                  dot={{ r: 2, stroke: "#94a3b8", strokeWidth: 1, fill: "#ffffff" }}
+                  activeDot={{ r: 5, stroke: "#fffdf8", strokeWidth: 2, fill: "#8b9489" }}
+                  dot={{ r: 2, stroke: "#8b9489", strokeWidth: 1, fill: "#fffdf8" }}
                 />
               ) : null}
               <Area
                 type="monotone"
                 dataKey={metricKey}
                 name={`${year}`}
-                stroke="#217f57"
+                stroke="#17483f"
                 strokeWidth={3}
                 fill="url(#annualTrendFill)"
-                activeDot={{ r: 7, stroke: "#ffffff", strokeWidth: 3, fill: "#217f57" }}
-                dot={{ r: 3, stroke: "#217f57", strokeWidth: 2, fill: "#ffffff" }}
+                activeDot={{ r: 7, stroke: "#fffdf8", strokeWidth: 3, fill: "#17483f" }}
+                dot={{ r: 3, stroke: "#17483f", strokeWidth: 2, fill: "#fffdf8" }}
               />
             </AreaChart>
           </ResponsiveContainer>
@@ -1029,11 +1029,11 @@ function buildInventoryHealth(rows: SmartReplenishmentRow[], slowMoving: Repleni
   const healthy = Math.max(0, total - danger - warning - slow);
   const inTransit = rows.reduce((sum, row) => sum + row.openPurchaseQty, 0);
   const items = [
-    { label: t("dashboard.health.healthy"), value: healthy, color: "#217f57" },
-    { label: t("dashboard.health.danger"), value: danger, color: "#dc2626" },
-    { label: t("dashboard.health.warning"), value: warning, color: "#d97706" },
-    { label: t("dashboard.health.slow"), value: slow, color: "#64748b" },
-    { label: t("dashboard.health.inTransit"), value: inTransit, color: "#2563eb" }
+    { label: t("dashboard.health.healthy"), value: healthy, color: "#17483f" },
+    { label: t("dashboard.health.danger"), value: danger, color: "#9a3f3f" },
+    { label: t("dashboard.health.warning"), value: warning, color: "#8a6834" },
+    { label: t("dashboard.health.slow"), value: slow, color: "#6f776e" },
+    { label: t("dashboard.health.inTransit"), value: inTransit, color: "#426a77" }
   ];
   const denominator = Math.max(1, healthy + danger + warning + slow + inTransit);
 
