@@ -187,5 +187,15 @@
   "unit.item": "项",
   "unit.month": "月",
   "unit.noRisk": "无风险",
-  "unit.noSales": "无销量"
+  "unit.noSales": "无销量",
+  "dashboard.health.score": "健康评分",
+  "dashboard.health.centerLabel": "库存健康度",
+  "dashboard.health.grade": "等级",
+  "dashboard.health.totalSku": "SKU总数",
+  "dashboard.health.totalValue": "库存总金额",
+  "dashboard.health.stockValue": "库存金额",
+  "dashboard.health.keyMetric": "关键指标",
+  "dashboard.health.stockAmount": "库存金额 {{value}}",
+  "dashboard.health.saleableDays": "预计售罄 {{days}} 天",
+  "dashboard.health.inTransitUnits": "在途数量 {{count}}"
 }

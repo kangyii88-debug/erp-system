@@ -187,5 +187,15 @@
   "unit.item": "건",
   "unit.month": "월",
   "unit.noRisk": "위험 없음",
-  "unit.noSales": "판매 없음"
+  "unit.noSales": "판매 없음",
+  "dashboard.health.score": "건강 점수",
+  "dashboard.health.centerLabel": "재고 건강도",
+  "dashboard.health.grade": "등급",
+  "dashboard.health.totalSku": "SKU 총수",
+  "dashboard.health.totalValue": "총 재고 금액",
+  "dashboard.health.stockValue": "재고 금액",
+  "dashboard.health.keyMetric": "핵심 지표",
+  "dashboard.health.stockAmount": "재고 금액 {{value}}",
+  "dashboard.health.saleableDays": "예상 소진 {{days}}일",
+  "dashboard.health.inTransitUnits": "이동 중 수량 {{count}}"
 }
