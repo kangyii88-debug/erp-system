@@ -10,10 +10,10 @@ import {
   CalendarDays,
   CircleAlert,
   CircleCheck,
-  CreditCard,
   Download,
   DollarSign,
   Layers,
+  Megaphone,
   PackageCheck,
   Search,
   ShoppingBag,
@@ -173,8 +173,6 @@ function DashboardContent() {
   const skuCount = rows.length;
   const rangeMetrics = buildSalesMetrics(rangeSales, productMap);
   const comparisonMetrics = buildSalesMetrics(comparisonSales, productMap);
-  const rangeAov = rangeMetrics.quantity > 0 ? rangeMetrics.revenue / rangeMetrics.quantity : 0;
-  const comparisonAov = comparisonMetrics.quantity > 0 ? comparisonMetrics.revenue / comparisonMetrics.quantity : 0;
   const returnInboundQty = countTypedMovements(rangeMovements, "return_inbound");
   const comparisonReturnInboundQty = countTypedMovements(comparisonMovements, "return_inbound");
   const lossQty = countTypedMovements(rangeMovements, "loss");
@@ -249,12 +247,12 @@ function DashboardContent() {
             />
             <ExecutiveKpi
               delay={200}
-              icon={CreditCard}
-              label={kpiCopy.aovLabel}
-              subtitle={kpiCopy.aovSubtitle}
-              value={rangeAov}
+              icon={Megaphone}
+              label={kpiCopy.adSpendLabel}
+              subtitle={kpiCopy.adSpendSubtitle}
+              value={rangeMetrics.adSpend}
               format="currency"
-              compare={compare(rangeAov, comparisonAov)}
+              compare={compare(rangeMetrics.adSpend, comparisonMetrics.adSpend)}
             />
             <ExecutiveKpi
               delay={300}
@@ -2081,9 +2079,10 @@ function buildSalesMetrics(salesRows: SaleDaily[], productMap: Map<string, Produ
 
     metrics.quantity += quantity;
     metrics.revenue += quantity * salePrice;
+    metrics.adSpend += quantity * money(product.ad_cost);
     metrics.profit += totalProfit(product, quantity);
     return metrics;
-  }, { quantity: 0, revenue: 0, profit: 0 });
+  }, { quantity: 0, revenue: 0, adSpend: 0, profit: 0 });
 }
 
 function buildDailySalesPoints(salesRows: SaleDaily[], productMap: Map<string, ProductWithStock>, days: number, anchorDate: Date): SalesPoint[] {
@@ -2234,7 +2233,7 @@ function buildKpiCopy(
   const zhMetrics = {
     revenue: "销售额",
     orders: "订单数",
-    aov: "客单价",
+    adSpend: "广告费",
     profit: "利润",
     returnInbound: "退货入库在售",
     loss: "损耗 / 不良 / 丢失"
@@ -2242,7 +2241,7 @@ function buildKpiCopy(
   const koMetrics = {
     revenue: "매출",
     orders: "주문수",
-    aov: "객단가",
+    adSpend: "광고비",
     profit: "이익",
     returnInbound: "반품 입고 판매가능",
     loss: "손상 / 불량 / 분실"
@@ -2253,13 +2252,13 @@ function buildKpiCopy(
   return {
     revenueLabel: `${localizedPeriod}${metricText.revenue}`,
     ordersLabel: `${localizedPeriod}${metricText.orders}`,
-    aovLabel: `${localizedPeriod}${metricText.aov}`,
+    adSpendLabel: `${localizedPeriod}${metricText.adSpend}`,
     profitLabel: `${localizedPeriod}${metricText.profit}`,
     returnInboundLabel: `${localizedPeriod}${metricText.returnInbound}`,
     lossLabel: `${localizedPeriod}${metricText.loss}`,
     revenueSubtitle: `${periodText.en} Revenue`,
     ordersSubtitle: `${periodText.en} Orders`,
-    aovSubtitle: `${periodText.en} AOV`,
+    adSpendSubtitle: `${periodText.en} Ad Spend`,
     profitSubtitle: `${periodText.en} Profit`,
     returnInboundSubtitle: `${periodText.en} Return Inbound Saleable`,
     lossSubtitle: `${periodText.en} Loss / Defect / Missing`
