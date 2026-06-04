@@ -5,14 +5,17 @@ import {
   AlertTriangle,
   ArrowDownRight,
   ArrowUpRight,
+  BarChart3,
   Boxes,
   CalendarDays,
   CircleAlert,
   CircleCheck,
   CreditCard,
+  Download,
   DollarSign,
   Layers,
   PackageCheck,
+  Search,
   ShoppingBag,
   TrendingUp,
   type LucideIcon
@@ -20,7 +23,12 @@ import {
 import {
   Area,
   AreaChart,
+  Bar,
+  BarChart,
+  Cell,
   CartesianGrid,
+  Pie,
+  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -44,6 +52,7 @@ import type { ProductWithStock, PurchaseOrder, SaleDaily } from "@/lib/types";
 type ViewMode = "today" | "yesterday" | "7d" | "30d" | "month" | "custom";
 type TrendMetric = "orders" | "quantity";
 type AnnualMetric = "quantity" | "orders" | "revenue";
+type MonthlySkuMetric = "quantity" | "revenue" | "profit" | "stock";
 type SalesPoint = { date: string; label: string; orders: number; quantity: number; revenue: number; profit: number };
 type AnnualPoint = SalesPoint & {
   month: number;
@@ -55,6 +64,14 @@ type AnnualPoint = SalesPoint & {
 type AlertItem = { level: "danger" | "warning" | "success"; text: string };
 type MovementRow = { type: string; quantity: number; happened_at: string; memo: string | null };
 type TFunction = ReturnType<typeof useLanguage>["t"];
+type MonthlySkuRow = {
+  product: ProductWithStock;
+  currentStock: number;
+  monthly: Array<{ quantity: number; revenue: number; profit: number }>;
+  annualQuantity: number;
+  annualRevenue: number;
+  annualProfit: number;
+};
 
 export default function DashboardPage() {
   return (
@@ -76,6 +93,11 @@ function DashboardContent() {
   const [viewMode, setViewMode] = useState<ViewMode>("today");
   const [trendMetric, setTrendMetric] = useState<TrendMetric>("quantity");
   const [annualMetric, setAnnualMetric] = useState<AnnualMetric>("quantity");
+  const [monthlySkuMetric, setMonthlySkuMetric] = useState<MonthlySkuMetric>("quantity");
+  const [monthlyColorFilter, setMonthlyColorFilter] = useState("all");
+  const [monthlySizeFilter, setMonthlySizeFilter] = useState("all");
+  const [monthlySearch, setMonthlySearch] = useState("");
+  const [selectedMonthlySku, setSelectedMonthlySku] = useState<string | null>(null);
   const [comparePreviousYear, setComparePreviousYear] = useState(true);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [loading, setLoading] = useState(true);
@@ -168,6 +190,10 @@ function DashboardContent() {
   const annualData = buildAnnualTrendPoints(salesYearRows, salesPreviousYearRows, productMap, selectedYear, t);
   const topSales = buildTopSkuPerformance(rangeSales, productMap, "quantity");
   const topProfit = buildTopSkuPerformance(rangeSales, productMap, "profit");
+  const monthlySkuRows = buildMonthlySkuRows(rows, salesYearRows, productMap);
+  const previousYearMonthlySkuRows = buildMonthlySkuRows(rows, salesPreviousYearRows, productMap);
+  const filteredMonthlySkuRows = filterMonthlySkuRows(monthlySkuRows, monthlyColorFilter, monthlySizeFilter, monthlySearch);
+  const selectedMonthlySkuRow = filteredMonthlySkuRows.find((row) => row.product.id === selectedMonthlySku) ?? null;
   const slowMoving = rows
     .filter((row) => row.currentStock > 0 && !hasRecentSale(row.product.id, salesWindowRows))
     .sort((a, b) => b.currentStock * money(b.product.purchase_price) - a.currentStock * money(a.product.purchase_price))
@@ -266,6 +292,25 @@ function DashboardContent() {
             />
           </div>
         </section>
+
+        <SkuMonthlySalesAnalysis
+          rows={filteredMonthlySkuRows}
+          allRows={monthlySkuRows}
+          previousYearRows={previousYearMonthlySkuRows}
+          replenishmentRows={replenishRows}
+          metric={monthlySkuMetric}
+          colorFilter={monthlyColorFilter}
+          sizeFilter={monthlySizeFilter}
+          search={monthlySearch}
+          selectedYear={selectedYear}
+          anchorDate={anchorDate}
+          selectedRow={selectedMonthlySkuRow}
+          onMetricChange={setMonthlySkuMetric}
+          onColorChange={setMonthlyColorFilter}
+          onSizeChange={setMonthlySizeFilter}
+          onSearchChange={setMonthlySearch}
+          onSelectSku={setSelectedMonthlySku}
+        />
 
         <section>
           <Card>
@@ -500,6 +545,173 @@ function DateControl({
         ))}
       </div>
     </div>
+  );
+}
+
+function SkuMonthlySalesAnalysis({
+  rows,
+  allRows,
+  previousYearRows,
+  replenishmentRows,
+  metric,
+  colorFilter,
+  sizeFilter,
+  search,
+  selectedYear,
+  anchorDate,
+  selectedRow,
+  onMetricChange,
+  onColorChange,
+  onSizeChange,
+  onSearchChange,
+  onSelectSku
+}: {
+  rows: MonthlySkuRow[];
+  allRows: MonthlySkuRow[];
+  previousYearRows: MonthlySkuRow[];
+  replenishmentRows: SmartReplenishmentRow[];
+  metric: MonthlySkuMetric;
+  colorFilter: string;
+  sizeFilter: string;
+  search: string;
+  selectedYear: number;
+  anchorDate: Date;
+  selectedRow: MonthlySkuRow | null;
+  onMetricChange: (metric: MonthlySkuMetric) => void;
+  onColorChange: (value: string) => void;
+  onSizeChange: (value: string) => void;
+  onSearchChange: (value: string) => void;
+  onSelectSku: (id: string | null) => void;
+}) {
+  const { language, t, formatCurrency, formatNumber } = useLanguage();
+  const copy = monthlyAnalysisCopy(language);
+  const colors = orderedUnique(allRows.map((row) => row.product.color).filter(Boolean) as string[], ["白色", "黑色", "灰色", "米色"]);
+  const sizes = orderedUnique(allRows.map((row) => row.product.size).filter(Boolean) as string[], ["58.4x163", "76.2x163", "87.6x163", "91.4x163", "99.1x163"]);
+  const colorData = buildColorAnalysis(rows);
+  const sizeRankings = buildSizeRankings(rows);
+  const skuRankings = buildSkuRankings(rows);
+  const monthComparison = buildMonthComparison(rows, previousYearRows, anchorDate.getMonth());
+  const exportName = `sku-monthly-sales-${selectedYear}`;
+
+  return (
+    <section className="print:break-before-page">
+      <Card className="overflow-hidden border-white/45 bg-card/95 shadow-2xl backdrop-blur">
+        <div className="relative overflow-hidden rounded-2xl border border-white/30 bg-gradient-to-br from-[#f9faf7] via-[#eef2eb] to-[#f6f1e8] p-5">
+          <div className="pointer-events-none absolute -right-24 -top-24 h-56 w-56 rounded-full bg-[#1E5A4E]/10 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-20 left-20 h-56 w-56 rounded-full bg-[#406A7A]/10 blur-3xl" />
+
+          <div className="relative flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+            <DashboardSectionTitle eyebrow="SKU Monthly Sales Analysis" title={copy.title} />
+            <div className="flex flex-wrap gap-2">
+              {(["quantity", "revenue", "profit", "stock"] as MonthlySkuMetric[]).map((item) => (
+                <SegmentButton key={item} active={metric === item} onClick={() => onMetricChange(item)}>
+                  {copy.metrics[item]}
+                </SegmentButton>
+              ))}
+              <button type="button" onClick={() => exportMonthlySkuCsv(rows, metric, selectedYear, exportName)} className="inline-flex items-center gap-2 rounded-xl border border-line bg-white/80 px-3 py-2 text-sm font-semibold text-ink shadow-soft transition hover:-translate-y-0.5 hover:shadow-lg">
+                <Download size={16} /> CSV
+              </button>
+              <button type="button" onClick={() => exportMonthlySkuExcel(rows, metric, selectedYear, exportName)} className="inline-flex items-center gap-2 rounded-xl border border-line bg-white/80 px-3 py-2 text-sm font-semibold text-ink shadow-soft transition hover:-translate-y-0.5 hover:shadow-lg">
+                <Download size={16} /> Excel
+              </button>
+              <button type="button" onClick={() => window.print()} className="inline-flex items-center gap-2 rounded-xl border border-line bg-white/80 px-3 py-2 text-sm font-semibold text-ink shadow-soft transition hover:-translate-y-0.5 hover:shadow-lg">
+                <Download size={16} /> PDF
+              </button>
+            </div>
+          </div>
+
+          <div className="relative mt-5 grid gap-3 xl:grid-cols-[1fr_220px_220px_1.4fr]">
+            <label className="relative block">
+              <span className="mb-1 block text-xs font-semibold text-ink/55">{copy.search}</span>
+              <Search className="pointer-events-none absolute bottom-3 left-3 text-ink/35" size={16} />
+              <input className="w-full rounded-xl pl-9" value={search} placeholder={copy.searchPlaceholder} onChange={(event) => onSearchChange(event.target.value)} />
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-xs font-semibold text-ink/55">{copy.color}</span>
+              <select className="w-full rounded-xl" value={colorFilter} onChange={(event) => onColorChange(event.target.value)}>
+                <option value="all">{copy.allColors}</option>
+                {colors.map((color) => <option key={color} value={color}>{color}</option>)}
+              </select>
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-xs font-semibold text-ink/55">{copy.size}</span>
+              <select className="w-full rounded-xl" value={sizeFilter} onChange={(event) => onSizeChange(event.target.value)}>
+                <option value="all">{copy.allSizes}</option>
+                {sizes.map((size) => <option key={size} value={size}>{size}</option>)}
+              </select>
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              <MiniTrendCard label={copy.annualQuantity} value={formatNumber(sumMonthlyRows(rows, "quantity"))} />
+              <MiniTrendCard label={copy.annualRevenue} value={formatCurrency(sumMonthlyRows(rows, "revenue"))} />
+              <MiniTrendCard label={copy.annualProfit} value={formatCurrency(sumMonthlyRows(rows, "profit"))} />
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-5 overflow-hidden rounded-2xl border border-line bg-white/85 shadow-soft">
+          <div className="max-h-[520px] overflow-auto">
+            <table className="min-w-[1280px] w-full border-collapse text-sm">
+              <thead className="sticky top-0 z-20 bg-[#f8faf6]/95 backdrop-blur">
+                <tr>
+                  <th className="sticky left-0 z-30 min-w-[280px] border-b border-line bg-[#f8faf6]/95 px-4 py-3 text-left font-semibold text-ink">{copy.productName}</th>
+                  {Array.from({ length: 12 }, (_, index) => (
+                    <th key={index} className="border-b border-line px-4 py-3 text-right font-semibold text-ink">{index + 1}{copy.month}</th>
+                  ))}
+                  <th className="border-b border-line px-4 py-3 text-right font-semibold text-ink">{copy.annualTotal}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row) => (
+                  <tr key={row.product.id} onClick={() => onSelectSku(row.product.id)} className="cursor-pointer transition hover:bg-[#edf3ef]">
+                    <td className="sticky left-0 z-10 border-b border-line bg-white/95 px-4 py-3">
+                      <div className="font-semibold text-ink">{formatMonthlySkuName(row.product)}</div>
+                      <div className="mt-1 text-xs text-ink/50">{row.product.sku}</div>
+                    </td>
+                    {row.monthly.map((month, index) => (
+                      <td key={index} className="border-b border-line px-4 py-3 text-right tabular-nums text-ink/75">
+                        {formatMonthlyMetricCell(row, month, metric, formatCurrency, formatNumber)}
+                      </td>
+                    ))}
+                    <td className="border-b border-line px-4 py-3 text-right font-semibold tabular-nums text-ink">
+                      {formatMonthlyAnnualTotal(row, metric, formatCurrency, formatNumber)}
+                    </td>
+                  </tr>
+                ))}
+                {!rows.length ? (
+                  <tr>
+                    <td colSpan={14} className="px-4 py-10 text-center text-sm text-ink/55">{copy.empty}</td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className="mt-5 grid gap-4 xl:grid-cols-[1fr_1.2fr]">
+          <MonthlyColorAnalysis data={colorData} />
+          <MonthlySizeAnalysis rows={sizeRankings} metric={metric} />
+        </div>
+
+        <div className="mt-5 grid gap-4 xl:grid-cols-5">
+          <MonthlyRankingCard title={copy.topQuantity} rows={skuRankings.quantity} valueKey="annualQuantity" formatter={formatNumber} />
+          <MonthlyRankingCard title={copy.topRevenue} rows={skuRankings.revenue} valueKey="annualRevenue" formatter={formatCurrency} />
+          <MonthlyRankingCard title={copy.topProfit} rows={skuRankings.profit} valueKey="annualProfit" formatter={formatCurrency} />
+          <MonthlyRankingCard title={copy.topStock} rows={skuRankings.stock} valueKey="currentStock" formatter={formatNumber} />
+          <MonthlyRankingCard title={copy.topTurnover} rows={skuRankings.turnover} valueKey="turnover" formatter={(value) => `${formatNumber(value, { maximumFractionDigits: 1 })}x`} />
+        </div>
+
+        <div className="mt-5 grid gap-4 xl:grid-cols-4">
+          <MonthComparisonCard comparison={monthComparison} />
+          {selectedRow ? (
+            <MonthlySkuDetail row={selectedRow} replenishment={replenishmentRows.find((item) => item.product.id === selectedRow.product.id)} onClose={() => onSelectSku(null)} />
+          ) : (
+            <div className="xl:col-span-3 rounded-2xl border border-dashed border-line bg-panel/65 p-6 text-sm font-medium text-ink/55">
+              {copy.detailHint}
+            </div>
+          )}
+        </div>
+      </Card>
+    </section>
   );
 }
 
@@ -1017,6 +1229,215 @@ function TopProfitTable({ rows }: { rows: TopSkuPerformanceRow[] }) {
   );
 }
 
+function MonthlyColorAnalysis({ data }: { data: ColorAnalysisRow[] }) {
+  const { language, formatNumber } = useLanguage();
+  const copy = monthlyAnalysisCopy(language);
+  const total = Math.max(1, data.reduce((sum, item) => sum + item.quantity, 0));
+
+  return (
+    <div className="rounded-2xl border border-line bg-white/85 p-5 shadow-soft">
+      <DashboardSectionTitle eyebrow={copy.colorAnalysisSubtitle} title={copy.colorAnalysis} />
+      <div className="mt-4 grid gap-4 md:grid-cols-[240px_1fr]">
+        <div className="h-56">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie data={data} dataKey="quantity" nameKey="color" innerRadius={62} outerRadius={92} paddingAngle={3}>
+                {data.map((entry) => <Cell key={entry.color} fill={entry.colorCode} />)}
+              </Pie>
+              <Tooltip content={<MonthlyColorTooltip />} />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+        <div className="space-y-3">
+          {data.map((item) => {
+            const percentValue = (item.quantity / total) * 100;
+            return (
+              <div key={item.color} className="rounded-xl border border-line bg-panel/65 p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className="h-3 w-3 rounded-full" style={{ backgroundColor: item.colorCode }} />
+                    <span className="font-semibold text-ink">{item.color}</span>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-semibold tabular-nums text-ink">{formatNumber(item.quantity)}</div>
+                    <div className="text-xs text-ink/50">{percentValue.toFixed(1)}%</div>
+                  </div>
+                </div>
+                <div className="mt-2 h-2 overflow-hidden rounded-full bg-white">
+                  <div className="h-full rounded-full" style={{ width: `${Math.min(100, percentValue)}%`, backgroundColor: item.colorCode }} />
+                </div>
+              </div>
+            );
+          })}
+          {!data.length ? <div className="rounded-xl border border-dashed border-line p-5 text-sm text-ink/55">{copy.empty}</div> : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MonthlyColorTooltip({ active, payload }: { active?: boolean; payload?: Array<{ payload?: ColorAnalysisRow }> }) {
+  const { formatNumber, formatCurrency } = useLanguage();
+  if (!active || !payload?.length || !payload[0]?.payload) return null;
+  const item = payload[0].payload;
+  return (
+    <div className="rounded-xl border border-line bg-white px-4 py-3 shadow-soft">
+      <div className="font-semibold text-ink">{item.color}</div>
+      <div className="mt-1 text-sm text-ink/65">销量: {formatNumber(item.quantity)}</div>
+      <div className="text-sm text-ink/65">销售额: {formatCurrency(item.revenue)}</div>
+      <div className="text-sm text-ink/65">利润: {formatCurrency(item.profit)}</div>
+    </div>
+  );
+}
+
+function MonthlySizeAnalysis({ rows, metric }: { rows: SizeAnalysisRow[]; metric: MonthlySkuMetric }) {
+  const { language, formatCurrency, formatNumber } = useLanguage();
+  const copy = monthlyAnalysisCopy(language);
+  const dataKey = metric === "stock" ? "stock" : metric;
+
+  return (
+    <div className="rounded-2xl border border-line bg-white/85 p-5 shadow-soft">
+      <DashboardSectionTitle eyebrow={copy.sizeAnalysisSubtitle} title={copy.sizeAnalysis} />
+      <div className="mt-4 h-56">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={rows.slice(0, 5)} layout="vertical" margin={{ left: 16, right: 24, top: 8, bottom: 8 }}>
+            <CartesianGrid stroke="#d7d9cf" strokeDasharray="4 7" horizontal={false} />
+            <XAxis type="number" hide />
+            <YAxis type="category" dataKey="size" width={90} tickLine={false} axisLine={false} tick={{ fill: "#66706a", fontSize: 12 }} />
+            <Tooltip content={<MonthlySizeTooltip metric={metric} />} cursor={{ fill: "rgba(30,90,78,0.06)" }} />
+            <Bar dataKey={dataKey} radius={[0, 10, 10, 0]} fill="#1E5A4E" barSize={18} />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+      <div className="mt-3 grid gap-2 md:grid-cols-5">
+        {rows.slice(0, 5).map((row, index) => (
+          <div key={row.size} className="rounded-xl border border-line bg-panel/65 p-3">
+            <div className="text-xs font-semibold text-ink/45">TOP{index + 1}</div>
+            <div className="mt-1 font-semibold text-ink">{row.size}</div>
+            <div className="mt-1 text-sm text-ink/65">{formatMonthlyRankingValue(row[dataKey], metric, formatCurrency, formatNumber)}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function MonthlySizeTooltip({ active, payload, metric }: { active?: boolean; payload?: Array<{ payload?: SizeAnalysisRow }>; metric: MonthlySkuMetric }) {
+  const { formatCurrency, formatNumber } = useLanguage();
+  if (!active || !payload?.length || !payload[0]?.payload) return null;
+  const item = payload[0].payload;
+  return (
+    <div className="rounded-xl border border-line bg-white px-4 py-3 shadow-soft">
+      <div className="font-semibold text-ink">{item.size}</div>
+      <div className="mt-1 text-sm text-ink/65">销量: {formatNumber(item.quantity)}</div>
+      <div className="text-sm text-ink/65">销售额: {formatCurrency(item.revenue)}</div>
+      <div className="text-sm text-ink/65">利润: {formatCurrency(item.profit)}</div>
+      <div className="text-sm text-ink/65">库存: {formatNumber(item.stock)}</div>
+    </div>
+  );
+}
+
+function MonthlyRankingCard({
+  title,
+  rows,
+  valueKey,
+  formatter
+}: {
+  title: string;
+  rows: Array<MonthlySkuRow & { turnover?: number }>;
+  valueKey: keyof MonthlySkuRow | "turnover";
+  formatter: (value: number) => string;
+}) {
+  return (
+    <div className="rounded-2xl border border-line bg-white/85 p-4 shadow-soft">
+      <div className="mb-3 flex items-center gap-2">
+        <BarChart3 size={16} className="text-brand" />
+        <div className="font-semibold text-ink">{title}</div>
+      </div>
+      <div className="space-y-2">
+        {rows.slice(0, 5).map((row, index) => {
+          const value = valueKey === "turnover" ? Number(row.turnover ?? 0) : Number(row[valueKey] ?? 0);
+          return (
+            <div key={`${title}-${row.product.id}`} className="flex items-center justify-between gap-3 rounded-xl bg-panel/65 px-3 py-2">
+              <div className="min-w-0">
+                <div className="text-xs font-semibold text-ink/45">#{index + 1}</div>
+                <div className="truncate text-sm font-semibold text-ink">{row.product.sku}</div>
+              </div>
+              <div className="shrink-0 text-sm font-semibold tabular-nums text-ink">{formatter(value)}</div>
+            </div>
+          );
+        })}
+        {!rows.length ? <div className="rounded-xl border border-dashed border-line p-4 text-sm text-ink/55">暂无数据</div> : null}
+      </div>
+    </div>
+  );
+}
+
+function MonthComparisonCard({ comparison }: { comparison: MonthComparison }) {
+  const { language, formatNumber } = useLanguage();
+  const copy = monthlyAnalysisCopy(language);
+  return (
+    <div className="rounded-2xl border border-line bg-white/85 p-5 shadow-soft">
+      <DashboardSectionTitle eyebrow={copy.monthCompareSubtitle} title={copy.monthCompare} />
+      <div className="mt-4 grid gap-3">
+        <MiniTrendCard label={`${comparison.month}${copy.month}${copy.quantity}`} value={formatNumber(comparison.quantity)} />
+        <MiniTrendCard label={copy.momGrowth} value={formatPercent(comparison.momGrowth)} tone={comparison.momGrowth != null && comparison.momGrowth < 0 ? "down" : "up"} />
+        <MiniTrendCard label={copy.yoyGrowth} value={formatPercent(comparison.yoyGrowth)} tone={comparison.yoyGrowth != null && comparison.yoyGrowth < 0 ? "down" : "up"} />
+      </div>
+    </div>
+  );
+}
+
+function MonthlySkuDetail({
+  row,
+  replenishment,
+  onClose
+}: {
+  row: MonthlySkuRow;
+  replenishment?: SmartReplenishmentRow;
+  onClose: () => void;
+}) {
+  const { language, formatCurrency, formatNumber } = useLanguage();
+  const copy = monthlyAnalysisCopy(language);
+  const stockValue = row.currentStock * money(row.product.purchase_price);
+
+  return (
+    <div className="xl:col-span-3 rounded-2xl border border-line bg-white/90 p-5 shadow-soft">
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-[0.2em] text-ink/40">{copy.detailTitle}</div>
+          <div className="mt-1 text-xl font-semibold text-ink">{row.product.sku}</div>
+          <div className="text-sm text-ink/60">{row.product.name}</div>
+        </div>
+        <button type="button" onClick={onClose} className="rounded-xl border border-line bg-panel px-3 py-2 text-sm font-semibold text-ink transition hover:bg-white">
+          {copy.close}
+        </button>
+      </div>
+      <div className="mt-4 grid gap-3 md:grid-cols-4">
+        <MiniTrendCard label={copy.cumulativeQuantity} value={formatNumber(row.annualQuantity)} />
+        <MiniTrendCard label={copy.cumulativeRevenue} value={formatCurrency(row.annualRevenue)} />
+        <MiniTrendCard label={copy.cumulativeProfit} value={formatCurrency(row.annualProfit)} />
+        <MiniTrendCard label={copy.currentStock} value={formatNumber(row.currentStock)} />
+        <MiniTrendCard label={copy.stockValue} value={formatCurrency(stockValue)} />
+        <MiniTrendCard label={copy.safetyStock} value={formatNumber(replenishment?.safetyStock ?? 0)} />
+        <MiniTrendCard label={copy.suggestedQty} value={formatNumber(replenishment?.suggestedQty ?? 0)} />
+        <MiniTrendCard label={copy.saleableDays} value={replenishment ? formatNumber(replenishment.saleableDays >= 999 ? 0 : replenishment.saleableDays) : "-"} />
+      </div>
+      <div className="mt-4 rounded-xl border border-line bg-panel/60 p-3">
+        <div className="mb-2 text-sm font-semibold text-ink">{copy.recentRecords}</div>
+        <div className="grid gap-2 md:grid-cols-6">
+          {row.monthly.map((month, index) => month.quantity > 0 ? (
+            <div key={index} className="rounded-lg bg-white px-3 py-2 text-sm">
+              <div className="text-xs text-ink/45">{index + 1}{copy.month}</div>
+              <div className="font-semibold text-ink">{formatNumber(month.quantity)}</div>
+            </div>
+          ) : null)}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function InventoryHealthCenter({
   summary,
   formatCurrency,
@@ -1244,6 +1665,313 @@ function buildTopSkuPerformance(salesRows: SaleDaily[], productMap: Map<string, 
   }
 
   return Array.from(map.values()).sort((a, b) => b[sortBy] - a[sortBy]).slice(0, 8);
+}
+
+type ColorAnalysisRow = { color: string; quantity: number; revenue: number; profit: number; colorCode: string };
+type SizeAnalysisRow = { size: string; quantity: number; revenue: number; profit: number; stock: number };
+type MonthComparison = { month: number; quantity: number; momGrowth: number | null; yoyGrowth: number | null };
+
+function buildMonthlySkuRows(rows: ReplenishmentRow[], salesRows: SaleDaily[], productMap: Map<string, ProductWithStock>) {
+  const map = new Map<string, MonthlySkuRow>();
+
+  for (const row of rows) {
+    map.set(row.product.id, {
+      product: row.product,
+      currentStock: row.currentStock,
+      monthly: Array.from({ length: 12 }, () => ({ quantity: 0, revenue: 0, profit: 0 })),
+      annualQuantity: 0,
+      annualRevenue: 0,
+      annualProfit: 0
+    });
+  }
+
+  for (const sale of validSales(salesRows)) {
+    const product = productMap.get(sale.product_id);
+    const current = map.get(sale.product_id);
+    if (!product || !current) continue;
+    const monthIndex = Math.max(0, Math.min(11, parseDateKey(sale.sale_date).getMonth()));
+    const quantity = Math.max(0, Number(sale.quantity ?? 0));
+    const revenue = quantity * money(product.sale_price);
+    const profit = totalProfit(product, quantity);
+
+    current.monthly[monthIndex].quantity += quantity;
+    current.monthly[monthIndex].revenue += revenue;
+    current.monthly[monthIndex].profit += profit;
+    current.annualQuantity += quantity;
+    current.annualRevenue += revenue;
+    current.annualProfit += profit;
+  }
+
+  return Array.from(map.values()).sort((a, b) => {
+    const sizeCompare = compareSize(a.product.size, b.product.size);
+    if (sizeCompare !== 0) return sizeCompare;
+    return compareColor(a.product.color, b.product.color);
+  });
+}
+
+function filterMonthlySkuRows(rows: MonthlySkuRow[], color: string, size: string, search: string) {
+  const normalized = search.trim().toLowerCase();
+  return rows.filter((row) => {
+    const matchesColor = color === "all" || row.product.color === color;
+    const matchesSize = size === "all" || row.product.size === size;
+    const haystack = `${row.product.sku} ${row.product.name} ${row.product.color ?? ""} ${row.product.size ?? ""}`.toLowerCase();
+    return matchesColor && matchesSize && (!normalized || haystack.includes(normalized));
+  });
+}
+
+function buildColorAnalysis(rows: MonthlySkuRow[]): ColorAnalysisRow[] {
+  const map = new Map<string, ColorAnalysisRow>();
+  for (const row of rows) {
+    const color = row.product.color || "-";
+    const current = map.get(color) ?? { color, quantity: 0, revenue: 0, profit: 0, colorCode: colorToken(color) };
+    current.quantity += row.annualQuantity;
+    current.revenue += row.annualRevenue;
+    current.profit += row.annualProfit;
+    map.set(color, current);
+  }
+  return Array.from(map.values()).sort((a, b) => b.quantity - a.quantity);
+}
+
+function buildSizeRankings(rows: MonthlySkuRow[]): SizeAnalysisRow[] {
+  const map = new Map<string, SizeAnalysisRow>();
+  for (const row of rows) {
+    const size = row.product.size || "-";
+    const current = map.get(size) ?? { size, quantity: 0, revenue: 0, profit: 0, stock: 0 };
+    current.quantity += row.annualQuantity;
+    current.revenue += row.annualRevenue;
+    current.profit += row.annualProfit;
+    current.stock += row.currentStock;
+    map.set(size, current);
+  }
+  return Array.from(map.values()).sort((a, b) => b.quantity - a.quantity);
+}
+
+function buildSkuRankings(rows: MonthlySkuRow[]) {
+  const withTurnover = rows.map((row) => ({
+    ...row,
+    turnover: row.currentStock > 0 ? row.annualQuantity / row.currentStock : row.annualQuantity
+  }));
+  return {
+    quantity: [...withTurnover].sort((a, b) => b.annualQuantity - a.annualQuantity).slice(0, 5),
+    revenue: [...withTurnover].sort((a, b) => b.annualRevenue - a.annualRevenue).slice(0, 5),
+    profit: [...withTurnover].sort((a, b) => b.annualProfit - a.annualProfit).slice(0, 5),
+    stock: [...withTurnover].sort((a, b) => b.currentStock - a.currentStock).slice(0, 5),
+    turnover: [...withTurnover].sort((a, b) => Number(b.turnover ?? 0) - Number(a.turnover ?? 0)).slice(0, 5)
+  };
+}
+
+function buildMonthComparison(rows: MonthlySkuRow[], previousYearRows: MonthlySkuRow[], monthIndex: number): MonthComparison {
+  const current = rows.reduce((sum, row) => sum + row.monthly[monthIndex].quantity, 0);
+  const previousMonth = monthIndex > 0 ? rows.reduce((sum, row) => sum + row.monthly[monthIndex - 1].quantity, 0) : 0;
+  const previousYear = previousYearRows.reduce((sum, row) => sum + row.monthly[monthIndex].quantity, 0);
+  return {
+    month: monthIndex + 1,
+    quantity: current,
+    momGrowth: compare(current, previousMonth),
+    yoyGrowth: compare(current, previousYear)
+  };
+}
+
+function sumMonthlyRows(rows: MonthlySkuRow[], metric: "quantity" | "revenue" | "profit") {
+  if (metric === "quantity") return rows.reduce((sum, row) => sum + row.annualQuantity, 0);
+  if (metric === "revenue") return rows.reduce((sum, row) => sum + row.annualRevenue, 0);
+  return rows.reduce((sum, row) => sum + row.annualProfit, 0);
+}
+
+function formatMonthlyMetricCell(
+  row: MonthlySkuRow,
+  month: MonthlySkuRow["monthly"][number],
+  metric: MonthlySkuMetric,
+  formatCurrency: (value: number) => string,
+  formatNumber: (value: number, options?: Intl.NumberFormatOptions) => string
+) {
+  if (metric === "stock") return "-";
+  const value = month[metric];
+  if (!value) return "0";
+  return metric === "quantity" ? formatNumber(value) : formatCurrency(value);
+}
+
+function formatMonthlyAnnualTotal(
+  row: MonthlySkuRow,
+  metric: MonthlySkuMetric,
+  formatCurrency: (value: number) => string,
+  formatNumber: (value: number, options?: Intl.NumberFormatOptions) => string
+) {
+  if (metric === "stock") return formatNumber(row.currentStock);
+  if (metric === "quantity") return formatNumber(row.annualQuantity);
+  if (metric === "revenue") return formatCurrency(row.annualRevenue);
+  return formatCurrency(row.annualProfit);
+}
+
+function formatMonthlyRankingValue(
+  value: number,
+  metric: MonthlySkuMetric,
+  formatCurrency: (value: number) => string,
+  formatNumber: (value: number, options?: Intl.NumberFormatOptions) => string
+) {
+  return metric === "revenue" || metric === "profit" ? formatCurrency(value) : formatNumber(value);
+}
+
+function formatMonthlySkuName(product: ProductWithStock) {
+  return `${product.color || "-"} ${product.size || "-"} - ${product.name}`;
+}
+
+function orderedUnique(values: string[], preferred: string[]) {
+  const unique = Array.from(new Set(values));
+  return unique.sort((a, b) => {
+    const preferredCompare = preferredIndex(a, preferred) - preferredIndex(b, preferred);
+    if (preferredCompare !== 0) return preferredCompare;
+    return a.localeCompare(b);
+  });
+}
+
+function preferredIndex(value: string | null | undefined, preferred: string[]) {
+  const index = preferred.indexOf(value ?? "");
+  return index === -1 ? 999 : index;
+}
+
+function compareColor(a: string | null | undefined, b: string | null | undefined) {
+  return preferredIndex(a, ["白色", "黑色", "灰色", "米色"]) - preferredIndex(b, ["白色", "黑色", "灰色", "米色"]);
+}
+
+function compareSize(a: string | null | undefined, b: string | null | undefined) {
+  const parse = (value: string | null | undefined) => Number(String(value ?? "").split("x")[0]) || 999;
+  return parse(a) - parse(b);
+}
+
+function colorToken(color: string) {
+  if (color.includes("白") || color.includes("화이트")) return "#D9DDD4";
+  if (color.includes("黑") || color.includes("블랙")) return "#1F2421";
+  if (color.includes("灰") || color.includes("그레이")) return "#7C8580";
+  if (color.includes("米") || color.includes("베이지")) return "#BCA77A";
+  return "#406A7A";
+}
+
+function formatPercent(value: number | null) {
+  if (value == null) return "-";
+  return `${value >= 0 ? "↑ " : "↓ "}${Math.abs(value).toFixed(1)}%`;
+}
+
+function exportMonthlySkuCsv(rows: MonthlySkuRow[], metric: MonthlySkuMetric, year: number, fileName: string) {
+  const csv = buildMonthlySkuDelimited(rows, metric, year, ",");
+  downloadText(`${fileName}.csv`, `\uFEFF${csv}`, "text/csv;charset=utf-8");
+}
+
+function exportMonthlySkuExcel(rows: MonthlySkuRow[], metric: MonthlySkuMetric, year: number, fileName: string) {
+  const table = buildMonthlySkuDelimited(rows, metric, year, "\t");
+  downloadText(`${fileName}.xls`, `\uFEFF${table}`, "application/vnd.ms-excel;charset=utf-8");
+}
+
+function buildMonthlySkuDelimited(rows: MonthlySkuRow[], metric: MonthlySkuMetric, year: number, delimiter: string) {
+  const header = ["Product", ...Array.from({ length: 12 }, (_, index) => `${year}-${String(index + 1).padStart(2, "0")}`), "Annual Total"];
+  const lines = rows.map((row) => [
+    `${row.product.sku} ${formatMonthlySkuName(row.product)}`,
+    ...row.monthly.map((month) => metric === "stock" ? "" : String(Math.round(month[metric]))),
+    String(metric === "stock" ? row.currentStock : metric === "quantity" ? row.annualQuantity : metric === "revenue" ? Math.round(row.annualRevenue) : Math.round(row.annualProfit))
+  ]);
+  return [header, ...lines].map((line) => line.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(delimiter)).join("\n");
+}
+
+function downloadText(fileName: string, content: string, type: string) {
+  const blob = new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function monthlyAnalysisCopy(language: "zh" | "ko") {
+  if (language === "ko") {
+    return {
+      title: "SKU 월간 판매 분석",
+      metrics: { quantity: "판매량", revenue: "매출", profit: "이익", stock: "재고" },
+      search: "SKU 검색",
+      searchPlaceholder: "상품명 / SKU / 색상 / 사이즈",
+      color: "색상",
+      size: "사이즈",
+      allColors: "전체 색상",
+      allSizes: "전체 사이즈",
+      annualQuantity: "연간 판매량",
+      annualRevenue: "연간 매출",
+      annualProfit: "연간 이익",
+      productName: "상품명",
+      month: "월",
+      annualTotal: "연간 합계",
+      empty: "조건에 맞는 SKU 데이터가 없습니다.",
+      colorAnalysis: "색상 분석",
+      colorAnalysisSubtitle: "Color Sales Mix",
+      sizeAnalysis: "사이즈 분석",
+      sizeAnalysisSubtitle: "Size Performance Ranking",
+      topQuantity: "TOP 판매량 SKU",
+      topRevenue: "TOP 매출 SKU",
+      topProfit: "TOP 이익 SKU",
+      topStock: "TOP 재고 SKU",
+      topTurnover: "TOP 회전 SKU",
+      monthCompare: "월별 비교 분석",
+      monthCompareSubtitle: "MoM / YoY Analysis",
+      quantity: "판매량",
+      momGrowth: "전월 대비",
+      yoyGrowth: "전년 대비",
+      detailHint: "표에서 SKU를 클릭하면 상세 분석이 표시됩니다.",
+      detailTitle: "SKU 상세 분석",
+      cumulativeQuantity: "누적 판매량",
+      cumulativeRevenue: "누적 매출",
+      cumulativeProfit: "누적 이익",
+      currentStock: "현재 재고",
+      stockValue: "재고 금액",
+      safetyStock: "안전 재고",
+      suggestedQty: "추천 발주량",
+      saleableDays: "예상 판매 가능일",
+      recentRecords: "월별 판매 기록",
+      close: "닫기"
+    };
+  }
+
+  return {
+    title: "SKU月度销售分析",
+    metrics: { quantity: "销量", revenue: "销售额", profit: "利润", stock: "库存" },
+    search: "SKU关键词搜索",
+    searchPlaceholder: "商品名 / SKU / 颜色 / 尺寸",
+    color: "颜色",
+    size: "尺寸",
+    allColors: "全部颜色",
+    allSizes: "全部尺寸",
+    annualQuantity: "年度销量",
+    annualRevenue: "年度销售额",
+    annualProfit: "年度利润",
+    productName: "商品名称",
+    month: "月",
+    annualTotal: "年度合计",
+    empty: "暂无符合条件的 SKU 数据",
+    colorAnalysis: "颜色分析",
+    colorAnalysisSubtitle: "Color Sales Mix",
+    sizeAnalysis: "尺寸分析",
+    sizeAnalysisSubtitle: "Size Performance Ranking",
+    topQuantity: "TOP销量SKU",
+    topRevenue: "TOP销售额SKU",
+    topProfit: "TOP利润SKU",
+    topStock: "TOP库存SKU",
+    topTurnover: "TOP周转SKU",
+    monthCompare: "月份对比分析",
+    monthCompareSubtitle: "MoM / YoY Analysis",
+    quantity: "销量",
+    momGrowth: "环比增长率",
+    yoyGrowth: "同比增长率",
+    detailHint: "点击上方表格中的任意 SKU，可打开 SKU经营分析详情。",
+    detailTitle: "SKU经营分析详情",
+    cumulativeQuantity: "累计销量",
+    cumulativeRevenue: "累计销售额",
+    cumulativeProfit: "累计利润",
+    currentStock: "当前库存",
+    stockValue: "库存金额",
+    safetyStock: "安全库存",
+    suggestedQty: "补货建议",
+    saleableDays: "预计缺货天数",
+    recentRecords: "最近销售记录",
+    close: "关闭"
+  };
 }
 
 type HealthItemKey = "healthy" | "danger" | "warning" | "slow" | "inTransit";
