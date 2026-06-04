@@ -1,7 +1,22 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, ArrowDownRight, ArrowUpRight, CalendarDays, CircleAlert, CircleCheck } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowDownRight,
+  ArrowUpRight,
+  Boxes,
+  CalendarDays,
+  CircleAlert,
+  CircleCheck,
+  CreditCard,
+  DollarSign,
+  Layers,
+  PackageCheck,
+  ShoppingBag,
+  TrendingUp,
+  type LucideIcon
+} from "lucide-react";
 import {
   Area,
   AreaChart,
@@ -22,7 +37,6 @@ import {
   buildReplenishmentRows,
   REPLENISHMENT_CYCLE_DAYS,
   SALES_ANALYSIS_DAYS,
-  summarizeSales,
   type ReplenishmentRow
 } from "@/lib/replenishment";
 import type { ProductWithStock, PurchaseOrder, SaleDaily } from "@/lib/types";
@@ -128,19 +142,28 @@ function DashboardContent() {
   const productMap = useMemo(() => new Map(rows.map((row) => [row.product.id, row.product])), [rows]);
   const rangeSales = salesAllRows.filter((sale) => isBetween(sale.sale_date, range.start, range.end));
   const comparisonSales = salesAllRows.filter((sale) => isBetween(sale.sale_date, comparisonRange.start, comparisonRange.end));
-  const selectedDayMovements = movements.filter((movement) => movement.happened_at.slice(0, 10) === range.end);
+  const thirtyDayStart = daysAgoKey(anchorDate, 29);
+  const previousThirtyDayEnd = daysAgoKey(anchorDate, 30);
+  const previousThirtyDayStart = daysAgoKey(anchorDate, 59);
+  const thirtyDaySales = salesAllRows.filter((sale) => isBetween(sale.sale_date, thirtyDayStart, range.end));
+  const previousThirtyDaySales = salesAllRows.filter((sale) => isBetween(sale.sale_date, previousThirtyDayStart, previousThirtyDayEnd));
+  const thirtyDayMovements = movements.filter((movement) => isBetween(movement.happened_at.slice(0, 10), thirtyDayStart, range.end));
+  const previousThirtyDayMovements = movements.filter((movement) => isBetween(movement.happened_at.slice(0, 10), previousThirtyDayStart, previousThirtyDayEnd));
   const salesWindowRows = salesRows.filter((sale) => isBetween(sale.sale_date, daysAgoKey(anchorDate, 29), range.end));
-  const salesSummary = summarizeSales(salesWindowRows);
   const trendDays = viewMode === "30d" ? 30 : viewMode === "month" ? daysInRange(range) : viewMode === "custom" ? 7 : viewMode === "7d" ? 7 : 7;
 
   const totalStock = rows.reduce((sum, row) => sum + row.currentStock, 0);
   const skuCount = rows.length;
-  const stockValue = rows.reduce((sum, row) => sum + row.currentStock * money(row.product.purchase_price), 0);
-  const saleableDays = salesSummary.averageDailySales > 0 ? Math.floor(totalStock / salesSummary.averageDailySales) : 0;
   const rangeMetrics = buildSalesMetrics(rangeSales, productMap);
   const comparisonMetrics = buildSalesMetrics(comparisonSales, productMap);
-  const refundOrders = countTypedMovements(selectedDayMovements, "return_inbound");
-  const cancelOrders = 0;
+  const thirtyDayMetrics = buildSalesMetrics(thirtyDaySales, productMap);
+  const previousThirtyDayMetrics = buildSalesMetrics(previousThirtyDaySales, productMap);
+  const aov = thirtyDayMetrics.quantity > 0 ? thirtyDayMetrics.revenue / thirtyDayMetrics.quantity : 0;
+  const previousAov = previousThirtyDayMetrics.quantity > 0 ? previousThirtyDayMetrics.revenue / previousThirtyDayMetrics.quantity : 0;
+  const returnInboundQty = countTypedMovements(thirtyDayMovements, "return_inbound");
+  const previousReturnInboundQty = countTypedMovements(previousThirtyDayMovements, "return_inbound");
+  const lossQty = countTypedMovements(thirtyDayMovements, "loss");
+  const previousLossQty = countTypedMovements(previousThirtyDayMovements, "loss");
   const replenishRows = buildSmartReplenishment(rows, t);
   const riskyRows = replenishRows.filter((row) => row.status !== "normal").sort((a, b) => a.saleableDays - b.saleableDays).slice(0, 12);
   const alerts = buildAlerts({
@@ -183,15 +206,78 @@ function DashboardContent() {
       </div>
 
       <div className={`space-y-6 transition-opacity duration-200 ${loading ? "opacity-60" : "opacity-100"}`}>
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <ExecutiveKpi label={`${range.label}${t("common.revenue")}`} value={formatCurrency(rangeMetrics.revenue)} compare={compare(rangeMetrics.revenue, comparisonMetrics.revenue)} />
-          <ExecutiveKpi label={`${range.label}${t("common.orderCount")}`} value={rangeMetrics.quantity} compare={compare(rangeMetrics.quantity, comparisonMetrics.quantity)} />
-          <ExecutiveKpi label={`${range.label}${t("common.salesQuantity")}`} value={rangeMetrics.quantity} compare={compare(rangeMetrics.quantity, comparisonMetrics.quantity)} />
-          <ExecutiveKpi label={`${range.label}${t("common.profit")}`} value={formatCurrency(rangeMetrics.profit)} compare={compare(rangeMetrics.profit, comparisonMetrics.profit)} />
-          <ExecutiveKpi label={t("dashboard.kpi.refundOrders")} value={refundOrders} />
-          <ExecutiveKpi label={t("dashboard.kpi.cancelOrders")} value={cancelOrders} muted />
-          <ExecutiveKpi label={t("dashboard.kpi.stockValue")} value={formatCurrency(stockValue)} />
-          <ExecutiveKpi label={t("dashboard.kpi.currentSkuCount")} value={skuCount} />
+        <section className="relative overflow-hidden rounded-[28px] border border-white/25 bg-gradient-to-br from-slate-50 via-zinc-100 to-stone-50 p-4 shadow-soft md:p-5">
+          <div className="pointer-events-none absolute -left-24 -top-28 h-72 w-72 rounded-full bg-emerald-700/5 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-28 -right-20 h-80 w-80 rounded-full bg-blue-700/5 blur-3xl" />
+          <div className="relative grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <ExecutiveKpi
+              delay={0}
+              icon={DollarSign}
+              label={t("dashboard.kpi.thirtyDayRevenue")}
+              subtitle={t("dashboard.kpi.revenueSubtitle")}
+              value={thirtyDayMetrics.revenue}
+              format="currency"
+              compare={compare(thirtyDayMetrics.revenue, previousThirtyDayMetrics.revenue)}
+            />
+            <ExecutiveKpi
+              delay={100}
+              icon={ShoppingBag}
+              label={t("dashboard.kpi.thirtyDayOrders")}
+              subtitle={t("dashboard.kpi.ordersSubtitle")}
+              value={thirtyDayMetrics.quantity}
+              compare={compare(thirtyDayMetrics.quantity, previousThirtyDayMetrics.quantity)}
+            />
+            <ExecutiveKpi
+              delay={200}
+              icon={CreditCard}
+              label={t("dashboard.kpi.thirtyDayAov")}
+              subtitle="Average Order Value"
+              value={aov}
+              format="currency"
+              compare={compare(aov, previousAov)}
+            />
+            <ExecutiveKpi
+              delay={300}
+              icon={TrendingUp}
+              label={t("dashboard.kpi.thirtyDayProfit")}
+              subtitle={t("dashboard.kpi.profitSubtitle")}
+              value={thirtyDayMetrics.profit}
+              format="currency"
+              compare={compare(thirtyDayMetrics.profit, previousThirtyDayMetrics.profit)}
+            />
+            <ExecutiveKpi
+              delay={400}
+              icon={PackageCheck}
+              label={t("dashboard.kpi.returnInboundSaleable")}
+              subtitle={t("dashboard.kpi.returnInboundSubtitle")}
+              value={returnInboundQty}
+              compare={compare(returnInboundQty, previousReturnInboundQty)}
+            />
+            <ExecutiveKpi
+              delay={500}
+              icon={AlertTriangle}
+              label={t("dashboard.kpi.lossBadMissing")}
+              subtitle={t("dashboard.kpi.lossSubtitle")}
+              value={lossQty}
+              compare={compare(lossQty, previousLossQty)}
+              inverseTrend
+            />
+            <ExecutiveKpi
+              delay={600}
+              icon={Boxes}
+              label={t("dashboard.kpi.currentStockQty")}
+              subtitle={t("dashboard.kpi.currentStockSubtitle")}
+              value={totalStock}
+              suffix=" EA"
+            />
+            <ExecutiveKpi
+              delay={700}
+              icon={Layers}
+              label={t("dashboard.kpi.skuTotal")}
+              subtitle={t("dashboard.kpi.skuSubtitle")}
+              value={skuCount}
+            />
+          </div>
         </section>
 
         <section>
@@ -430,20 +516,98 @@ function DateControl({
   );
 }
 
-function ExecutiveKpi({ label, value, compare: compareValue, muted = false }: { label: string; value: string | number; compare?: number | null; muted?: boolean }) {
+function ExecutiveKpi({
+  label,
+  subtitle,
+  value,
+  compare: compareValue,
+  icon: Icon,
+  format = "number",
+  suffix = "",
+  delay = 0,
+  inverseTrend = false
+}: {
+  label: string;
+  subtitle?: string;
+  value: number;
+  compare?: number | null;
+  icon: LucideIcon;
+  format?: "number" | "currency";
+  suffix?: string;
+  delay?: number;
+  inverseTrend?: boolean;
+}) {
+  const { formatCurrency, formatNumber } = useLanguage();
   const direction = compareValue == null ? "neutral" : compareValue >= 0 ? "up" : "down";
+  const trendPositive = inverseTrend ? direction === "down" : direction === "up";
+
   return (
-    <Card className="min-h-28">
-      <div className="text-sm font-medium text-ink/60">{label}</div>
-      <div className={`mt-2 text-3xl font-semibold ${muted ? "text-ink/45" : "text-ink"}`}>{value}</div>
-      {compareValue != null ? (
-        <div className={`mt-2 flex items-center gap-1 text-sm font-semibold ${direction === "up" ? "text-emerald-700" : "text-red-600"}`}>
-          {direction === "up" ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}
-          {Math.abs(compareValue).toFixed(1)}%
+    <div
+      className="group relative min-h-36 overflow-hidden rounded-3xl border border-white/25 bg-card/90 p-5 shadow-lg backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:shadow-2xl"
+      style={{ animation: `kpi-rise 620ms ease-out ${delay}ms both` }}
+    >
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(255,255,255,0.78),transparent_36%),linear-gradient(135deg,rgba(255,255,255,0.46),rgba(255,255,255,0.08))]" />
+      <div className="relative flex items-start justify-between gap-4">
+        <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-[#1E5A4E] to-[#406A7A] text-white shadow-[0_12px_28px_rgba(30,90,78,0.24)]">
+          <Icon size={20} className="opacity-95" />
         </div>
-      ) : null}
-    </Card>
+        {compareValue != null ? (
+          <div className={`flex animate-pulse items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold ${
+            trendPositive
+              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+              : "border-red-200 bg-red-50 text-red-700"
+          }`}>
+            {direction === "up" ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
+            {direction === "up" ? "+" : "-"}{Math.abs(compareValue).toFixed(1)}%
+          </div>
+        ) : null}
+      </div>
+      <div className="relative mt-5">
+        <div className="text-sm font-semibold text-ink/55">{label}</div>
+        {subtitle ? <div className="mt-1 text-xs font-medium text-ink/40">{subtitle}</div> : null}
+        <div className="mt-4 text-3xl font-semibold tracking-tight text-ink md:text-[34px]">
+          <CountUpNumber value={value} format={format} suffix={suffix} formatCurrency={formatCurrency} formatNumber={formatNumber} />
+        </div>
+      </div>
+    </div>
   );
+}
+
+function CountUpNumber({
+  value,
+  format,
+  suffix,
+  formatCurrency,
+  formatNumber
+}: {
+  value: number;
+  format: "number" | "currency";
+  suffix: string;
+  formatCurrency: (value: number) => string;
+  formatNumber: (value: number, options?: Intl.NumberFormatOptions) => string;
+}) {
+  const [displayValue, setDisplayValue] = useState(0);
+
+  useEffect(() => {
+    let frame = 0;
+    const duration = 1200;
+    const start = performance.now();
+    const from = 0;
+    const target = Number.isFinite(value) ? value : 0;
+    const easeOut = (progress: number) => 1 - Math.pow(1 - progress, 3);
+
+    const tick = (now: number) => {
+      const progress = Math.min(1, (now - start) / duration);
+      setDisplayValue(from + (target - from) * easeOut(progress));
+      if (progress < 1) frame = requestAnimationFrame(tick);
+    };
+
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [value]);
+
+  const rounded = format === "currency" ? Math.round(displayValue) : Math.round(displayValue);
+  return <>{format === "currency" ? formatCurrency(rounded) : `${formatNumber(rounded)}${suffix}`}</>;
 }
 
 function DashboardSectionTitle({ eyebrow, title }: { eyebrow: string; title: string }) {

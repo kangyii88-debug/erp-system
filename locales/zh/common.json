@@ -197,5 +197,20 @@
   "dashboard.health.keyMetric": "关键指标",
   "dashboard.health.stockAmount": "库存金额 {{value}}",
   "dashboard.health.saleableDays": "预计售罄 {{days}} 天",
-  "dashboard.health.inTransitUnits": "在途数量 {{count}}"
+  "dashboard.health.inTransitUnits": "在途数量 {{count}}",
+  "dashboard.kpi.thirtyDayRevenue": "近30天销售额",
+  "dashboard.kpi.thirtyDayOrders": "近30天订单数",
+  "dashboard.kpi.thirtyDayAov": "近30天客单价",
+  "dashboard.kpi.thirtyDayProfit": "近30天利润",
+  "dashboard.kpi.returnInboundSaleable": "退货入库在售",
+  "dashboard.kpi.lossBadMissing": "损耗/不良/丢失",
+  "dashboard.kpi.currentStockQty": "当前库存数量",
+  "dashboard.kpi.skuTotal": "SKU总数",
+  "dashboard.kpi.revenueSubtitle": "Revenue - Last 30 Days",
+  "dashboard.kpi.ordersSubtitle": "Orders - Last 30 Days",
+  "dashboard.kpi.profitSubtitle": "Profit - Last 30 Days",
+  "dashboard.kpi.returnInboundSubtitle": "Returned and saleable stock",
+  "dashboard.kpi.lossSubtitle": "Loss / Defect / Missing",
+  "dashboard.kpi.currentStockSubtitle": "Available inventory units",
+  "dashboard.kpi.skuSubtitle": "Active SKU portfolio"
 }

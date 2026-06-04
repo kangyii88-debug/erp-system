@@ -197,5 +197,20 @@
   "dashboard.health.keyMetric": "핵심 지표",
   "dashboard.health.stockAmount": "재고 금액 {{value}}",
   "dashboard.health.saleableDays": "예상 소진 {{days}}일",
-  "dashboard.health.inTransitUnits": "이동 중 수량 {{count}}"
+  "dashboard.health.inTransitUnits": "이동 중 수량 {{count}}",
+  "dashboard.kpi.thirtyDayRevenue": "최근 30일 매출",
+  "dashboard.kpi.thirtyDayOrders": "최근 30일 주문수",
+  "dashboard.kpi.thirtyDayAov": "최근 30일 객단가",
+  "dashboard.kpi.thirtyDayProfit": "최근 30일 이익",
+  "dashboard.kpi.returnInboundSaleable": "반품 입고 판매가능",
+  "dashboard.kpi.lossBadMissing": "손상/불량/분실",
+  "dashboard.kpi.currentStockQty": "현재 재고 수량",
+  "dashboard.kpi.skuTotal": "SKU 총수",
+  "dashboard.kpi.revenueSubtitle": "Revenue - Last 30 Days",
+  "dashboard.kpi.ordersSubtitle": "Orders - Last 30 Days",
+  "dashboard.kpi.profitSubtitle": "Profit - Last 30 Days",
+  "dashboard.kpi.returnInboundSubtitle": "반품 후 재판매 가능 재고",
+  "dashboard.kpi.lossSubtitle": "손상 / 불량 / 분실 합계",
+  "dashboard.kpi.currentStockSubtitle": "판매 가능 재고 수량",
+  "dashboard.kpi.skuSubtitle": "운영 중인 SKU 포트폴리오"
 }
