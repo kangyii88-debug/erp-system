@@ -164,6 +164,8 @@ function DashboardContent() {
   const productMap = useMemo(() => new Map(rows.map((row) => [row.product.id, row.product])), [rows]);
   const rangeSales = salesAllRows.filter((sale) => isBetween(sale.sale_date, range.start, range.end));
   const comparisonSales = salesAllRows.filter((sale) => isBetween(sale.sale_date, comparisonRange.start, comparisonRange.end));
+  const rangeMovements = movements.filter((movement) => isBetween(toDateKey(new Date(movement.happened_at)), range.start, range.end));
+  const comparisonMovements = movements.filter((movement) => isBetween(toDateKey(new Date(movement.happened_at)), comparisonRange.start, comparisonRange.end));
   const salesWindowRows = salesRows.filter((sale) => isBetween(sale.sale_date, daysAgoKey(anchorDate, 29), range.end));
   const trendDays = viewMode === "30d" ? 30 : viewMode === "month" ? daysInRange(range) : viewMode === "custom" ? 7 : viewMode === "7d" ? 7 : 7;
 
@@ -173,8 +175,10 @@ function DashboardContent() {
   const comparisonMetrics = buildSalesMetrics(comparisonSales, productMap);
   const rangeAov = rangeMetrics.quantity > 0 ? rangeMetrics.revenue / rangeMetrics.quantity : 0;
   const comparisonAov = comparisonMetrics.quantity > 0 ? comparisonMetrics.revenue / comparisonMetrics.quantity : 0;
-  const returnInboundQty = countTypedMovements(movements, "return_inbound");
-  const lossQty = countTypedMovements(movements, "loss");
+  const returnInboundQty = countTypedMovements(rangeMovements, "return_inbound");
+  const comparisonReturnInboundQty = countTypedMovements(comparisonMovements, "return_inbound");
+  const lossQty = countTypedMovements(rangeMovements, "loss");
+  const comparisonLossQty = countTypedMovements(comparisonMovements, "loss");
   const kpiCopy = buildKpiCopy(viewMode, range, language);
   const replenishRows = buildSmartReplenishment(rows, t);
   const riskyRows = replenishRows.filter((row) => row.status !== "normal").sort((a, b) => a.saleableDays - b.saleableDays).slice(0, 12);
@@ -264,16 +268,18 @@ function DashboardContent() {
             <ExecutiveKpi
               delay={400}
               icon={PackageCheck}
-              label={t("dashboard.kpi.returnInboundSaleable")}
-              subtitle={t("dashboard.kpi.returnInboundSubtitle")}
+              label={kpiCopy.returnInboundLabel}
+              subtitle={kpiCopy.returnInboundSubtitle}
               value={returnInboundQty}
+              compare={compare(returnInboundQty, comparisonReturnInboundQty)}
             />
             <ExecutiveKpi
               delay={500}
               icon={AlertTriangle}
-              label={t("dashboard.kpi.lossBadMissing")}
-              subtitle={t("dashboard.kpi.lossSubtitle")}
+              label={kpiCopy.lossLabel}
+              subtitle={kpiCopy.lossSubtitle}
               value={lossQty}
+              compare={compare(lossQty, comparisonLossQty)}
               inverseTrend
             />
             <ExecutiveKpi
@@ -2229,13 +2235,17 @@ function buildKpiCopy(
     revenue: "销售额",
     orders: "订单数",
     aov: "客单价",
-    profit: "利润"
+    profit: "利润",
+    returnInbound: "退货入库在售",
+    loss: "损耗 / 不良 / 丢失"
   };
   const koMetrics = {
     revenue: "매출",
     orders: "주문수",
     aov: "객단가",
-    profit: "이익"
+    profit: "이익",
+    returnInbound: "반품 입고 판매가능",
+    loss: "손상 / 불량 / 분실"
   };
   const metricText = language === "ko" ? koMetrics : zhMetrics;
   const localizedPeriod = periodText[language];
@@ -2245,10 +2255,14 @@ function buildKpiCopy(
     ordersLabel: `${localizedPeriod}${metricText.orders}`,
     aovLabel: `${localizedPeriod}${metricText.aov}`,
     profitLabel: `${localizedPeriod}${metricText.profit}`,
+    returnInboundLabel: `${localizedPeriod}${metricText.returnInbound}`,
+    lossLabel: `${localizedPeriod}${metricText.loss}`,
     revenueSubtitle: `${periodText.en} Revenue`,
     ordersSubtitle: `${periodText.en} Orders`,
     aovSubtitle: `${periodText.en} AOV`,
-    profitSubtitle: `${periodText.en} Profit`
+    profitSubtitle: `${periodText.en} Profit`,
+    returnInboundSubtitle: `${periodText.en} Return Inbound Saleable`,
+    lossSubtitle: `${periodText.en} Loss / Defect / Missing`
   };
 }
 
