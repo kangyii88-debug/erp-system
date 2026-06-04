@@ -65,7 +65,7 @@ export default function DashboardPage() {
 }
 
 function DashboardContent() {
-  const { t, formatCurrency, formatDate, formatNumber } = useLanguage();
+  const { language, t, formatCurrency, formatDate, formatNumber } = useLanguage();
   const [rows, setRows] = useState<ReplenishmentRow[]>([]);
   const [salesRows, setSalesRows] = useState<SaleDaily[]>([]);
   const [salesYearRows, setSalesYearRows] = useState<SaleDaily[]>([]);
@@ -142,13 +142,6 @@ function DashboardContent() {
   const productMap = useMemo(() => new Map(rows.map((row) => [row.product.id, row.product])), [rows]);
   const rangeSales = salesAllRows.filter((sale) => isBetween(sale.sale_date, range.start, range.end));
   const comparisonSales = salesAllRows.filter((sale) => isBetween(sale.sale_date, comparisonRange.start, comparisonRange.end));
-  const thirtyDayStart = daysAgoKey(anchorDate, 29);
-  const previousThirtyDayEnd = daysAgoKey(anchorDate, 30);
-  const previousThirtyDayStart = daysAgoKey(anchorDate, 59);
-  const thirtyDaySales = salesAllRows.filter((sale) => isBetween(sale.sale_date, thirtyDayStart, range.end));
-  const previousThirtyDaySales = salesAllRows.filter((sale) => isBetween(sale.sale_date, previousThirtyDayStart, previousThirtyDayEnd));
-  const thirtyDayMovements = movements.filter((movement) => isBetween(movement.happened_at.slice(0, 10), thirtyDayStart, range.end));
-  const previousThirtyDayMovements = movements.filter((movement) => isBetween(movement.happened_at.slice(0, 10), previousThirtyDayStart, previousThirtyDayEnd));
   const salesWindowRows = salesRows.filter((sale) => isBetween(sale.sale_date, daysAgoKey(anchorDate, 29), range.end));
   const trendDays = viewMode === "30d" ? 30 : viewMode === "month" ? daysInRange(range) : viewMode === "custom" ? 7 : viewMode === "7d" ? 7 : 7;
 
@@ -156,14 +149,11 @@ function DashboardContent() {
   const skuCount = rows.length;
   const rangeMetrics = buildSalesMetrics(rangeSales, productMap);
   const comparisonMetrics = buildSalesMetrics(comparisonSales, productMap);
-  const thirtyDayMetrics = buildSalesMetrics(thirtyDaySales, productMap);
-  const previousThirtyDayMetrics = buildSalesMetrics(previousThirtyDaySales, productMap);
-  const aov = thirtyDayMetrics.quantity > 0 ? thirtyDayMetrics.revenue / thirtyDayMetrics.quantity : 0;
-  const previousAov = previousThirtyDayMetrics.quantity > 0 ? previousThirtyDayMetrics.revenue / previousThirtyDayMetrics.quantity : 0;
-  const returnInboundQty = countTypedMovements(thirtyDayMovements, "return_inbound");
-  const previousReturnInboundQty = countTypedMovements(previousThirtyDayMovements, "return_inbound");
-  const lossQty = countTypedMovements(thirtyDayMovements, "loss");
-  const previousLossQty = countTypedMovements(previousThirtyDayMovements, "loss");
+  const rangeAov = rangeMetrics.quantity > 0 ? rangeMetrics.revenue / rangeMetrics.quantity : 0;
+  const comparisonAov = comparisonMetrics.quantity > 0 ? comparisonMetrics.revenue / comparisonMetrics.quantity : 0;
+  const returnInboundQty = countTypedMovements(movements, "return_inbound");
+  const lossQty = countTypedMovements(movements, "loss");
+  const kpiCopy = buildKpiCopy(viewMode, range, language);
   const replenishRows = buildSmartReplenishment(rows, t);
   const riskyRows = replenishRows.filter((row) => row.status !== "normal").sort((a, b) => a.saleableDays - b.saleableDays).slice(0, 12);
   const alerts = buildAlerts({
@@ -213,37 +203,37 @@ function DashboardContent() {
             <ExecutiveKpi
               delay={0}
               icon={DollarSign}
-              label={t("dashboard.kpi.thirtyDayRevenue")}
-              subtitle={t("dashboard.kpi.revenueSubtitle")}
-              value={thirtyDayMetrics.revenue}
+              label={kpiCopy.revenueLabel}
+              subtitle={kpiCopy.revenueSubtitle}
+              value={rangeMetrics.revenue}
               format="currency"
-              compare={compare(thirtyDayMetrics.revenue, previousThirtyDayMetrics.revenue)}
+              compare={compare(rangeMetrics.revenue, comparisonMetrics.revenue)}
             />
             <ExecutiveKpi
               delay={100}
               icon={ShoppingBag}
-              label={t("dashboard.kpi.thirtyDayOrders")}
-              subtitle={t("dashboard.kpi.ordersSubtitle")}
-              value={thirtyDayMetrics.quantity}
-              compare={compare(thirtyDayMetrics.quantity, previousThirtyDayMetrics.quantity)}
+              label={kpiCopy.ordersLabel}
+              subtitle={kpiCopy.ordersSubtitle}
+              value={rangeMetrics.quantity}
+              compare={compare(rangeMetrics.quantity, comparisonMetrics.quantity)}
             />
             <ExecutiveKpi
               delay={200}
               icon={CreditCard}
-              label={t("dashboard.kpi.thirtyDayAov")}
-              subtitle="Average Order Value"
-              value={aov}
+              label={kpiCopy.aovLabel}
+              subtitle={kpiCopy.aovSubtitle}
+              value={rangeAov}
               format="currency"
-              compare={compare(aov, previousAov)}
+              compare={compare(rangeAov, comparisonAov)}
             />
             <ExecutiveKpi
               delay={300}
               icon={TrendingUp}
-              label={t("dashboard.kpi.thirtyDayProfit")}
-              subtitle={t("dashboard.kpi.profitSubtitle")}
-              value={thirtyDayMetrics.profit}
+              label={kpiCopy.profitLabel}
+              subtitle={kpiCopy.profitSubtitle}
+              value={rangeMetrics.profit}
               format="currency"
-              compare={compare(thirtyDayMetrics.profit, previousThirtyDayMetrics.profit)}
+              compare={compare(rangeMetrics.profit, comparisonMetrics.profit)}
             />
             <ExecutiveKpi
               delay={400}
@@ -251,7 +241,6 @@ function DashboardContent() {
               label={t("dashboard.kpi.returnInboundSaleable")}
               subtitle={t("dashboard.kpi.returnInboundSubtitle")}
               value={returnInboundQty}
-              compare={compare(returnInboundQty, previousReturnInboundQty)}
             />
             <ExecutiveKpi
               delay={500}
@@ -259,7 +248,6 @@ function DashboardContent() {
               label={t("dashboard.kpi.lossBadMissing")}
               subtitle={t("dashboard.kpi.lossSubtitle")}
               value={lossQty}
-              compare={compare(lossQty, previousLossQty)}
               inverseTrend
             />
             <ExecutiveKpi
@@ -268,7 +256,6 @@ function DashboardContent() {
               label={t("dashboard.kpi.currentStockQty")}
               subtitle={t("dashboard.kpi.currentStockSubtitle")}
               value={totalStock}
-              suffix=" EA"
             />
             <ExecutiveKpi
               delay={700}
@@ -1496,6 +1483,60 @@ function hasRecentSale(productId: string, salesRows: SaleDaily[]) {
 }
 
 type DateRange = { start: string; end: string; label: string };
+
+function buildKpiCopy(
+  mode: ViewMode,
+  range: DateRange,
+  language: "zh" | "ko"
+) {
+  const periodText =
+    mode === "today" ? { zh: "今天", ko: "오늘", en: "Today's" } :
+      mode === "yesterday" ? { zh: "昨天", ko: "어제", en: "Yesterday" } :
+        mode === "7d" ? { zh: "近7天", ko: "최근 7일", en: "Last 7 Days" } :
+          mode === "30d" ? { zh: "近30天", ko: "최근 30일", en: "Last 30 Days" } :
+            mode === "month" ? { zh: "本月", ko: "이번 달", en: "This Month" } :
+              { zh: formatShortRangeTitle(range, "zh"), ko: formatShortRangeTitle(range, "ko"), en: "Custom Range" };
+
+  const zhMetrics = {
+    revenue: "销售额",
+    orders: "订单数",
+    aov: "客单价",
+    profit: "利润"
+  };
+  const koMetrics = {
+    revenue: "매출",
+    orders: "주문수",
+    aov: "객단가",
+    profit: "이익"
+  };
+  const metricText = language === "ko" ? koMetrics : zhMetrics;
+  const localizedPeriod = periodText[language];
+
+  return {
+    revenueLabel: `${localizedPeriod}${metricText.revenue}`,
+    ordersLabel: `${localizedPeriod}${metricText.orders}`,
+    aovLabel: `${localizedPeriod}${metricText.aov}`,
+    profitLabel: `${localizedPeriod}${metricText.profit}`,
+    revenueSubtitle: `${periodText.en} Revenue`,
+    ordersSubtitle: `${periodText.en} Orders`,
+    aovSubtitle: `${periodText.en} AOV`,
+    profitSubtitle: `${periodText.en} Profit`
+  };
+}
+
+function formatShortRangeTitle(
+  range: DateRange,
+  language: "zh" | "ko"
+) {
+  const monthDay = (dateKey: string) => {
+    const date = parseDateKey(dateKey);
+    if (language === "ko") return `${date.getMonth() + 1}월 ${date.getDate()}일`;
+    return `${date.getMonth() + 1}月${date.getDate()}日`;
+  };
+
+  if (range.start === range.end) return monthDay(range.end);
+  return `${monthDay(range.start)}-${monthDay(range.end)}`;
+}
 
 function buildRange(mode: ViewMode, anchorDate: Date, t: TFunction): DateRange {
   const end = toDateKey(anchorDate);
