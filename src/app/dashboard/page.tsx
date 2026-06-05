@@ -103,6 +103,10 @@ function DashboardContent() {
   const [salesAllRows, setSalesAllRows] = useState<SaleDaily[]>([]);
   const [movements, setMovements] = useState<MovementRow[]>([]);
   const [selectedDate, setSelectedDate] = useState(toDateKey(new Date()));
+  const [customRange, setCustomRange] = useState(() => {
+    const today = toDateKey(new Date());
+    return { start: today, end: today };
+  });
   const [viewMode, setViewMode] = useState<ViewMode>("today");
   const [trendMetric, setTrendMetric] = useState<TrendMetric>("quantity");
   const [annualMetric, setAnnualMetric] = useState<AnnualMetric>("quantity");
@@ -125,22 +129,23 @@ function DashboardContent() {
   const [loading, setLoading] = useState(true);
 
   const anchorDate = parseDateKey(selectedDate);
-  const range = buildRange(viewMode, anchorDate, t);
+  const range = buildRange(viewMode, anchorDate, t, customRange);
   const comparisonRange = buildComparisonRange(range);
 
   useEffect(() => {
-    setSelectedYear(parseDateKey(selectedDate).getFullYear());
-  }, [selectedDate]);
+    setSelectedYear(parseDateKey(range.end).getFullYear());
+  }, [range.end]);
 
   useEffect(() => {
     load();
-  }, [selectedDate, selectedYear]);
+  }, [selectedDate, selectedYear, viewMode, customRange.start, customRange.end]);
 
   async function load() {
     setLoading(true);
 
     const anchor = parseDateKey(selectedDate);
-    const salesStart = daysAgoKey(anchor, 89);
+    const activeRange = buildRange(viewMode, anchor, t, customRange);
+    const salesStart = minDateKey(daysAgoKey(anchor, 89), activeRange.start);
     const salesEnd = toDateKey(anchor);
     const replenishStart = daysAgoKey(anchor, SALES_ANALYSIS_DAYS - 1);
     const yearStart = `${selectedYear}-01-01`;
@@ -189,7 +194,7 @@ function DashboardContent() {
   const rangeMovements = movements.filter((movement) => isBetween(toDateKey(new Date(movement.happened_at)), range.start, range.end));
   const comparisonMovements = movements.filter((movement) => isBetween(toDateKey(new Date(movement.happened_at)), comparisonRange.start, comparisonRange.end));
   const salesWindowRows = salesRows.filter((sale) => isBetween(sale.sale_date, daysAgoKey(anchorDate, 29), range.end));
-  const trendDays = viewMode === "30d" ? 30 : viewMode === "month" ? daysInRange(range) : viewMode === "custom" ? 7 : viewMode === "7d" ? 7 : 7;
+  const trendDays = viewMode === "30d" ? 30 : viewMode === "month" ? daysInRange(range) : viewMode === "custom" ? daysInRange(range) : viewMode === "7d" ? 7 : 7;
 
   const totalStock = rows.reduce((sum, row) => sum + row.currentStock, 0);
   const skuCount = rows.length;
@@ -223,16 +228,29 @@ function DashboardContent() {
         <PageHeader title={t("dashboard.title")} />
         <DateControl
           selectedDate={selectedDate}
+          range={range}
+          customRange={customRange}
           viewMode={viewMode}
           rangeLabel={formatRangeLabel(range, formatDate)}
           onDateChange={(date) => {
             setSelectedDate(date);
+            setCustomRange({ start: date, end: date });
             setViewMode("custom");
           }}
+          onRangeChange={(nextRange) => {
+            if (nextRange.start > nextRange.end) {
+              window.alert("开始日期不能晚于结束日期");
+              return;
+            }
+            setCustomRange(nextRange);
+            setSelectedDate(nextRange.end);
+            setViewMode(matchRangeMode(nextRange) ?? "custom");
+          }}
           onModeChange={(mode) => {
+            const nextRange = buildRange(mode, parseDateKey(mode === "yesterday" ? daysAgoKey(new Date(), 1) : toDateKey(new Date())), t, customRange);
             setViewMode(mode);
-            if (mode === "today") setSelectedDate(toDateKey(new Date()));
-            if (mode === "yesterday") setSelectedDate(daysAgoKey(new Date(), 1));
+            setCustomRange({ start: nextRange.start, end: nextRange.end });
+            setSelectedDate(nextRange.end);
           }}
         />
       </div>
@@ -438,15 +456,21 @@ function DashboardContent() {
 
 function DateControl({
   selectedDate,
+  range,
+  customRange,
   viewMode,
   rangeLabel,
   onDateChange,
+  onRangeChange,
   onModeChange
 }: {
   selectedDate: string;
+  range: DateRange;
+  customRange: { start: string; end: string };
   viewMode: ViewMode;
   rangeLabel: string;
   onDateChange: (date: string) => void;
+  onRangeChange: (range: { start: string; end: string }) => void;
   onModeChange: (mode: ViewMode) => void;
 }) {
   const { t } = useLanguage();
@@ -459,19 +483,38 @@ function DateControl({
   ];
 
   return (
-    <div className="rounded border border-line bg-white p-3 shadow-soft">
-      <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-ink">
-        <CalendarDays size={16} />
+    <div className="rounded-2xl border border-white/60 bg-white/85 p-3 shadow-soft backdrop-blur-xl">
+      <div className="mb-2 flex flex-wrap items-center gap-2 text-sm font-semibold text-ink">
+        <span className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-brand/10 text-brand">
+          <CalendarDays size={16} />
+        </span>
         {t("dashboard.dateControl")}
-        <span className="ml-auto text-xs font-medium text-ink/55">{rangeLabel}</span>
+        <span className="ml-auto rounded-full border border-line bg-panel px-3 py-1 text-xs font-semibold text-ink/55">
+          当前范围：{range.start} ~ {range.end}
+        </span>
       </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <input className="w-40" type="date" value={selectedDate} onChange={(event) => onDateChange(event.target.value)} />
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-line bg-panel/70 p-1.5">
+          <input
+            className="h-9 w-36 rounded-lg border border-line bg-white px-3 text-sm font-semibold text-ink outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/15"
+            type="date"
+            value={viewMode === "custom" ? customRange.start : range.start}
+            onChange={(event) => onRangeChange({ start: event.target.value, end: viewMode === "custom" ? customRange.end : range.end })}
+          />
+          <span className="text-xs font-semibold text-ink/35">~</span>
+          <input
+            className="h-9 w-36 rounded-lg border border-line bg-white px-3 text-sm font-semibold text-ink outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/15"
+            type="date"
+            value={viewMode === "custom" ? customRange.end : range.end}
+            onChange={(event) => onRangeChange({ start: viewMode === "custom" ? customRange.start : range.start, end: event.target.value })}
+          />
+        </div>
         {buttons.map((button) => (
           <SegmentButton key={button.key} active={viewMode === button.key} onClick={() => onModeChange(button.key)}>
             {button.label}
           </SegmentButton>
         ))}
+        <input className="hidden" type="date" value={selectedDate} onChange={(event) => onDateChange(event.target.value)} aria-label={rangeLabel} />
       </div>
     </div>
   );
@@ -1389,20 +1432,20 @@ function ReplenishmentActionCenter({
       </div>
 
       {loading ? <DecisionSkeleton /> : (
-        <DecisionTable columns="grid-cols-[44px_2.1fr_0.75fr_0.75fr_0.8fr_0.8fr_1fr_0.95fr]">
-          <DecisionTableHeader columns="grid-cols-[44px_2.1fr_0.75fr_0.75fr_0.8fr_0.8fr_1fr_0.95fr]">
+        <DecisionTable columns="grid-cols-[44px_minmax(320px,2.1fr)_minmax(120px,0.75fr)_minmax(120px,0.75fr)_minmax(120px,0.8fr)_minmax(120px,0.8fr)_minmax(150px,1fr)_minmax(150px,0.95fr)]">
+          <DecisionTableHeader columns="grid-cols-[44px_minmax(320px,2.1fr)_minmax(120px,0.75fr)_minmax(120px,0.75fr)_minmax(120px,0.8fr)_minmax(120px,0.8fr)_minmax(150px,1fr)_minmax(150px,0.95fr)]">
             <div />
             <div>{copy.productInfo}</div>
-            <SortButton label={copy.currentStock} active={sortKey === "stock"} onClick={() => onSortChange("stock")} />
-            <SortButton label={copy.dailyAverage} active={sortKey === "sales"} onClick={() => onSortChange("sales")} />
-            <SortButton label={copy.saleableDays} active={sortKey === "days"} onClick={() => onSortChange("days")} />
-            <div>{copy.status}</div>
-            <div>{copy.action}</div>
+            <SortButton label={copy.currentStock} active={sortKey === "stock"} onClick={() => onSortChange("stock")} align="right" />
+            <SortButton label={copy.dailyAverage} active={sortKey === "sales"} onClick={() => onSortChange("sales")} align="right" />
+            <SortButton label={copy.saleableDays} active={sortKey === "days"} onClick={() => onSortChange("days")} align="right" />
+            <div className="text-center">{copy.status}</div>
+            <div className="text-center">{copy.action}</div>
             <SortButton label={copy.suggestedQty} active={sortKey === "suggested"} onClick={() => onSortChange("suggested")} align="right" />
           </DecisionTableHeader>
           <div className="divide-y divide-line/80">
             {visibleRows.map((row) => (
-              <DecisionRow key={row.product.id} status={row.status} columns="grid-cols-[44px_2.1fr_0.75fr_0.75fr_0.8fr_0.8fr_1fr_0.95fr]">
+              <DecisionRow key={row.product.id} status={row.status} columns="grid-cols-[44px_minmax(320px,2.1fr)_minmax(120px,0.75fr)_minmax(120px,0.75fr)_minmax(120px,0.8fr)_minmax(120px,0.8fr)_minmax(150px,1fr)_minmax(150px,0.95fr)]">
                 <input
                   type="checkbox"
                   checked={selectedIds.has(row.product.id)}
@@ -1413,8 +1456,8 @@ function ReplenishmentActionCenter({
                 <NumberCell>{formatNumber(row.currentStock)}</NumberCell>
                 <NumberCell>{formatNumber(row.dailyAverage)}</NumberCell>
                 <NumberCell>{formatSaleableDaysText(row, copy)}</NumberCell>
-                <div><StatusBadge status={row.status} /></div>
-                <div className="font-semibold text-ink">{actionLabel(row, copy)}</div>
+                <div className="text-center"><StatusBadge status={row.status} /></div>
+                <div className="text-center font-semibold text-ink">{actionLabel(row, copy)}</div>
                 <NumberCell>
                   <span className="inline-flex rounded-full bg-brand/10 px-3 py-1 text-sm font-bold text-brand">
                     {copy.suggestedCapsule} {formatNumber(row.suggestedQty)}
@@ -1495,28 +1538,28 @@ function StockRiskRanking({
       </div>
 
       {loading ? <DecisionSkeleton /> : (
-        <DecisionTable columns="grid-cols-[0.35fr_2.1fr_0.65fr_0.7fr_0.7fr_0.95fr_1fr_0.8fr]">
-          <DecisionTableHeader columns="grid-cols-[0.35fr_2.1fr_0.65fr_0.7fr_0.7fr_0.95fr_1fr_0.8fr]">
+        <DecisionTable columns="grid-cols-[64px_minmax(320px,2.1fr)_minmax(120px,0.65fr)_minmax(120px,0.7fr)_minmax(120px,0.7fr)_minmax(140px,0.95fr)_minmax(150px,1fr)_minmax(120px,0.8fr)]">
+          <DecisionTableHeader columns="grid-cols-[64px_minmax(320px,2.1fr)_minmax(120px,0.65fr)_minmax(120px,0.7fr)_minmax(120px,0.7fr)_minmax(140px,0.95fr)_minmax(150px,1fr)_minmax(120px,0.8fr)]">
             <div>{copy.rank}</div>
             <div>{copy.productInfo}</div>
             <SortButton label={copy.currentStock} active={sortKey === "stock"} onClick={() => onSortChange("stock")} align="right" />
             <SortButton label={copy.dailyAverage} active={sortKey === "sales"} onClick={() => onSortChange("sales")} align="right" />
             <SortButton label={copy.saleableDays} active={sortKey === "days"} onClick={() => onSortChange("days")} align="right" />
-            <div>{copy.stockoutDate}</div>
+            <div className="text-center">{copy.stockoutDate}</div>
             <SortButton label={copy.lostRevenue} active={sortKey === "lostRevenue"} onClick={() => onSortChange("lostRevenue")} align="right" />
-            <div>{copy.riskLevel}</div>
+            <div className="text-center">{copy.riskLevel}</div>
           </DecisionTableHeader>
           <div className="divide-y divide-line/80">
             {visibleRows.map((row, index) => (
-              <DecisionRow key={row.product.id} status={row.status} columns="grid-cols-[0.35fr_2.1fr_0.65fr_0.7fr_0.7fr_0.95fr_1fr_0.8fr]">
+              <DecisionRow key={row.product.id} status={row.status} columns="grid-cols-[64px_minmax(320px,2.1fr)_minmax(120px,0.65fr)_minmax(120px,0.7fr)_minmax(120px,0.7fr)_minmax(140px,0.95fr)_minmax(150px,1fr)_minmax(120px,0.8fr)]">
                 <div className="font-bold text-ink/70">{index + 1}</div>
                 <ProductInfoCell product={row.product} />
                 <NumberCell>{formatNumber(row.currentStock)}</NumberCell>
                 <NumberCell>{formatNumber(row.dailyAverage)}</NumberCell>
                 <NumberCell>{formatSaleableDaysText(row, copy)}</NumberCell>
-                <div className="text-sm font-semibold text-ink/70">{stockoutDate(row.saleableDays, anchorDate, t)}</div>
+                <div className="text-center text-sm font-semibold text-ink/70">{stockoutDate(row.saleableDays, anchorDate, t)}</div>
                 <NumberCell>{formatCurrency(estimatedLostRevenue(row))}</NumberCell>
-                <div><RiskBadge row={row} copy={copy} /></div>
+                <div className="text-center"><RiskBadge row={row} copy={copy} /></div>
               </DecisionRow>
             ))}
             {!visibleRows.length ? <DecisionEmpty text={copy.emptyRisk} /> : null}
@@ -1591,26 +1634,26 @@ function SkuLifecycleCenter({
       </div>
 
       {loading ? <DecisionSkeleton /> : (
-        <DecisionTable columns="grid-cols-[2.1fr_0.7fr_0.85fr_0.75fr_0.85fr_0.95fr_1fr]">
-          <DecisionTableHeader columns="grid-cols-[2.1fr_0.7fr_0.85fr_0.75fr_0.85fr_0.95fr_1fr]">
+        <DecisionTable columns="grid-cols-[minmax(320px,2.1fr)_minmax(120px,0.7fr)_minmax(130px,0.85fr)_minmax(120px,0.75fr)_minmax(120px,0.85fr)_minmax(140px,0.95fr)_minmax(160px,1fr)]">
+          <DecisionTableHeader columns="grid-cols-[minmax(320px,2.1fr)_minmax(120px,0.7fr)_minmax(130px,0.85fr)_minmax(120px,0.75fr)_minmax(120px,0.85fr)_minmax(140px,0.95fr)_minmax(160px,1fr)]">
             <div>{copy.productInfo}</div>
             <SortButton label={copy.currentStock} active={sortKey === "stock"} onClick={() => onSortChange("stock")} align="right" />
             <SortButton label={copy.sales730} active={sortKey === "sales"} onClick={() => onSortChange("sales")} align="right" />
-            <div className="text-right">{copy.dailyAverage}</div>
+            <div className="text-right tabular-nums">{copy.dailyAverage}</div>
             <SortButton label={copy.saleableDays} active={sortKey === "days"} onClick={() => onSortChange("days")} align="right" />
-            <div>{copy.lifecycleStatus}</div>
-            <div>{copy.action}</div>
+            <div className="text-center">{copy.lifecycleStatus}</div>
+            <div className="text-center">{copy.action}</div>
           </DecisionTableHeader>
           <div className="divide-y divide-line/80">
             {visibleRows.map((row) => (
-              <DecisionRow key={row.product.id} status={row.status} columns="grid-cols-[2.1fr_0.7fr_0.85fr_0.75fr_0.85fr_0.95fr_1fr]">
+              <DecisionRow key={row.product.id} status={row.status} columns="grid-cols-[minmax(320px,2.1fr)_minmax(120px,0.7fr)_minmax(130px,0.85fr)_minmax(120px,0.75fr)_minmax(120px,0.85fr)_minmax(140px,0.95fr)_minmax(160px,1fr)]">
                 <ProductInfoCell product={row.product} />
                 <NumberCell>{formatNumber(row.currentStock)}</NumberCell>
                 <NumberCell>{formatNumber(row.sales7)} / {formatNumber(row.salesInWindow)}</NumberCell>
                 <NumberCell>{formatNumber(row.dailyAverage)}</NumberCell>
                 <NumberCell>{formatSaleableDaysText(row, copy)}</NumberCell>
-                <div><LifecycleBadge label={row.lifecycle} status={row.lifecycleStatus} /></div>
-                <div className="font-semibold text-ink">{row.lifecycleAction}</div>
+                <div className="text-center"><LifecycleBadge label={row.lifecycle} status={row.lifecycleStatus} /></div>
+                <div className="text-center font-semibold text-ink">{row.lifecycleAction}</div>
               </DecisionRow>
             ))}
             {!visibleRows.length ? <DecisionEmpty text={copy.emptyLifecycle} /> : null}
@@ -1729,7 +1772,7 @@ function SortButton({ label, active, align = "left", onClick }: { label: string;
     <button
       type="button"
       onClick={onClick}
-      className={`font-bold transition hover:text-brand ${active ? "text-brand" : ""} ${align === "right" ? "text-right" : "text-left"}`}
+      className={`w-full font-bold transition hover:text-brand ${active ? "text-brand" : ""} ${align === "right" ? "text-right" : "text-left"}`}
     >
       {label}
     </button>
@@ -2760,14 +2803,27 @@ function formatShortRangeTitle(
   return `${monthDay(range.start)}-${monthDay(range.end)}`;
 }
 
-function buildRange(mode: ViewMode, anchorDate: Date, t: TFunction): DateRange {
+function buildRange(mode: ViewMode, anchorDate: Date, t: TFunction, customRange?: { start: string; end: string }): DateRange {
   const end = toDateKey(anchorDate);
   if (mode === "7d") return { start: daysAgoKey(anchorDate, 6), end, label: t("period.7d") };
   if (mode === "30d") return { start: daysAgoKey(anchorDate, 29), end, label: t("period.30d") };
   if (mode === "month") return { start: monthStartKey(anchorDate), end, label: t("period.month") };
   if (mode === "yesterday") return { start: end, end, label: t("period.yesterday") };
+  if (mode === "custom" && customRange) return { start: customRange.start, end: customRange.end, label: t("period.custom") };
   if (mode === "custom") return { start: end, end, label: t("period.custom") };
   return { start: end, end, label: t("period.today") };
+}
+
+function matchRangeMode(range: { start: string; end: string }): ViewMode | null {
+  const today = parseDateKey(toDateKey(new Date()));
+  const todayKey = toDateKey(today);
+  const yesterdayKey = daysAgoKey(today, 1);
+  if (range.start === todayKey && range.end === todayKey) return "today";
+  if (range.start === yesterdayKey && range.end === yesterdayKey) return "yesterday";
+  if (range.start === daysAgoKey(today, 6) && range.end === todayKey) return "7d";
+  if (range.start === daysAgoKey(today, 29) && range.end === todayKey) return "30d";
+  if (range.start === monthStartKey(today) && range.end === todayKey) return "month";
+  return null;
 }
 
 function buildComparisonRange(range: DateRange): DateRange {
@@ -2793,6 +2849,10 @@ function formatRangeLabel(range: DateRange, formatDate: (value: string | Date, o
 
 function isBetween(dateKey: string, start: string, end: string) {
   return dateKey >= start && dateKey <= end;
+}
+
+function minDateKey(a: string, b: string) {
+  return a < b ? a : b;
 }
 
 function compare(current: number, previous: number) {
