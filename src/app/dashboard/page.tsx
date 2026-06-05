@@ -215,11 +215,6 @@ function DashboardContent() {
   const previousYearMonthlySkuRows = buildMonthlySkuRows(rows, salesPreviousYearRows, productMap);
   const filteredMonthlySkuRows = filterMonthlySkuRows(monthlySkuRows, monthlyColorFilter, monthlySizeFilter, monthlySearch);
   const selectedMonthlySkuRow = filteredMonthlySkuRows.find((row) => row.product.id === selectedMonthlySku) ?? null;
-  const slowMoving = rows
-    .filter((row) => row.currentStock > 0 && !hasRecentSale(row.product.id, salesWindowRows))
-    .sort((a, b) => b.currentStock * money(b.product.purchase_price) - a.currentStock * money(a.product.purchase_price))
-    .slice(0, 10);
-  const health = buildInventoryHealth(replenishRows, slowMoving, t);
   const lifecycleRows = buildLifecycleRows(rows, salesRows, anchorDate, t);
 
   return (
@@ -410,8 +405,7 @@ function DashboardContent() {
           />
         </section>
 
-        <section className="grid gap-4">
-          <InventoryHealthCenter summary={health} formatCurrency={formatCurrency} formatNumber={formatNumber} />
+        <section>
           <StockRiskRanking
             rows={replenishRows}
             anchorDate={anchorDate}
@@ -1280,122 +1274,6 @@ function MonthlySkuDetail({
               <div className="font-semibold text-ink">{formatNumber(month.quantity)}</div>
             </div>
           ) : null)}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function InventoryHealthCenter({
-  summary,
-  formatCurrency,
-  formatNumber
-}: {
-  summary: InventoryHealthSummary;
-  formatCurrency: (value: number) => string;
-  formatNumber: (value: number, options?: Intl.NumberFormatOptions) => string;
-}) {
-  const { t } = useLanguage();
-
-  return (
-    <Card className="overflow-hidden p-0">
-      <div className="border-b border-line/70 bg-card/70 px-5 py-5 backdrop-blur md:px-6">
-        <DashboardSectionTitle eyebrow={t("dashboard.section.health")} title={t("dashboard.section.healthTitle")} />
-      </div>
-      <div className="grid gap-5 p-5 xl:grid-cols-[360px_1fr]">
-        <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-[radial-gradient(circle_at_20%_15%,rgba(255,255,255,0.16),transparent_34%),linear-gradient(135deg,#102923,#173f37_48%,#203b3d)] p-6 text-white shadow-lift">
-          <div className="absolute inset-x-8 top-0 h-24 rounded-full bg-white/10 blur-3xl" />
-          <div className="relative flex flex-col items-center gap-5">
-            <InventoryHealthGauge score={summary.score} />
-            <div className="w-full rounded-2xl border border-white/10 bg-white/[0.08] p-4 backdrop-blur">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <div className="text-xs text-white/55">{t("dashboard.health.grade")}</div>
-                  <div className="mt-1 text-2xl font-semibold tracking-wide">{summary.grade}</div>
-                </div>
-                <div>
-                  <div className="text-xs text-white/55">{t("dashboard.health.totalSku")}</div>
-                  <div className="mt-1 text-2xl font-semibold">{formatNumber(summary.totalSku)}</div>
-                </div>
-                <div className="col-span-2 border-t border-white/10 pt-3">
-                  <div className="text-xs text-white/55">{t("dashboard.health.totalValue")}</div>
-                  <div className="mt-1 text-lg font-semibold">{formatCurrency(summary.totalStockValue)}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {summary.items.map((item) => (
-            <HealthMetricCard key={item.key} item={item} formatCurrency={formatCurrency} formatNumber={formatNumber} />
-          ))}
-        </div>
-      </div>
-    </Card>
-  );
-}
-
-function InventoryHealthGauge({ score }: { score: number }) {
-  const { t } = useLanguage();
-  const angle = Math.round((Math.max(0, Math.min(100, score)) / 100) * 360);
-
-  return (
-    <div className="relative flex h-64 w-64 items-center justify-center">
-      <div
-        className="absolute inset-0 rounded-full shadow-[inset_0_0_32px_rgba(255,255,255,0.12),0_24px_80px_rgba(2,20,18,0.42)] transition-all duration-700"
-        style={{
-          background: `conic-gradient(from 220deg, #1E5A4E 0deg, #406A7A ${Math.max(18, angle)}deg, rgba(220,225,216,0.18) ${Math.max(18, angle)}deg 360deg)`
-        }}
-      />
-      <div className="absolute inset-5 rounded-full border border-white/10 bg-[radial-gradient(circle_at_35%_25%,rgba(255,255,255,0.18),transparent_30%),linear-gradient(145deg,rgba(11,31,29,0.95),rgba(17,48,43,0.98))]" />
-      <div className="relative text-center">
-        <div className="text-xs font-semibold uppercase tracking-[0.22em] text-white/50">{t("dashboard.health.centerLabel")}</div>
-        <div className="mt-3 text-6xl font-semibold leading-none text-white">{score}</div>
-        <div className="mt-3 text-sm text-white/60">{t("dashboard.health.score")}</div>
-      </div>
-    </div>
-  );
-}
-
-function HealthMetricCard({
-  item,
-  formatCurrency,
-  formatNumber
-}: {
-  item: HealthItem;
-  formatCurrency: (value: number) => string;
-  formatNumber: (value: number, options?: Intl.NumberFormatOptions) => string;
-}) {
-  const { t } = useLanguage();
-  const detail = item.key === "inTransit"
-    ? t("dashboard.health.inTransitUnits", { count: formatNumber(item.quantity ?? 0) })
-    : item.saleableDays == null
-      ? t("dashboard.health.stockAmount", { value: formatCurrency(item.stockValue) })
-      : t("dashboard.health.saleableDays", { days: item.saleableDays });
-
-  return (
-    <div className="group relative overflow-hidden rounded-2xl border border-line/80 bg-card/85 p-4 shadow-soft backdrop-blur transition duration-200 hover:-translate-y-0.5 hover:shadow-lift">
-      <div className="absolute inset-x-0 top-0 h-1" style={{ backgroundColor: item.color }} />
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2 text-sm font-semibold text-ink">
-            <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.color }} />
-            {item.label}
-          </div>
-          <div className="mt-4 text-3xl font-semibold tracking-tight text-ink">{formatNumber(item.skuCount)}</div>
-          <div className="mt-1 text-xs font-semibold uppercase tracking-[0.16em] text-ink/40">SKU</div>
-        </div>
-        <div className="h-10 w-10 rounded-2xl opacity-90" style={{ background: `linear-gradient(135deg, ${item.color}24, ${item.color}08)` }} />
-      </div>
-      <div className="mt-5 space-y-2 border-t border-line/70 pt-3 text-sm">
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-ink/55">{t("dashboard.health.stockValue")}</span>
-          <span className="font-semibold text-ink">{formatCurrency(item.stockValue)}</span>
-        </div>
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-ink/55">{t("dashboard.health.keyMetric")}</span>
-          <span className="font-semibold text-ink">{detail}</span>
         </div>
       </div>
     </div>
@@ -2609,74 +2487,6 @@ function monthlyAnalysisCopy(language: "zh" | "ko") {
     recentRecords: "最近销售记录",
     close: "关闭"
   };
-}
-
-type HealthItemKey = "healthy" | "danger" | "warning" | "slow" | "inTransit";
-type HealthItem = {
-  key: HealthItemKey;
-  label: string;
-  skuCount: number;
-  quantity?: number;
-  stockValue: number;
-  saleableDays: number | null;
-  color: string;
-};
-type InventoryHealthSummary = {
-  score: number;
-  grade: string;
-  totalSku: number;
-  totalStockValue: number;
-  items: HealthItem[];
-};
-
-function buildInventoryHealth(rows: SmartReplenishmentRow[], slowMoving: ReplenishmentRow[], t: TFunction): InventoryHealthSummary {
-  const totalSku = rows.length;
-  const safeTotal = Math.max(1, totalSku);
-  const slowIds = new Set(slowMoving.map((row) => row.product.id));
-  const dangerRows = rows.filter((row) => row.status === "danger");
-  const warningRows = rows.filter((row) => row.status === "warning");
-  const slowRows = rows.filter((row) => slowIds.has(row.product.id));
-  const inTransitRows = rows.filter((row) => row.openPurchaseQty > 0);
-  const excludedIds = new Set([...dangerRows, ...warningRows, ...slowRows].map((row) => row.product.id));
-  const healthyRows = rows.filter((row) => !excludedIds.has(row.product.id));
-  const totalStockValue = rows.reduce((sum, row) => sum + row.currentStock * money(row.product.purchase_price), 0);
-  const score = Math.max(0, Math.min(100, Math.round(
-    ((healthyRows.length + warningRows.length * 0.55 + slowRows.length * 0.35 + dangerRows.length * 0.15) / safeTotal) * 100
-  )));
-  const grade = score >= 90 ? "A" : score >= 80 ? "B" : score >= 70 ? "C" : "D";
-
-  const makeItem = (key: HealthItemKey, label: string, itemRows: SmartReplenishmentRow[], color: string, quantity?: number): HealthItem => ({
-    key,
-    label,
-    skuCount: itemRows.length,
-    quantity,
-    stockValue: itemRows.reduce((sum, row) => {
-      const stockQuantity = key === "inTransit" ? row.openPurchaseQty : row.currentStock;
-      return sum + stockQuantity * money(row.product.purchase_price);
-    }, 0),
-    saleableDays: averageSaleableDays(itemRows),
-    color
-  });
-
-  return {
-    score,
-    grade,
-    totalSku,
-    totalStockValue,
-    items: [
-      makeItem("healthy", t("dashboard.health.healthy"), healthyRows, "#1E5A4E"),
-      makeItem("danger", t("dashboard.health.danger"), dangerRows, "#A65A52"),
-      makeItem("warning", t("dashboard.health.warning"), warningRows, "#B38A45"),
-      makeItem("slow", t("dashboard.health.slow"), slowRows, "#6D756F"),
-      makeItem("inTransit", t("dashboard.health.inTransit"), inTransitRows, "#406A7A", inTransitRows.reduce((sum, row) => sum + row.openPurchaseQty, 0))
-    ]
-  };
-}
-
-function averageSaleableDays(rows: SmartReplenishmentRow[]) {
-  const values = rows.map((row) => row.saleableDays).filter((value) => Number.isFinite(value) && value < 999);
-  if (!values.length) return null;
-  return Math.round(values.reduce((sum, value) => sum + value, 0) / values.length);
 }
 
 function buildLifecycleRows(rows: ReplenishmentRow[], salesRows: SaleDaily[], anchorDate: Date, t: TFunction): LifecycleRow[] {
