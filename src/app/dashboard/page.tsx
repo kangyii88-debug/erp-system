@@ -1,5 +1,6 @@
 "use client";
 
+import type React from "react";
 import { useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
@@ -52,6 +53,9 @@ type ViewMode = "today" | "yesterday" | "7d" | "30d" | "month" | "custom";
 type TrendMetric = "orders" | "quantity";
 type AnnualMetric = "quantity" | "orders" | "revenue";
 type MonthlySkuMetric = "quantity" | "revenue" | "profit" | "stock";
+type DecisionSortKey = "risk" | "stock" | "sales" | "days" | "suggested" | "lostRevenue";
+type ActionTab = "immediate" | "soon" | "watch";
+type LifecycleStatus = "danger" | "warning" | "stable" | "slow";
 type SalesPoint = { date: string; label: string; orders: number; quantity: number; revenue: number; profit: number };
 type AnnualPoint = SalesPoint & {
   month: number;
@@ -70,6 +74,14 @@ type MonthlySkuRow = {
   annualQuantity: number;
   annualRevenue: number;
   annualProfit: number;
+};
+type LifecycleRow = ReplenishmentRow & {
+  saleableDays: number;
+  sales7: number;
+  lifecycle: string;
+  lifecycleStatus: LifecycleStatus;
+  lifecycleAction: string;
+  status: SmartReplenishmentRow["status"];
 };
 
 const STANDARD_SIZE_OPTIONS = ["58.4x163", "76.2x163", "87.6x163", "91.4x163", "99.1x163"];
@@ -98,6 +110,15 @@ function DashboardContent() {
   const [monthlyColorFilter, setMonthlyColorFilter] = useState("all");
   const [monthlySizeFilter, setMonthlySizeFilter] = useState("all");
   const [monthlySearch, setMonthlySearch] = useState("");
+  const [lifecycleSearch, setLifecycleSearch] = useState("");
+  const [lifecycleStatusFilter, setLifecycleStatusFilter] = useState("all");
+  const [lifecycleSort, setLifecycleSort] = useState<DecisionSortKey>("risk");
+  const [riskSearch, setRiskSearch] = useState("");
+  const [riskStatusFilter, setRiskStatusFilter] = useState("all");
+  const [riskSort, setRiskSort] = useState<DecisionSortKey>("risk");
+  const [actionSearch, setActionSearch] = useState("");
+  const [actionSort, setActionSort] = useState<DecisionSortKey>("risk");
+  const [actionTab, setActionTab] = useState<ActionTab>("immediate");
   const [selectedMonthlySku, setSelectedMonthlySku] = useState<string | null>(null);
   const [comparePreviousYear, setComparePreviousYear] = useState(true);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
@@ -180,7 +201,6 @@ function DashboardContent() {
   const comparisonLossQty = countTypedMovements(comparisonMovements, "loss");
   const kpiCopy = buildKpiCopy(viewMode, range, language);
   const replenishRows = buildSmartReplenishment(rows, t);
-  const riskyRows = replenishRows.filter((row) => row.status !== "normal").sort((a, b) => a.saleableDays - b.saleableDays).slice(0, 12);
   const alerts = buildAlerts({
     rows: replenishRows,
     rangeRevenue: rangeMetrics.revenue,
@@ -378,106 +398,44 @@ function DashboardContent() {
         </section>
 
         <section>
-          <Card>
-            <DashboardSectionTitle eyebrow={t("dashboard.replenishment.section")} title={t("dashboard.replenishment.title")} />
-            <div className="mt-4">
-              {loading ? (
-                <div className="rounded border border-line bg-panel p-6 text-sm text-ink/60">{t("common.loading")}...</div>
-              ) : (
-                <Table>
-                  <thead>
-                    <tr>
-                      <Th>{t("common.sku")}</Th>
-                      <Th>{t("common.productName")}</Th>
-                      <Th>{t("common.currentStock")}</Th>
-                      <Th>{t("common.salesQuantity")}</Th>
-                      <Th>{t("unit.day")}</Th>
-                      <Th>{t("common.status")}</Th>
-                      <Th>{t("dashboard.replenishment.action")}</Th>
-                      <Th>{t("common.quantity")}</Th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {replenishRows.slice(0, 14).map((row) => (
-                      <tr key={row.product.id}>
-                        <Td>{row.product.sku}</Td>
-                        <Td>{row.product.name}</Td>
-                        <Td>{row.currentStock}</Td>
-                        <Td>{row.dailyAverage}</Td>
-                        <Td>{formatSaleableDays(row.saleableDays, t)}</Td>
-                        <Td><StatusBadge status={row.status} /></Td>
-                        <Td>{row.action}</Td>
-                        <Td>{row.suggestedQty}</Td>
-                      </tr>
-                    ))}
-                    {!replenishRows.length ? <EmptyRow columns={8} /> : null}
-                  </tbody>
-                </Table>
-              )}
-            </div>
-          </Card>
+          <ReplenishmentActionCenter
+            rows={replenishRows}
+            loading={loading}
+            tab={actionTab}
+            search={actionSearch}
+            sortKey={actionSort}
+            onTabChange={setActionTab}
+            onSearchChange={setActionSearch}
+            onSortChange={setActionSort}
+          />
         </section>
 
         <section className="grid gap-4">
           <InventoryHealthCenter summary={health} formatCurrency={formatCurrency} formatNumber={formatNumber} />
-          <Card>
-            <DashboardSectionTitle eyebrow={t("dashboard.risk.title")} title={t("dashboard.risk.title")} />
-            <Table>
-              <thead>
-                <tr>
-                  <Th>{t("common.sku")}</Th>
-                  <Th>{t("common.currentStock")}</Th>
-                  <Th>{t("unit.day")}</Th>
-                  <Th>{t("dashboard.risk.stockoutDate")}</Th>
-                  <Th>{t("dashboard.risk.lostRevenue")}</Th>
-                </tr>
-              </thead>
-              <tbody>
-                {riskyRows.map((row) => (
-                  <tr key={row.product.id}>
-                    <Td>{row.product.sku}</Td>
-                    <Td>{row.currentStock}</Td>
-                    <Td>{formatSaleableDays(row.saleableDays, t)}</Td>
-                    <Td>{stockoutDate(row.saleableDays, anchorDate, t)}</Td>
-                    <Td>{formatCurrency(Math.max(0, (REPLENISHMENT_CYCLE_DAYS - row.saleableDays) * row.dailyAverage * money(row.product.sale_price)))}</Td>
-                  </tr>
-                ))}
-                {!riskyRows.length ? <EmptyRow columns={5} /> : null}
-              </tbody>
-            </Table>
-          </Card>
+          <StockRiskRanking
+            rows={replenishRows}
+            anchorDate={anchorDate}
+            loading={loading}
+            search={riskSearch}
+            statusFilter={riskStatusFilter}
+            sortKey={riskSort}
+            onSearchChange={setRiskSearch}
+            onStatusChange={setRiskStatusFilter}
+            onSortChange={setRiskSort}
+          />
         </section>
 
         <section>
-          <Card>
-            <DashboardSectionTitle eyebrow={t("dashboard.lifecycle.title")} title={t("dashboard.lifecycle.title")} />
-            <Table>
-              <thead>
-                <tr>
-                  <Th>{t("common.sku")}</Th>
-                  <Th>{t("common.productName")}</Th>
-                  <Th>{t("common.currentStock")}</Th>
-                  <Th>{t("common.salesQuantity")}</Th>
-                  <Th>{t("common.salesQuantity")}</Th>
-                  <Th>{t("unit.day")}</Th>
-                  <Th>{t("dashboard.lifecycle.trend")}</Th>
-                </tr>
-              </thead>
-              <tbody>
-                {lifecycleRows.map((row) => (
-                  <tr key={row.product.id}>
-                    <Td>{row.product.sku}</Td>
-                    <Td>{row.product.name}</Td>
-                    <Td>{row.currentStock}</Td>
-                    <Td>{row.salesInWindow}</Td>
-                    <Td>{row.dailyAverage}</Td>
-                    <Td>{formatSaleableDays(row.saleableDays, t)}</Td>
-                    <Td><LifecycleBadge label={row.lifecycle} /></Td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
-          </Card>
+          <SkuLifecycleCenter
+            rows={lifecycleRows}
+            loading={loading}
+            search={lifecycleSearch}
+            statusFilter={lifecycleStatusFilter}
+            sortKey={lifecycleSort}
+            onSearchChange={setLifecycleSearch}
+            onStatusChange={setLifecycleStatusFilter}
+            onSortChange={setLifecycleSort}
+          />
         </section>
       </div>
     </>
@@ -1444,6 +1402,733 @@ function HealthMetricCard({
   );
 }
 
+function ReplenishmentActionCenter({
+  rows,
+  loading,
+  tab,
+  search,
+  sortKey,
+  onTabChange,
+  onSearchChange,
+  onSortChange
+}: {
+  rows: SmartReplenishmentRow[];
+  loading: boolean;
+  tab: ActionTab;
+  search: string;
+  sortKey: DecisionSortKey;
+  onTabChange: (tab: ActionTab) => void;
+  onSearchChange: (value: string) => void;
+  onSortChange: (key: DecisionSortKey) => void;
+}) {
+  const { language, formatNumber } = useLanguage();
+  const copy = decisionCopy(language);
+  const tabRows = rows.filter((row) => actionTabForRow(row) === tab);
+  const visibleRows = sortDecisionRows(
+    tabRows.filter((row) => matchesDecisionSearch(row, search)),
+    sortKey
+  ).slice(0, 18);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  const selectedRows = visibleRows.filter((row) => selectedIds.has(row.product.id));
+  const tabs: Array<{ key: ActionTab; label: string; count: number }> = [
+    { key: "immediate", label: copy.buyNow, count: rows.filter((row) => actionTabForRow(row) === "immediate").length },
+    { key: "soon", label: copy.buySoon, count: rows.filter((row) => actionTabForRow(row) === "soon").length },
+    { key: "watch", label: copy.watch, count: rows.filter((row) => actionTabForRow(row) === "watch").length }
+  ];
+
+  function toggleRow(id: string) {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function exportPurchaseList() {
+    const source = selectedRows.length ? selectedRows : visibleRows;
+    const csv = [
+      [copy.priority, copy.productInfo, "SKU", copy.currentStock, copy.dailyAverage, copy.saleableDays, copy.action, copy.suggestedQty].join(","),
+      ...source.map((row) => [
+        riskLabel(row, copy),
+        formatProductLabel(row.product),
+        row.product.sku,
+        row.currentStock,
+        row.dailyAverage,
+        formatSaleableDaysText(row, copy),
+        actionLabel(row, copy),
+        row.suggestedQty
+      ].join(","))
+    ].join("\n");
+    downloadTextFile("purchase-action-list.csv", csv);
+  }
+
+  async function copyPurchaseList() {
+    const source = selectedRows.length ? selectedRows : visibleRows;
+    const text = source.map((row) => `${formatProductLabel(row.product)} / ${copy.suggestedCapsule} ${row.suggestedQty}`).join("\n");
+    await navigator.clipboard?.writeText(text);
+  }
+
+  return (
+    <DecisionPanel
+      eyebrow={copy.actionEyebrow}
+      title={copy.actionTitle}
+      description={copy.actionDescription}
+      meta={copy.autoGenerated}
+      toolbar={(
+        <>
+          <DecisionSearch value={search} placeholder={copy.searchProduct} onChange={onSearchChange} />
+          <DecisionSelect value={sortKey} onChange={(value) => onSortChange(value as DecisionSortKey)}>
+            <option value="risk">{copy.sortRisk}</option>
+            <option value="suggested">{copy.sortSuggested}</option>
+            <option value="days">{copy.sortDays}</option>
+            <option value="sales">{copy.sortSales}</option>
+            <option value="stock">{copy.sortStock}</option>
+          </DecisionSelect>
+          <button type="button" onClick={exportPurchaseList} className="inline-flex h-10 items-center gap-2 rounded-xl border border-line bg-white px-3 text-sm font-semibold text-ink shadow-soft transition hover:-translate-y-0.5 hover:shadow-lift">
+            <Download className="h-4 w-4" />
+            {copy.exportExcel}
+          </button>
+          <button type="button" onClick={copyPurchaseList} className="h-10 rounded-xl bg-brand px-3 text-sm font-semibold text-white shadow-soft transition hover:-translate-y-0.5 hover:bg-brand-strong hover:shadow-lift">
+            {copy.copyList}
+          </button>
+        </>
+      )}
+    >
+      <div className="mb-4 flex flex-wrap gap-2">
+        {tabs.map((item) => (
+          <button
+            key={item.key}
+            type="button"
+            onClick={() => onTabChange(item.key)}
+            className={`rounded-2xl border px-4 py-2 text-sm font-semibold transition ${tab === item.key ? "border-brand bg-brand text-white shadow-soft" : "border-line bg-white/75 text-ink/65 hover:border-brand/40 hover:text-ink"}`}
+          >
+            {item.label}
+            <span className={`ml-2 rounded-full px-2 py-0.5 text-xs ${tab === item.key ? "bg-white/18 text-white" : "bg-panel text-ink/55"}`}>{item.count}</span>
+          </button>
+        ))}
+      </div>
+
+      {loading ? <DecisionSkeleton /> : (
+        <DecisionTable columns="grid-cols-[44px_2.1fr_0.75fr_0.75fr_0.8fr_0.8fr_1fr_0.95fr]">
+          <DecisionTableHeader columns="grid-cols-[44px_2.1fr_0.75fr_0.75fr_0.8fr_0.8fr_1fr_0.95fr]">
+            <div />
+            <div>{copy.productInfo}</div>
+            <SortButton label={copy.currentStock} active={sortKey === "stock"} onClick={() => onSortChange("stock")} />
+            <SortButton label={copy.dailyAverage} active={sortKey === "sales"} onClick={() => onSortChange("sales")} />
+            <SortButton label={copy.saleableDays} active={sortKey === "days"} onClick={() => onSortChange("days")} />
+            <div>{copy.status}</div>
+            <div>{copy.action}</div>
+            <SortButton label={copy.suggestedQty} active={sortKey === "suggested"} onClick={() => onSortChange("suggested")} align="right" />
+          </DecisionTableHeader>
+          <div className="divide-y divide-line/80">
+            {visibleRows.map((row) => (
+              <DecisionRow key={row.product.id} status={row.status} columns="grid-cols-[44px_2.1fr_0.75fr_0.75fr_0.8fr_0.8fr_1fr_0.95fr]">
+                <input
+                  type="checkbox"
+                  checked={selectedIds.has(row.product.id)}
+                  onChange={() => toggleRow(row.product.id)}
+                  className="h-4 w-4 rounded border-line text-brand"
+                />
+                <ProductInfoCell product={row.product} />
+                <NumberCell>{formatNumber(row.currentStock)}</NumberCell>
+                <NumberCell>{formatNumber(row.dailyAverage)}</NumberCell>
+                <NumberCell>{formatSaleableDaysText(row, copy)}</NumberCell>
+                <div><StatusBadge status={row.status} /></div>
+                <div className="font-semibold text-ink">{actionLabel(row, copy)}</div>
+                <NumberCell>
+                  <span className="inline-flex rounded-full bg-brand/10 px-3 py-1 text-sm font-bold text-brand">
+                    {copy.suggestedCapsule} {formatNumber(row.suggestedQty)}
+                  </span>
+                </NumberCell>
+              </DecisionRow>
+            ))}
+            {!visibleRows.length ? <DecisionEmpty text={copy.emptyAction} /> : null}
+          </div>
+        </DecisionTable>
+      )}
+    </DecisionPanel>
+  );
+}
+
+function StockRiskRanking({
+  rows,
+  anchorDate,
+  loading,
+  search,
+  statusFilter,
+  sortKey,
+  onSearchChange,
+  onStatusChange,
+  onSortChange
+}: {
+  rows: SmartReplenishmentRow[];
+  anchorDate: Date;
+  loading: boolean;
+  search: string;
+  statusFilter: string;
+  sortKey: DecisionSortKey;
+  onSearchChange: (value: string) => void;
+  onStatusChange: (value: string) => void;
+  onSortChange: (key: DecisionSortKey) => void;
+}) {
+  const { language, t, formatCurrency, formatNumber } = useLanguage();
+  const copy = decisionCopy(language);
+  const riskRows = rows
+    .filter((row) => row.currentStock === 0 || row.dailyAverage > 0)
+    .filter((row) => statusFilter === "all" || row.status === statusFilter)
+    .filter((row) => matchesDecisionSearch(row, search));
+  const visibleRows = sortDecisionRows(riskRows, sortKey).slice(0, 14);
+  const within3 = rows.filter((row) => row.dailyAverage > 0 && row.saleableDays <= 3).length;
+  const within7 = rows.filter((row) => row.dailyAverage > 0 && row.saleableDays <= 7).length;
+  const lostRevenue = rows.reduce((sum, row) => sum + estimatedLostRevenue(row), 0);
+  const immediate = rows.filter((row) => row.status === "danger").length;
+
+  return (
+    <DecisionPanel
+      eyebrow={copy.riskEyebrow}
+      title={copy.riskTitle}
+      description={copy.riskDescription}
+      meta={copy.sortedByRisk}
+      toolbar={(
+        <>
+          <DecisionSearch value={search} placeholder={copy.searchProduct} onChange={onSearchChange} />
+          <DecisionSelect value={statusFilter} onChange={onStatusChange}>
+            <option value="all">{copy.allStatus}</option>
+            <option value="danger">{copy.danger}</option>
+            <option value="warning">{copy.warning}</option>
+            <option value="normal">{copy.normal}</option>
+          </DecisionSelect>
+          <DecisionSelect value={sortKey} onChange={(value) => onSortChange(value as DecisionSortKey)}>
+            <option value="risk">{copy.sortRisk}</option>
+            <option value="lostRevenue">{copy.sortLostRevenue}</option>
+            <option value="days">{copy.sortDays}</option>
+            <option value="stock">{copy.sortStock}</option>
+          </DecisionSelect>
+        </>
+      )}
+    >
+      <div className="mb-5 grid gap-3 md:grid-cols-4">
+        <DecisionMetric label={copy.soldOut3Days} value={formatNumber(within3)} tone="danger" />
+        <DecisionMetric label={copy.soldOut7Days} value={formatNumber(within7)} tone="warning" />
+        <DecisionMetric label={copy.estimatedLostRevenue} value={formatCurrency(lostRevenue)} tone="danger" />
+        <DecisionMetric label={copy.immediateSku} value={formatNumber(immediate)} tone="normal" />
+      </div>
+
+      {loading ? <DecisionSkeleton /> : (
+        <DecisionTable columns="grid-cols-[0.35fr_2.1fr_0.65fr_0.7fr_0.7fr_0.95fr_1fr_0.8fr]">
+          <DecisionTableHeader columns="grid-cols-[0.35fr_2.1fr_0.65fr_0.7fr_0.7fr_0.95fr_1fr_0.8fr]">
+            <div>{copy.rank}</div>
+            <div>{copy.productInfo}</div>
+            <SortButton label={copy.currentStock} active={sortKey === "stock"} onClick={() => onSortChange("stock")} align="right" />
+            <SortButton label={copy.dailyAverage} active={sortKey === "sales"} onClick={() => onSortChange("sales")} align="right" />
+            <SortButton label={copy.saleableDays} active={sortKey === "days"} onClick={() => onSortChange("days")} align="right" />
+            <div>{copy.stockoutDate}</div>
+            <SortButton label={copy.lostRevenue} active={sortKey === "lostRevenue"} onClick={() => onSortChange("lostRevenue")} align="right" />
+            <div>{copy.riskLevel}</div>
+          </DecisionTableHeader>
+          <div className="divide-y divide-line/80">
+            {visibleRows.map((row, index) => (
+              <DecisionRow key={row.product.id} status={row.status} columns="grid-cols-[0.35fr_2.1fr_0.65fr_0.7fr_0.7fr_0.95fr_1fr_0.8fr]">
+                <div className="font-bold text-ink/70">{index + 1}</div>
+                <ProductInfoCell product={row.product} />
+                <NumberCell>{formatNumber(row.currentStock)}</NumberCell>
+                <NumberCell>{formatNumber(row.dailyAverage)}</NumberCell>
+                <NumberCell>{formatSaleableDaysText(row, copy)}</NumberCell>
+                <div className="text-sm font-semibold text-ink/70">{stockoutDate(row.saleableDays, anchorDate, t)}</div>
+                <NumberCell>{formatCurrency(estimatedLostRevenue(row))}</NumberCell>
+                <div><RiskBadge row={row} copy={copy} /></div>
+              </DecisionRow>
+            ))}
+            {!visibleRows.length ? <DecisionEmpty text={copy.emptyRisk} /> : null}
+          </div>
+        </DecisionTable>
+      )}
+    </DecisionPanel>
+  );
+}
+
+function SkuLifecycleCenter({
+  rows,
+  loading,
+  search,
+  statusFilter,
+  sortKey,
+  onSearchChange,
+  onStatusChange,
+  onSortChange
+}: {
+  rows: LifecycleRow[];
+  loading: boolean;
+  search: string;
+  statusFilter: string;
+  sortKey: DecisionSortKey;
+  onSearchChange: (value: string) => void;
+  onStatusChange: (value: string) => void;
+  onSortChange: (key: DecisionSortKey) => void;
+}) {
+  const { language, formatNumber } = useLanguage();
+  const copy = decisionCopy(language);
+  const visibleRows = sortLifecycleRows(
+    rows
+      .filter((row) => statusFilter === "all" || row.lifecycleStatus === statusFilter || row.status === statusFilter)
+      .filter((row) => matchesDecisionSearch(row, search)),
+    sortKey
+  ).slice(0, 18);
+  const highRisk = rows.filter((row) => row.status === "danger").length;
+  const stable = rows.filter((row) => row.lifecycleStatus === "stable").length;
+  const slow = rows.filter((row) => row.lifecycleStatus === "slow").length;
+
+  return (
+    <DecisionPanel
+      eyebrow={copy.lifecycleEyebrow}
+      title={copy.lifecycleTitle}
+      description={copy.lifecycleDescription}
+      meta={copy.lastUpdated}
+      toolbar={(
+        <>
+          <DecisionSearch value={search} placeholder={copy.searchProduct} onChange={onSearchChange} />
+          <DecisionSelect value={statusFilter} onChange={onStatusChange}>
+            <option value="all">{copy.allStatus}</option>
+            <option value="danger">{copy.danger}</option>
+            <option value="warning">{copy.warning}</option>
+            <option value="stable">{copy.stable}</option>
+            <option value="slow">{copy.slow}</option>
+          </DecisionSelect>
+          <DecisionSelect value={sortKey} onChange={(value) => onSortChange(value as DecisionSortKey)}>
+            <option value="risk">{copy.sortRisk}</option>
+            <option value="days">{copy.sortDays}</option>
+            <option value="sales">{copy.sortSales}</option>
+            <option value="stock">{copy.sortStock}</option>
+          </DecisionSelect>
+        </>
+      )}
+    >
+      <div className="mb-5 grid gap-3 md:grid-cols-4">
+        <DecisionMetric label={copy.totalSku} value={formatNumber(rows.length)} tone="neutral" />
+        <DecisionMetric label={copy.highRiskSku} value={formatNumber(highRisk)} tone="danger" />
+        <DecisionMetric label={copy.stableSku} value={formatNumber(stable)} tone="normal" />
+        <DecisionMetric label={copy.slowSku} value={formatNumber(slow)} tone="warning" />
+      </div>
+
+      {loading ? <DecisionSkeleton /> : (
+        <DecisionTable columns="grid-cols-[2.1fr_0.7fr_0.85fr_0.75fr_0.85fr_0.95fr_1fr]">
+          <DecisionTableHeader columns="grid-cols-[2.1fr_0.7fr_0.85fr_0.75fr_0.85fr_0.95fr_1fr]">
+            <div>{copy.productInfo}</div>
+            <SortButton label={copy.currentStock} active={sortKey === "stock"} onClick={() => onSortChange("stock")} align="right" />
+            <SortButton label={copy.sales730} active={sortKey === "sales"} onClick={() => onSortChange("sales")} align="right" />
+            <div className="text-right">{copy.dailyAverage}</div>
+            <SortButton label={copy.saleableDays} active={sortKey === "days"} onClick={() => onSortChange("days")} align="right" />
+            <div>{copy.lifecycleStatus}</div>
+            <div>{copy.action}</div>
+          </DecisionTableHeader>
+          <div className="divide-y divide-line/80">
+            {visibleRows.map((row) => (
+              <DecisionRow key={row.product.id} status={row.status} columns="grid-cols-[2.1fr_0.7fr_0.85fr_0.75fr_0.85fr_0.95fr_1fr]">
+                <ProductInfoCell product={row.product} />
+                <NumberCell>{formatNumber(row.currentStock)}</NumberCell>
+                <NumberCell>{formatNumber(row.sales7)} / {formatNumber(row.salesInWindow)}</NumberCell>
+                <NumberCell>{formatNumber(row.dailyAverage)}</NumberCell>
+                <NumberCell>{formatSaleableDaysText(row, copy)}</NumberCell>
+                <div><LifecycleBadge label={row.lifecycle} status={row.lifecycleStatus} /></div>
+                <div className="font-semibold text-ink">{row.lifecycleAction}</div>
+              </DecisionRow>
+            ))}
+            {!visibleRows.length ? <DecisionEmpty text={copy.emptyLifecycle} /> : null}
+          </div>
+        </DecisionTable>
+      )}
+    </DecisionPanel>
+  );
+}
+
+function DecisionPanel({
+  eyebrow,
+  title,
+  description,
+  meta,
+  toolbar,
+  children
+}: {
+  eyebrow: string;
+  title: string;
+  description: string;
+  meta: string;
+  toolbar?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-[28px] border border-white/60 bg-white/90 p-5 shadow-soft backdrop-blur-xl md:p-6">
+      <div className="mb-5 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-ink/35">{eyebrow}</div>
+          <h2 className="mt-1 text-2xl font-semibold tracking-tight text-ink">{title}</h2>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-ink/55">{description}</p>
+        </div>
+        <div className="flex flex-col items-stretch gap-3 md:flex-row md:items-center">
+          <span className="rounded-full border border-line bg-panel px-3 py-1.5 text-xs font-semibold text-ink/55">{meta}</span>
+          {toolbar}
+        </div>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function DecisionMetric({ label, value, tone }: { label: string; value: string; tone: "danger" | "warning" | "normal" | "neutral" }) {
+  const colors = {
+    danger: "from-red-50 text-red-800 border-red-100",
+    warning: "from-amber-50 text-amber-800 border-amber-100",
+    normal: "from-emerald-50 text-emerald-800 border-emerald-100",
+    neutral: "from-slate-50 text-ink border-line"
+  }[tone];
+  return (
+    <div className={`rounded-2xl border bg-gradient-to-br ${colors} to-white p-4 shadow-[0_14px_34px_rgba(31,44,38,0.05)]`}>
+      <div className="text-xs font-semibold text-ink/45">{label}</div>
+      <div className="mt-2 text-2xl font-bold tracking-tight">{value}</div>
+    </div>
+  );
+}
+
+function DecisionSearch({ value, placeholder, onChange }: { value: string; placeholder: string; onChange: (value: string) => void }) {
+  return (
+    <label className="relative block">
+      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink/35" />
+      <input
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        className="h-10 w-full min-w-[220px] rounded-xl border border-line bg-white pl-9 pr-3 text-sm outline-none transition focus:border-brand/50 focus:ring-2 focus:ring-brand/10"
+      />
+    </label>
+  );
+}
+
+function DecisionSelect({ value, onChange, children }: { value: string; onChange: (value: string) => void; children: React.ReactNode }) {
+  return (
+    <select
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+      className="h-10 rounded-xl border border-line bg-white px-3 text-sm font-semibold text-ink/70 outline-none transition focus:border-brand/50 focus:ring-2 focus:ring-brand/10"
+    >
+      {children}
+    </select>
+  );
+}
+
+function DecisionTable({ children }: { columns?: string; children: React.ReactNode }) {
+  return (
+    <div className="overflow-hidden rounded-2xl border border-line bg-white shadow-[0_18px_48px_rgba(31,44,38,0.05)]">
+      <div className="overflow-x-auto">
+        <div className="min-w-[1040px]">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+function DecisionTableHeader({ columns, children }: { columns: string; children: React.ReactNode }) {
+  return (
+    <div className={`grid ${columns} items-center gap-4 border-b border-line bg-panel/70 px-4 py-3 text-xs font-bold uppercase tracking-[0.12em] text-ink/45`}>
+      {children}
+    </div>
+  );
+}
+
+function DecisionRow({ status, columns, children }: { status: SmartReplenishmentRow["status"]; columns: string; children: React.ReactNode }) {
+  const line = status === "danger" ? "bg-red-400" : status === "warning" ? "bg-amber-400" : "bg-emerald-500";
+  const highlight = status === "danger" ? "bg-red-50/30" : "";
+  return (
+    <div className={`group relative grid ${columns} items-center gap-4 px-4 py-4 text-sm transition hover:bg-panel/75 ${highlight}`}>
+      <span className={`absolute left-0 top-3 h-[calc(100%-24px)] w-1 rounded-r-full opacity-70 ${line}`} />
+      {children}
+    </div>
+  );
+}
+
+function SortButton({ label, active, align = "left", onClick }: { label: string; active: boolean; align?: "left" | "right"; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`font-bold transition hover:text-brand ${active ? "text-brand" : ""} ${align === "right" ? "text-right" : "text-left"}`}
+    >
+      {label}
+    </button>
+  );
+}
+
+function ProductInfoCell({ product }: { product: ProductWithStock }) {
+  return (
+    <div className="min-w-0">
+      <div className="truncate text-sm font-semibold text-ink">{product.name}</div>
+      <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-ink/45">
+        <span>{product.sku}</span>
+        <span className="rounded-full bg-panel px-2 py-0.5 font-semibold text-ink/55">{formatVariantName(product)}</span>
+      </div>
+    </div>
+  );
+}
+
+function NumberCell({ children }: { children: React.ReactNode }) {
+  return <div className="text-right font-semibold tabular-nums text-ink">{children}</div>;
+}
+
+function DecisionEmpty({ text }: { text: string }) {
+  return (
+    <div className="px-4 py-10 text-center">
+      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-panel text-ink/35">
+        <CircleAlert className="h-5 w-5" />
+      </div>
+      <div className="mt-3 text-sm font-semibold text-ink/55">{text}</div>
+    </div>
+  );
+}
+
+function DecisionSkeleton() {
+  return (
+    <div className="space-y-3 rounded-2xl border border-line bg-white p-4">
+      {Array.from({ length: 6 }, (_, index) => (
+        <div key={index} className="h-12 animate-pulse rounded-xl bg-panel" />
+      ))}
+    </div>
+  );
+}
+
+function RiskBadge({ row, copy }: { row: SmartReplenishmentRow; copy: DecisionCopy }) {
+  const tone = row.currentStock === 0 || row.saleableDays <= 3 ? "danger" : row.saleableDays <= 7 ? "warning" : "normal";
+  const label = row.currentStock === 0 ? copy.soldOut : tone === "danger" ? copy.danger : tone === "warning" ? copy.warning : copy.normal;
+  const className = tone === "danger" ? "border-red-200 bg-red-50 text-red-800" :
+    tone === "warning" ? "border-amber-200 bg-amber-50 text-amber-800" :
+      "border-emerald-200 bg-emerald-50 text-emerald-800";
+  return (
+    <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${className}`}>
+      {label}
+    </span>
+  );
+}
+
+function actionTabForRow(row: SmartReplenishmentRow): ActionTab {
+  if (row.status === "danger") return "immediate";
+  if (row.status === "warning") return "soon";
+  return "watch";
+}
+
+function actionLabel(row: SmartReplenishmentRow, copy: DecisionCopy) {
+  if (row.currentStock === 0 || row.status === "danger") return copy.buyNow;
+  if (row.status === "warning") return copy.buySoon;
+  if (row.dailyAverage === 0) return copy.observeSales;
+  return copy.noPurchase;
+}
+
+function riskLabel(row: SmartReplenishmentRow, copy: DecisionCopy) {
+  if (row.currentStock === 0) return copy.soldOut;
+  if (row.saleableDays <= 3) return copy.danger;
+  if (row.saleableDays <= 7) return copy.warning;
+  return copy.normal;
+}
+
+function matchesDecisionSearch(row: SmartReplenishmentRow | LifecycleRow, search: string) {
+  const normalized = search.trim().toLowerCase();
+  if (!normalized) return true;
+  const product = row.product;
+  return `${product.name} ${product.sku} ${product.color ?? ""} ${product.size ?? ""}`.toLowerCase().includes(normalized);
+}
+
+function sortDecisionRows(rows: SmartReplenishmentRow[], key: DecisionSortKey) {
+  return [...rows].sort((a, b) => {
+    if (key === "stock") return b.currentStock - a.currentStock;
+    if (key === "sales") return b.dailyAverage - a.dailyAverage;
+    if (key === "days") return normalizedSaleableDays(a) - normalizedSaleableDays(b);
+    if (key === "suggested") return b.suggestedQty - a.suggestedQty;
+    if (key === "lostRevenue") return estimatedLostRevenue(b) - estimatedLostRevenue(a);
+    return riskSortValue(a) - riskSortValue(b);
+  });
+}
+
+function sortLifecycleRows(rows: LifecycleRow[], key: DecisionSortKey) {
+  return [...rows].sort((a, b) => {
+    if (key === "stock") return b.currentStock - a.currentStock;
+    if (key === "sales") return b.salesInWindow - a.salesInWindow;
+    if (key === "days") return normalizedSaleableDays(a) - normalizedSaleableDays(b);
+    return riskSortValue(a) - riskSortValue(b);
+  });
+}
+
+function riskSortValue(row: SmartReplenishmentRow | LifecycleRow) {
+  if (row.currentStock === 0) return -1;
+  if (row.dailyAverage === 0) return 9999;
+  return row.saleableDays;
+}
+
+function normalizedSaleableDays(row: SmartReplenishmentRow | LifecycleRow) {
+  if (row.currentStock === 0) return 0;
+  if (row.dailyAverage === 0) return 9999;
+  return row.saleableDays;
+}
+
+function estimatedLostRevenue(row: SmartReplenishmentRow) {
+  if (row.dailyAverage <= 0) return 0;
+  const uncoveredDays = Math.max(0, REPLENISHMENT_CYCLE_DAYS - row.saleableDays);
+  return uncoveredDays * row.dailyAverage * money(row.product.sale_price);
+}
+
+function formatSaleableDaysText(row: SmartReplenishmentRow | LifecycleRow, copy: DecisionCopy) {
+  if (row.currentStock === 0) return copy.soldOut;
+  if (row.dailyAverage === 0) return copy.noSales;
+  return `${row.saleableDays}${copy.dayUnit}`;
+}
+
+function formatProductLabel(product: ProductWithStock) {
+  return `${product.name} ${formatVariantName(product)}`;
+}
+
+function downloadTextFile(filename: string, text: string) {
+  const blob = new Blob([`\uFEFF${text}`], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+type DecisionCopy = ReturnType<typeof decisionCopy>;
+
+function decisionCopy(language: "zh" | "ko") {
+  if (language === "ko") {
+    return {
+      actionEyebrow: "Purchase Action Center",
+      actionTitle: "발주 액션 센터",
+      actionDescription: "재고, 판매량, 예상 품절 시점을 기준으로 구매 우선순위를 자동 정리합니다.",
+      riskEyebrow: "Inventory Risk Ranking",
+      riskTitle: "재고 위험 순위",
+      riskDescription: "품절 가능성이 높은 상품을 위험도 순서로 정렬해 예상 손실과 처리 우선순위를 보여줍니다.",
+      lifecycleEyebrow: "SKU Lifecycle",
+      lifecycleTitle: "SKU 라이프사이클 분석",
+      lifecycleDescription: "최근 판매와 재고 일수를 기준으로 SKU의 성장, 안정, 저회전, 위험 상태를 판단합니다.",
+      autoGenerated: "자동 계산",
+      sortedByRisk: "위험도 순 정렬",
+      lastUpdated: "실시간 재고 기준",
+      searchProduct: "상품명 / SKU 검색",
+      allStatus: "전체 상태",
+      rank: "순위",
+      productInfo: "상품 정보",
+      currentStock: "현재 재고",
+      dailyAverage: "일평균",
+      saleableDays: "판매 가능일",
+      status: "상태",
+      action: "권장 액션",
+      suggestedQty: "권장 수량",
+      priority: "우선순위",
+      sales730: "7/30일 판매",
+      stockoutDate: "예상 품절일",
+      lostRevenue: "예상 손실 매출",
+      riskLevel: "위험 등급",
+      lifecycleStatus: "라이프사이클",
+      totalSku: "전체 SKU",
+      highRiskSku: "고위험 SKU",
+      stableSku: "안정 판매 SKU",
+      slowSku: "저회전 SKU",
+      soldOut3Days: "3일 내 품절 예상",
+      soldOut7Days: "7일 내 품절 예상",
+      estimatedLostRevenue: "예상 손실 매출",
+      immediateSku: "즉시 발주 SKU",
+      buyNow: "즉시 발주",
+      buySoon: "7일 내 발주",
+      watch: "보류",
+      noPurchase: "발주 불필요",
+      observeSales: "판매 관찰",
+      danger: "위험",
+      warning: "주의",
+      normal: "정상",
+      stable: "안정 판매",
+      slow: "저회전",
+      soldOut: "품절",
+      noSales: "판매 없음",
+      noRisk: "위험 없음",
+      dayUnit: "일",
+      suggestedCapsule: "권장",
+      exportExcel: "Excel 내보내기",
+      copyList: "구매 목록 복사",
+      sortRisk: "위험도순",
+      sortSuggested: "권장수량순",
+      sortDays: "판매가능일순",
+      sortSales: "판매순",
+      sortStock: "재고순",
+      sortLostRevenue: "손실매출순",
+      emptyAction: "현재 조건에 맞는 구매 액션이 없습니다.",
+      emptyRisk: "현재 조건에 맞는 재고 위험 상품이 없습니다.",
+      emptyLifecycle: "현재 조건에 맞는 SKU가 없습니다."
+    };
+  }
+
+  return {
+    actionEyebrow: "Purchase Action Center",
+    actionTitle: "补货行动中心",
+    actionDescription: "根据库存、销量、预计售罄时间自动生成采购优先级，帮助负责人快速决定先补哪个 SKU。",
+    riskEyebrow: "Inventory Risk Ranking",
+    riskTitle: "库存风险排行榜",
+    riskDescription: "按断货风险排序，集中展示当前库存、可售天数、预计售罄日期和可能损失销售额。",
+    lifecycleEyebrow: "SKU Lifecycle",
+    lifecycleTitle: "SKU 生命周期分析",
+    lifecycleDescription: "根据近 7/30 天销量、日均销量和库存可售天数，判断 SKU 当前经营状态。",
+    autoGenerated: "系统自动生成",
+    sortedByRisk: "按风险优先排序",
+    lastUpdated: "基于实时库存",
+    searchProduct: "搜索商品名 / SKU",
+    allStatus: "全部状态",
+    rank: "排名",
+    productInfo: "商品信息",
+    currentStock: "当前库存",
+    dailyAverage: "日均销量",
+    saleableDays: "可售天数",
+    status: "状态",
+    action: "建议动作",
+    suggestedQty: "建议采购数量",
+    priority: "优先级",
+    sales730: "近 7/30 天销量",
+    stockoutDate: "预计售罄日期",
+    lostRevenue: "预计损失销售额",
+    riskLevel: "风险等级",
+    lifecycleStatus: "生命周期状态",
+    totalSku: "总 SKU 数",
+    highRiskSku: "高风险 SKU",
+    stableSku: "稳定销售 SKU",
+    slowSku: "滞销 SKU",
+    soldOut3Days: "预计 3 天内售罄",
+    soldOut7Days: "预计 7 天内售罄",
+    estimatedLostRevenue: "预计损失销售额",
+    immediateSku: "需要立即补货 SKU",
+    buyNow: "立即采购",
+    buySoon: "7天内采购",
+    watch: "暂不采购",
+    noPurchase: "暂不采购",
+    observeSales: "观察销售",
+    danger: "危险",
+    warning: "注意",
+    normal: "正常",
+    stable: "稳定销售",
+    slow: "低动销 / 滞销",
+    soldOut: "已售罄",
+    noSales: "无销量",
+    noRisk: "无风险",
+    dayUnit: "天",
+    suggestedCapsule: "建议",
+    exportExcel: "导出 Excel",
+    copyList: "复制采购清单",
+    sortRisk: "风险优先",
+    sortSuggested: "建议数量",
+    sortDays: "可售天数",
+    sortSales: "销量排序",
+    sortStock: "库存排序",
+    sortLostRevenue: "损失金额",
+    emptyAction: "当前条件下没有需要处理的补货商品。",
+    emptyRisk: "当前条件下没有库存风险商品。",
+    emptyLifecycle: "当前条件下没有 SKU 数据。"
+  };
+}
+
 function StatusBadge({ status }: { status: SmartReplenishmentRow["status"] }) {
   const { t } = useLanguage();
   const config = {
@@ -1454,13 +2139,12 @@ function StatusBadge({ status }: { status: SmartReplenishmentRow["status"] }) {
   return <span className={`rounded border px-2 py-1 text-xs font-semibold ${config[1]}`}>{config[0]}</span>;
 }
 
-function LifecycleBadge({ label }: { label: string }) {
-  const { t } = useLanguage();
-  const color = label === t("dashboard.lifecycle.growing") ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
-    label === t("dashboard.lifecycle.warning") ? "bg-amber-50 text-amber-700 border-amber-200" :
-      label === t("dashboard.lifecycle.slow") ? "bg-red-50 text-red-700 border-red-200" :
-        "bg-panel text-ink border-line";
-  return <span className={`rounded border px-2 py-1 text-xs font-semibold ${color}`}>{label}</span>;
+function LifecycleBadge({ label, status }: { label: string; status?: LifecycleStatus }) {
+  const color = status === "danger" ? "bg-red-50 text-red-800 border-red-200" :
+    status === "warning" ? "bg-amber-50 text-amber-800 border-amber-200" :
+      status === "slow" ? "bg-slate-100 text-slate-700 border-slate-200" :
+        "bg-blue-50 text-blue-800 border-blue-200";
+  return <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${color}`}>{label}</span>;
 }
 
 function EmptyRow({ columns }: { columns: number }) {
@@ -1482,8 +2166,8 @@ type SmartReplenishmentRow = ReplenishmentRow & {
 
 function buildSmartReplenishment(rows: ReplenishmentRow[], t: TFunction): SmartReplenishmentRow[] {
   return rows.map((row) => {
-    const saleableDays = row.dailyAverage > 0 ? Math.floor(row.currentStock / row.dailyAverage) : 999;
-    const status: SmartReplenishmentRow["status"] = saleableDays < 7 ? "danger" : saleableDays < 15 ? "warning" : "normal";
+    const saleableDays = row.currentStock === 0 ? 0 : row.dailyAverage > 0 ? Math.floor(row.currentStock / row.dailyAverage) : 999;
+    const status: SmartReplenishmentRow["status"] = row.currentStock === 0 ? "danger" : saleableDays < 7 ? "danger" : saleableDays < 15 ? "warning" : "normal";
     const action = status === "danger" ? t("dashboard.replenishment.immediate") : status === "warning" ? t("dashboard.replenishment.within7Days") : t("dashboard.replenishment.noNeed");
 
     return { ...row, saleableDays, status, action };
@@ -1995,28 +2679,58 @@ function averageSaleableDays(rows: SmartReplenishmentRow[]) {
   return Math.round(values.reduce((sum, value) => sum + value, 0) / values.length);
 }
 
-function buildLifecycleRows(rows: ReplenishmentRow[], salesRows: SaleDaily[], anchorDate: Date, t: TFunction) {
-  const productSales = new Map<string, { recent: number; previous: number }>();
+function buildLifecycleRows(rows: ReplenishmentRow[], salesRows: SaleDaily[], anchorDate: Date, t: TFunction): LifecycleRow[] {
+  const productSales = new Map<string, { recent7: number; recent30: number; previous: number }>();
+  const recent7Start = daysAgoKey(anchorDate, 6);
   const recentStart = daysAgoKey(anchorDate, 29);
   const previousStart = daysAgoKey(anchorDate, 89);
 
   for (const sale of validSales(salesRows)) {
-    const current = productSales.get(sale.product_id) ?? { recent: 0, previous: 0 };
-    if (sale.sale_date >= recentStart) current.recent += sale.quantity;
+    const current = productSales.get(sale.product_id) ?? { recent7: 0, recent30: 0, previous: 0 };
+    if (sale.sale_date >= recent7Start) current.recent7 += sale.quantity;
+    if (sale.sale_date >= recentStart) current.recent30 += sale.quantity;
     else if (sale.sale_date >= previousStart) current.previous += sale.quantity;
     productSales.set(sale.product_id, current);
   }
 
   return rows.map((row) => {
-    const stats = productSales.get(row.product.id) ?? { recent: 0, previous: 0 };
-    const lifecycle = stats.recent === 0 ? t("dashboard.lifecycle.slow") :
-      stats.previous > 0 && stats.recent >= stats.previous * 1.3 ? t("dashboard.lifecycle.growing") :
-        stats.previous > 0 && stats.recent <= stats.previous * 0.7 ? t("dashboard.lifecycle.warning") :
-          t("dashboard.lifecycle.stable");
-    const saleableDays = row.dailyAverage > 0 ? Math.floor(row.currentStock / row.dailyAverage) : 999;
+    const stats = productSales.get(row.product.id) ?? { recent7: 0, recent30: 0, previous: 0 };
+    const saleableDays = row.currentStock === 0 ? 0 : row.dailyAverage > 0 ? Math.floor(row.currentStock / row.dailyAverage) : 999;
+    const status: SmartReplenishmentRow["status"] = row.currentStock === 0 ? "danger" : saleableDays < 7 ? "danger" : saleableDays < 15 ? "warning" : "normal";
 
-    return { ...row, saleableDays, lifecycle };
-  }).sort((a, b) => b.salesInWindow - a.salesInWindow);
+    let lifecycleStatus: LifecycleStatus = "stable";
+    let lifecycle = t("dashboard.lifecycle.stable");
+    let lifecycleAction = t("dashboard.replenishment.noNeed");
+
+    if (row.currentStock === 0 || saleableDays <= 3) {
+      lifecycleStatus = "danger";
+      lifecycle = t("dashboard.lifecycle.growing");
+      lifecycleAction = t("dashboard.replenishment.immediate");
+    } else if (saleableDays <= 7) {
+      lifecycleStatus = "warning";
+      lifecycle = t("dashboard.lifecycle.warning");
+      lifecycleAction = t("dashboard.replenishment.within7Days");
+    } else if (row.dailyAverage === 0 || stats.recent30 === 0) {
+      lifecycleStatus = "slow";
+      lifecycle = t("dashboard.lifecycle.slow");
+      lifecycleAction = t("dashboard.replenishment.noNeed");
+    } else if (saleableDays > 20 && stats.recent30 <= 2) {
+      lifecycleStatus = "slow";
+      lifecycle = t("dashboard.lifecycle.slow");
+      lifecycleAction = t("dashboard.replenishment.noNeed");
+    } else if (stats.previous > 0 && stats.recent30 >= stats.previous * 1.3) {
+      lifecycleStatus = "stable";
+      lifecycle = t("dashboard.lifecycle.growing");
+      lifecycleAction = t("dashboard.replenishment.within7Days");
+    }
+
+    return { ...row, saleableDays, sales7: stats.recent7, lifecycle, lifecycleStatus, lifecycleAction, status };
+  }).sort((a, b) => {
+    const riskRank = { danger: 0, warning: 1, normal: 2 };
+    const rankDiff = riskRank[a.status] - riskRank[b.status];
+    if (rankDiff !== 0) return rankDiff;
+    return normalizedSaleableDays(a) - normalizedSaleableDays(b);
+  });
 }
 
 function buildSalesMetrics(salesRows: SaleDaily[], productMap: Map<string, ProductWithStock>) {
