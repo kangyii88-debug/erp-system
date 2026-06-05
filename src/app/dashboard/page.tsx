@@ -39,7 +39,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { Table, Td, Th } from "@/components/Table";
 import { useLanguage } from "@/components/LanguageProvider";
 import { supabase } from "@/lib/supabase";
-import { money, profitMargin, totalProfit, unitProfit } from "@/lib/profit";
+import { money, totalProfit } from "@/lib/profit";
 import {
   buildReplenishmentRows,
   REPLENISHMENT_CYCLE_DAYS,
@@ -71,6 +71,8 @@ type MonthlySkuRow = {
   annualRevenue: number;
   annualProfit: number;
 };
+
+const STANDARD_SIZE_OPTIONS = ["58.4x163", "76.2x163", "87.6x163", "91.4x163", "99.1x163"];
 
 export default function DashboardPage() {
   return (
@@ -189,8 +191,6 @@ function DashboardContent() {
   const trendData = buildDailySalesPoints(salesRows, productMap, trendDays, anchorDate);
   const comparisonTrendData = buildDailySalesPoints(salesAllRows, productMap, trendDays, parseDateKey(comparisonRange.end));
   const annualData = buildAnnualTrendPoints(salesYearRows, salesPreviousYearRows, productMap, selectedYear, t);
-  const topSales = buildTopSkuPerformance(rangeSales, productMap, "quantity");
-  const topProfit = buildTopSkuPerformance(rangeSales, productMap, "profit");
   const monthlySkuRows = buildMonthlySkuRows(rows, salesYearRows, productMap);
   const previousYearMonthlySkuRows = buildMonthlySkuRows(rows, salesPreviousYearRows, productMap);
   const filteredMonthlySkuRows = filterMonthlySkuRows(monthlySkuRows, monthlyColorFilter, monthlySizeFilter, monthlySearch);
@@ -418,33 +418,6 @@ function DashboardContent() {
           </Card>
         </section>
 
-        <section className="grid gap-4 xl:grid-cols-3">
-          <TopSalesTable rows={topSales} />
-          <TopProfitTable rows={topProfit} />
-          <Card>
-            <DashboardSectionTitle eyebrow={t("dashboard.section.skuAnalysis")} title={t("dashboard.slowMoving.title")} />
-            <Table>
-              <thead>
-                <tr>
-                  <Th>{t("common.sku")}</Th>
-                  <Th>{t("common.currentStock")}</Th>
-                  <Th>{t("dashboard.kpi.stockValue")}</Th>
-                </tr>
-              </thead>
-              <tbody>
-                {slowMoving.map((row) => (
-                  <tr key={row.product.id}>
-                    <Td>{row.product.sku}</Td>
-                    <Td>{row.currentStock}</Td>
-                    <Td>{formatCurrency(row.currentStock * money(row.product.purchase_price))}</Td>
-                  </tr>
-                ))}
-                {!slowMoving.length ? <EmptyRow columns={3} /> : null}
-              </tbody>
-            </Table>
-          </Card>
-        </section>
-
         <section className="grid gap-4">
           <InventoryHealthCenter summary={health} formatCurrency={formatCurrency} formatNumber={formatNumber} />
           <Card>
@@ -592,7 +565,7 @@ function SkuMonthlySalesAnalysis({
   const { language, t, formatCurrency, formatNumber } = useLanguage();
   const copy = monthlyAnalysisCopy(language);
   const colors = orderedUnique(allRows.map((row) => row.product.color).filter(Boolean) as string[], ["白色", "黑色", "灰色", "米色"]);
-  const sizes = orderedUnique(allRows.map((row) => row.product.size).filter(Boolean) as string[], ["58.4x163", "76.2x163", "87.6x163", "91.4x163", "99.1x163"]);
+  const sizes = STANDARD_SIZE_OPTIONS;
   const colorData = buildColorAnalysis(rows);
   const sizeRankings = buildSizeRankings(rows);
   const monthComparison = buildMonthComparison(rows, previousYearRows, anchorDate.getMonth());
@@ -1133,106 +1106,6 @@ function AnnualTooltip({
   );
 }
 
-function AnalysisTable({ title, rows, valueLabel, valueKey }: { title: string; rows: TopSkuPerformanceRow[]; valueLabel: string; valueKey: "quantity" | "profit" }) {
-  const { t, formatCurrency } = useLanguage();
-  return (
-    <Card>
-      <DashboardSectionTitle eyebrow={t("dashboard.section.skuAnalysis")} title={title} />
-      <Table>
-        <thead>
-          <tr>
-            <Th>{t("common.rank")}</Th>
-            <Th>{t("common.sku")}</Th>
-            <Th>{t("common.salesQuantity")}</Th>
-            <Th>{valueLabel}</Th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, index) => (
-            <tr key={row.sku}>
-              <Td>{index + 1}</Td>
-              <Td>{row.sku}</Td>
-              <Td>{row.quantity}</Td>
-              <Td>{valueKey === "profit" ? formatCurrency(row.profit) : row[valueKey]}</Td>
-            </tr>
-          ))}
-          {!rows.length ? <EmptyRow columns={4} /> : null}
-        </tbody>
-      </Table>
-    </Card>
-  );
-}
-
-function TopSalesTable({ rows }: { rows: TopSkuPerformanceRow[] }) {
-  const { t, formatCurrency } = useLanguage();
-  return (
-    <Card>
-      <DashboardSectionTitle eyebrow={t("dashboard.section.skuAnalysis")} title={t("dashboard.topSales.title")} />
-      <Table>
-        <thead>
-          <tr>
-            <Th>{t("common.rank")}</Th>
-            <Th>{t("common.sku")}</Th>
-            <Th>{t("common.productName")}</Th>
-            <Th>{t("common.salesQuantity")}</Th>
-            <Th>{t("common.orderCount")}</Th>
-            <Th>{t("common.revenue")}</Th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, index) => (
-            <tr key={row.sku}>
-              <Td>{index + 1}</Td>
-              <Td>{row.sku}</Td>
-              <Td>{row.name}</Td>
-              <Td>{row.quantity}</Td>
-              <Td>{row.orders}</Td>
-              <Td>{formatCurrency(row.revenue)}</Td>
-            </tr>
-          ))}
-          {!rows.length ? <EmptyRow columns={6} /> : null}
-        </tbody>
-      </Table>
-    </Card>
-  );
-}
-
-function TopProfitTable({ rows }: { rows: TopSkuPerformanceRow[] }) {
-  const { t, formatCurrency } = useLanguage();
-  return (
-    <Card>
-      <DashboardSectionTitle eyebrow={t("dashboard.section.skuAnalysis")} title={t("dashboard.topProfit.title")} />
-      <Table>
-        <thead>
-          <tr>
-            <Th>{t("common.rank")}</Th>
-            <Th>{t("common.sku")}</Th>
-            <Th>{t("common.productName")}</Th>
-            <Th>{t("common.salesQuantity")}</Th>
-            <Th>{t("common.revenue")}</Th>
-            <Th>{t("common.profit")}</Th>
-            <Th>{t("common.profitMargin")}</Th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, index) => (
-            <tr key={row.sku}>
-              <Td>{index + 1}</Td>
-              <Td>{row.sku}</Td>
-              <Td>{row.name}</Td>
-              <Td>{row.quantity}</Td>
-              <Td>{formatCurrency(row.revenue)}</Td>
-              <Td>{formatCurrency(row.profit)}</Td>
-              <Td>{row.margin.toFixed(1)}%</Td>
-            </tr>
-          ))}
-          {!rows.length ? <EmptyRow columns={7} /> : null}
-        </tbody>
-      </Table>
-    </Card>
-  );
-}
-
 function MonthlyColorAnalysis({ data }: { data: ColorAnalysisRow[] }) {
   const { language, formatNumber } = useLanguage();
   const copy = monthlyAnalysisCopy(language);
@@ -1377,8 +1250,7 @@ function MonthlyDecisionCard({ card }: { card: MonthlyDecisionCardData }) {
           <div key={`${card.title}-${row.label}-${index}`} className="rounded-xl border border-white/60 bg-white/70 px-3 py-2.5 shadow-[0_10px_24px_rgba(31,44,38,0.04)]">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ink/35">#{index + 1}</div>
-                <div className="mt-0.5 truncate text-sm font-semibold text-ink">{row.label}</div>
+                <div className="truncate text-sm font-semibold text-ink">{row.label}</div>
                 <div className="mt-1 truncate text-xs text-ink/45">{row.helper}</div>
               </div>
               <div className="shrink-0 text-sm font-semibold tabular-nums text-ink">{row.value}</div>
@@ -1646,45 +1518,6 @@ function buildAlerts(input: {
   return alerts;
 }
 
-type TopSkuPerformanceRow = {
-  sku: string;
-  name: string;
-  quantity: number;
-  orders: number;
-  revenue: number;
-  profit: number;
-  margin: number;
-};
-
-function buildTopSkuPerformance(salesRows: SaleDaily[], productMap: Map<string, ProductWithStock>, sortBy: "quantity" | "profit") {
-  const map = new Map<string, TopSkuPerformanceRow>();
-
-  for (const sale of validSales(salesRows)) {
-    const product = productMap.get(sale.product_id);
-    if (!product) continue;
-    const current = map.get(product.sku) ?? {
-      sku: product.sku,
-      name: product.name,
-      quantity: 0,
-      orders: 0,
-      revenue: 0,
-      profit: 0,
-      margin: 0
-    };
-    const quantity = Number(sale.quantity);
-    const revenue = quantity * money(product.sale_price);
-    const singleProfit = unitProfit(product);
-    current.quantity += quantity;
-    current.orders += quantity;
-    current.revenue += revenue;
-    current.profit += singleProfit * quantity;
-    current.margin = profitMargin(product, singleProfit);
-    map.set(product.sku, current);
-  }
-
-  return Array.from(map.values()).sort((a, b) => b[sortBy] - a[sortBy]).slice(0, 8);
-}
-
 type ColorAnalysisRow = { color: string; quantity: number; revenue: number; profit: number; colorCode: string };
 type SizeAnalysisRow = { size: string; quantity: number; revenue: number; profit: number; stock: number };
 type MonthComparison = { month: number; quantity: number; momGrowth: number | null; yoyGrowth: number | null };
@@ -1731,7 +1564,7 @@ function filterMonthlySkuRows(rows: MonthlySkuRow[], color: string, size: string
   const normalized = search.trim().toLowerCase();
   return rows.filter((row) => {
     const matchesColor = color === "all" || row.product.color === color;
-    const matchesSize = size === "all" || row.product.size === size;
+    const matchesSize = size === "all" || normalizeSize(row.product.size) === size;
     const haystack = `${row.product.sku} ${row.product.name} ${row.product.color ?? ""} ${row.product.size ?? ""}`.toLowerCase();
     return matchesColor && matchesSize && (!normalized || haystack.includes(normalized));
   });
@@ -1753,7 +1586,7 @@ function buildColorAnalysis(rows: MonthlySkuRow[]): ColorAnalysisRow[] {
 function buildSizeRankings(rows: MonthlySkuRow[]): SizeAnalysisRow[] {
   const map = new Map<string, SizeAnalysisRow>();
   for (const row of rows) {
-    const size = row.product.size || "-";
+    const size = normalizeSize(row.product.size);
     const current = map.get(size) ?? { size, quantity: 0, revenue: 0, profit: 0, stock: 0 };
     current.quantity += row.annualQuantity;
     current.revenue += row.annualRevenue;
@@ -1888,7 +1721,7 @@ function formatMonthlyRankingValue(
 }
 
 function formatVariantName(product: ProductWithStock) {
-  return `${product.size || "-"} ${product.color || "-"}`;
+  return `${normalizeSize(product.size)} ${product.color || "-"}`;
 }
 
 function formatMonthlySkuName(product: ProductWithStock) {
@@ -1904,6 +1737,11 @@ function orderedUnique(values: string[], preferred: string[]) {
   });
 }
 
+function normalizeSize(size?: string | null) {
+  const normalized = String(size ?? "").trim().replace(/\s+/g, "").replace(/cm$/i, "");
+  return normalized || "-";
+}
+
 function preferredIndex(value: string | null | undefined, preferred: string[]) {
   const index = preferred.indexOf(value ?? "");
   return index === -1 ? 999 : index;
@@ -1914,7 +1752,7 @@ function compareColor(a: string | null | undefined, b: string | null | undefined
 }
 
 function compareSize(a: string | null | undefined, b: string | null | undefined) {
-  const parse = (value: string | null | undefined) => Number(String(value ?? "").split("x")[0]) || 999;
+  const parse = (value: string | null | undefined) => Number(normalizeSize(value).split("x")[0]) || 999;
   return parse(a) - parse(b);
 }
 
