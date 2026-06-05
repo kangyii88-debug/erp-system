@@ -5,7 +5,6 @@ import {
   AlertTriangle,
   ArrowDownRight,
   ArrowUpRight,
-  BarChart3,
   Boxes,
   CalendarDays,
   CircleAlert,
@@ -62,7 +61,7 @@ type AnnualPoint = SalesPoint & {
   previousProfit: number;
 };
 type AlertItem = { level: "danger" | "warning" | "success"; text: string };
-type MovementRow = { type: string; quantity: number; happened_at: string; memo: string | null };
+type MovementRow = { product_id: string; type: string; quantity: number; happened_at: string; memo: string | null };
 type TFunction = ReturnType<typeof useLanguage>["t"];
 type MonthlySkuRow = {
   product: ProductWithStock;
@@ -143,7 +142,7 @@ function DashboardContent() {
       supabase.from("sales_daily").select("*").gte("sale_date", previousYearStart).lte("sale_date", previousYearEnd),
       supabase.from("sales_daily").select("*"),
       supabase.from("purchase_orders").select("*, products(name, sku)"),
-      supabase.from("stock_movements").select("type, quantity, happened_at, memo")
+      supabase.from("stock_movements").select("product_id, type, quantity, happened_at, memo")
     ]);
 
     setRows(
@@ -302,6 +301,7 @@ function DashboardContent() {
           allRows={monthlySkuRows}
           previousYearRows={previousYearMonthlySkuRows}
           replenishmentRows={replenishRows}
+          movements={rangeMovements}
           metric={monthlySkuMetric}
           colorFilter={monthlyColorFilter}
           sizeFilter={monthlySizeFilter}
@@ -557,6 +557,7 @@ function SkuMonthlySalesAnalysis({
   allRows,
   previousYearRows,
   replenishmentRows,
+  movements,
   metric,
   colorFilter,
   sizeFilter,
@@ -574,6 +575,7 @@ function SkuMonthlySalesAnalysis({
   allRows: MonthlySkuRow[];
   previousYearRows: MonthlySkuRow[];
   replenishmentRows: SmartReplenishmentRow[];
+  movements: MovementRow[];
   metric: MonthlySkuMetric;
   colorFilter: string;
   sizeFilter: string;
@@ -593,8 +595,8 @@ function SkuMonthlySalesAnalysis({
   const sizes = orderedUnique(allRows.map((row) => row.product.size).filter(Boolean) as string[], ["58.4x163", "76.2x163", "87.6x163", "91.4x163", "99.1x163"]);
   const colorData = buildColorAnalysis(rows);
   const sizeRankings = buildSizeRankings(rows);
-  const skuRankings = buildSkuRankings(rows);
   const monthComparison = buildMonthComparison(rows, previousYearRows, anchorDate.getMonth());
+  const decisionCards = buildMonthlyDecisionCards(rows, replenishmentRows, movements, language, formatCurrency, formatNumber);
   const exportName = `sku-monthly-sales-${selectedYear}`;
 
   return (
@@ -669,7 +671,7 @@ function SkuMonthlySalesAnalysis({
                   <tr key={row.product.id} onClick={() => onSelectSku(row.product.id)} className="cursor-pointer transition hover:bg-[#edf3ef]">
                     <td className="sticky left-0 z-10 border-b border-line bg-white/95 px-4 py-3">
                       <div className="font-semibold text-ink">{formatMonthlySkuName(row.product)}</div>
-                      <div className="mt-1 text-xs text-ink/50">{row.product.sku}</div>
+                      <div className="mt-1 text-xs text-ink/50">{row.product.name}</div>
                     </td>
                     {row.monthly.map((month, index) => (
                       <td key={index} className="border-b border-line px-4 py-3 text-right tabular-nums text-ink/75">
@@ -697,11 +699,9 @@ function SkuMonthlySalesAnalysis({
         </div>
 
         <div className="mt-5 grid gap-4 xl:grid-cols-5">
-          <MonthlyRankingCard title={copy.topQuantity} rows={skuRankings.quantity} valueKey="annualQuantity" formatter={formatNumber} />
-          <MonthlyRankingCard title={copy.topRevenue} rows={skuRankings.revenue} valueKey="annualRevenue" formatter={formatCurrency} />
-          <MonthlyRankingCard title={copy.topProfit} rows={skuRankings.profit} valueKey="annualProfit" formatter={formatCurrency} />
-          <MonthlyRankingCard title={copy.topStock} rows={skuRankings.stock} valueKey="currentStock" formatter={formatNumber} />
-          <MonthlyRankingCard title={copy.topTurnover} rows={skuRankings.turnover} valueKey="turnover" formatter={(value) => `${formatNumber(value, { maximumFractionDigits: 1 })}x`} />
+          {decisionCards.map((card) => (
+            <MonthlyDecisionCard key={card.title} card={card} />
+          ))}
         </div>
 
         <div className="mt-5 grid gap-4 xl:grid-cols-4">
@@ -1341,37 +1341,51 @@ function MonthlySizeTooltip({ active, payload, metric }: { active?: boolean; pay
   );
 }
 
-function MonthlyRankingCard({
-  title,
-  rows,
-  valueKey,
-  formatter
-}: {
+type MonthlyDecisionCardData = {
   title: string;
-  rows: Array<MonthlySkuRow & { turnover?: number }>;
-  valueKey: keyof MonthlySkuRow | "turnover";
-  formatter: (value: number) => string;
-}) {
+  subtitle: string;
+  icon: LucideIcon;
+  tone: "danger" | "warning" | "success" | "neutral" | "info";
+  rows: Array<{ label: string; value: string; helper: string }>;
+};
+
+function MonthlyDecisionCard({ card }: { card: MonthlyDecisionCardData }) {
+  const { language } = useLanguage();
+  const emptyText = language === "ko" ? "데이터 없음" : "暂无数据";
+  const Icon = card.icon;
+  const toneClass = {
+    danger: "border-[#ead6d2] from-[#fff7f5] to-white text-[#A65A52]",
+    warning: "border-[#eadfca] from-[#fffaf0] to-white text-[#B38A45]",
+    success: "border-[#d5e4dd] from-[#f3faf7] to-white text-[#1E5A4E]",
+    neutral: "border-line from-[#f8f8f5] to-white text-[#6D756F]",
+    info: "border-[#d4e1e5] from-[#f3f8fa] to-white text-[#406A7A]"
+  }[card.tone];
+
   return (
-    <div className="rounded-2xl border border-line bg-white/85 p-4 shadow-soft">
-      <div className="mb-3 flex items-center gap-2">
-        <BarChart3 size={16} className="text-brand" />
-        <div className="font-semibold text-ink">{title}</div>
+    <div className={`rounded-2xl border bg-gradient-to-br p-4 shadow-soft transition duration-200 hover:-translate-y-0.5 hover:shadow-lift ${toneClass}`}>
+      <div className="mb-4 flex items-start gap-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white/80 shadow-soft">
+          <Icon size={18} />
+        </div>
+        <div className="min-w-0">
+          <div className="font-semibold text-ink">{card.title}</div>
+          <div className="mt-1 text-xs font-medium text-ink/50">{card.subtitle}</div>
+        </div>
       </div>
       <div className="space-y-2">
-        {rows.slice(0, 5).map((row, index) => {
-          const value = valueKey === "turnover" ? Number(row.turnover ?? 0) : Number(row[valueKey] ?? 0);
-          return (
-            <div key={`${title}-${row.product.id}`} className="flex items-center justify-between gap-3 rounded-xl bg-panel/65 px-3 py-2">
+        {card.rows.map((row, index) => (
+          <div key={`${card.title}-${row.label}-${index}`} className="rounded-xl border border-white/60 bg-white/70 px-3 py-2.5 shadow-[0_10px_24px_rgba(31,44,38,0.04)]">
+            <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <div className="text-xs font-semibold text-ink/45">#{index + 1}</div>
-                <div className="truncate text-sm font-semibold text-ink">{row.product.sku}</div>
+                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ink/35">#{index + 1}</div>
+                <div className="mt-0.5 truncate text-sm font-semibold text-ink">{row.label}</div>
+                <div className="mt-1 truncate text-xs text-ink/45">{row.helper}</div>
               </div>
-              <div className="shrink-0 text-sm font-semibold tabular-nums text-ink">{formatter(value)}</div>
+              <div className="shrink-0 text-sm font-semibold tabular-nums text-ink">{row.value}</div>
             </div>
-          );
-        })}
-        {!rows.length ? <div className="rounded-xl border border-dashed border-line p-4 text-sm text-ink/55">暂无数据</div> : null}
+          </div>
+        ))}
+        {!card.rows.length ? <div className="rounded-xl border border-dashed border-line bg-white/55 p-4 text-sm text-ink/55">{emptyText}</div> : null}
       </div>
     </div>
   );
@@ -1410,7 +1424,7 @@ function MonthlySkuDetail({
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div>
           <div className="text-xs font-semibold uppercase tracking-[0.2em] text-ink/40">{copy.detailTitle}</div>
-          <div className="mt-1 text-xl font-semibold text-ink">{row.product.sku}</div>
+          <div className="mt-1 text-xl font-semibold text-ink">{formatVariantName(row.product)}</div>
           <div className="text-sm text-ink/60">{row.product.name}</div>
         </div>
         <button type="button" onClick={onClose} className="rounded-xl border border-line bg-panel px-3 py-2 text-sm font-semibold text-ink transition hover:bg-white">
@@ -1750,18 +1764,75 @@ function buildSizeRankings(rows: MonthlySkuRow[]): SizeAnalysisRow[] {
   return Array.from(map.values()).sort((a, b) => b.quantity - a.quantity);
 }
 
-function buildSkuRankings(rows: MonthlySkuRow[]) {
-  const withTurnover = rows.map((row) => ({
-    ...row,
-    turnover: row.currentStock > 0 ? row.annualQuantity / row.currentStock : row.annualQuantity
-  }));
-  return {
-    quantity: [...withTurnover].sort((a, b) => b.annualQuantity - a.annualQuantity).slice(0, 5),
-    revenue: [...withTurnover].sort((a, b) => b.annualRevenue - a.annualRevenue).slice(0, 5),
-    profit: [...withTurnover].sort((a, b) => b.annualProfit - a.annualProfit).slice(0, 5),
-    stock: [...withTurnover].sort((a, b) => b.currentStock - a.currentStock).slice(0, 5),
-    turnover: [...withTurnover].sort((a, b) => Number(b.turnover ?? 0) - Number(a.turnover ?? 0)).slice(0, 5)
-  };
+function buildMonthlyDecisionCards(
+  rows: MonthlySkuRow[],
+  replenishmentRows: SmartReplenishmentRow[],
+  movements: MovementRow[],
+  language: "zh" | "ko",
+  formatCurrency: (value: number) => string,
+  formatNumber: (value: number, options?: Intl.NumberFormatOptions) => string
+): MonthlyDecisionCardData[] {
+  const copy = monthlyDecisionCopy(language);
+  const rowsByProductId = new Map(rows.map((row) => [row.product.id, row]));
+  const shortageRows = replenishmentRows
+    .filter((row) => row.status !== "normal" || row.saleableDays < 15)
+    .sort((a, b) => a.saleableDays - b.saleableDays || b.suggestedQty - a.suggestedQty)
+    .slice(0, 5)
+    .map((row) => ({
+      label: formatVariantName(row.product),
+      value: row.saleableDays >= 999 ? copy.noSales : `${formatNumber(row.saleableDays)}${copy.days}`,
+      helper: `${copy.stock} ${formatNumber(row.currentStock)} · ${copy.suggested} ${formatNumber(row.suggestedQty)}`
+    }));
+  const slowRows = rows
+    .filter((row) => row.currentStock > 0 && row.annualQuantity <= 0)
+    .sort((a, b) => b.currentStock * money(b.product.purchase_price) - a.currentStock * money(a.product.purchase_price))
+    .slice(0, 5)
+    .map((row) => ({
+      label: formatVariantName(row.product),
+      value: formatCurrency(row.currentStock * money(row.product.purchase_price)),
+      helper: `${copy.stock} ${formatNumber(row.currentStock)} · ${copy.yearSales} ${formatNumber(row.annualQuantity)}`
+    }));
+  const hotRows = rows
+    .filter((row) => row.annualQuantity > 0)
+    .sort((a, b) => b.annualQuantity - a.annualQuantity)
+    .slice(0, 5)
+    .map((row) => ({
+      label: formatVariantName(row.product),
+      value: formatNumber(row.annualQuantity),
+      helper: `${copy.revenue} ${formatCurrency(row.annualRevenue)}`
+    }));
+  const purchaseRows = replenishmentRows
+    .filter((row) => row.suggestedQty > 0)
+    .sort((a, b) => b.suggestedQty - a.suggestedQty || a.saleableDays - b.saleableDays)
+    .slice(0, 5)
+    .map((row) => ({
+      label: formatVariantName(row.product),
+      value: formatNumber(row.suggestedQty),
+      helper: `${row.action} · ${copy.saleableDays} ${row.saleableDays >= 999 ? "-" : `${formatNumber(row.saleableDays)}${copy.days}`}`
+    }));
+  const returnMap = new Map<string, number>();
+  for (const movement of movements) {
+    if (!isReturnInboundMovement(movement)) continue;
+    returnMap.set(movement.product_id, (returnMap.get(movement.product_id) ?? 0) + Math.max(0, Number(movement.quantity ?? 0)));
+  }
+  const returnRows = Array.from(returnMap.entries())
+    .map(([productId, quantity]) => ({ row: rowsByProductId.get(productId), quantity }))
+    .filter((item): item is { row: MonthlySkuRow; quantity: number } => Boolean(item.row))
+    .sort((a, b) => b.quantity - a.quantity)
+    .slice(0, 5)
+    .map(({ row, quantity }) => ({
+      label: formatVariantName(row.product),
+      value: formatNumber(quantity),
+      helper: `${copy.returnRate} ${formatPercent(row.annualQuantity > 0 ? (quantity / row.annualQuantity) * 100 : null)}`
+    }));
+
+  return [
+    { title: copy.shortageTitle, subtitle: copy.shortageSubtitle, icon: CircleAlert, tone: "danger", rows: shortageRows },
+    { title: copy.slowTitle, subtitle: copy.slowSubtitle, icon: AlertTriangle, tone: "neutral", rows: slowRows },
+    { title: copy.hotTitle, subtitle: copy.hotSubtitle, icon: TrendingUp, tone: "success", rows: hotRows },
+    { title: copy.replenishmentTitle, subtitle: copy.replenishmentSubtitle, icon: PackageCheck, tone: "warning", rows: purchaseRows },
+    { title: copy.returnTitle, subtitle: copy.returnSubtitle, icon: Boxes, tone: "info", rows: returnRows }
+  ];
 }
 
 function buildMonthComparison(rows: MonthlySkuRow[], previousYearRows: MonthlySkuRow[], monthIndex: number): MonthComparison {
@@ -1816,8 +1887,12 @@ function formatMonthlyRankingValue(
   return metric === "revenue" || metric === "profit" ? formatCurrency(value) : formatNumber(value);
 }
 
+function formatVariantName(product: ProductWithStock) {
+  return `${product.size || "-"} ${product.color || "-"}`;
+}
+
 function formatMonthlySkuName(product: ProductWithStock) {
-  return `${product.color || "-"} ${product.size || "-"} - ${product.name}`;
+  return formatVariantName(product);
 }
 
 function orderedUnique(values: string[], preferred: string[]) {
@@ -1869,7 +1944,7 @@ function exportMonthlySkuExcel(rows: MonthlySkuRow[], metric: MonthlySkuMetric, 
 function buildMonthlySkuDelimited(rows: MonthlySkuRow[], metric: MonthlySkuMetric, year: number, delimiter: string) {
   const header = ["Product", ...Array.from({ length: 12 }, (_, index) => `${year}-${String(index + 1).padStart(2, "0")}`), "Annual Total"];
   const lines = rows.map((row) => [
-    `${row.product.sku} ${formatMonthlySkuName(row.product)}`,
+    `${formatMonthlySkuName(row.product)} ${row.product.name}`,
     ...row.monthly.map((month) => metric === "stock" ? "" : String(Math.round(month[metric]))),
     String(metric === "stock" ? row.currentStock : metric === "quantity" ? row.annualQuantity : metric === "revenue" ? Math.round(row.annualRevenue) : Math.round(row.annualProfit))
   ]);
@@ -1884,6 +1959,52 @@ function downloadText(fileName: string, content: string, type: string) {
   link.download = fileName;
   link.click();
   URL.revokeObjectURL(url);
+}
+
+function monthlyDecisionCopy(language: "zh" | "ko") {
+  if (language === "ko") {
+    return {
+      shortageTitle: "품절 경고",
+      shortageSubtitle: "15일 이내 품절 위험",
+      slowTitle: "부진 재고",
+      slowSubtitle: "재고는 있으나 판매가 약한 상품",
+      hotTitle: "인기 상품 순위",
+      hotSubtitle: "판매 수량 기준",
+      replenishmentTitle: "발주 제안",
+      replenishmentSubtitle: "우선 구매가 필요한 상품",
+      returnTitle: "반품 문제 분석",
+      returnSubtitle: "선택 기간 반품 입고",
+      stock: "재고",
+      suggested: "제안",
+      yearSales: "연간 판매",
+      revenue: "매출",
+      saleableDays: "판매 가능",
+      returnRate: "반품률",
+      noSales: "판매 없음",
+      days: "일"
+    };
+  }
+
+  return {
+    shortageTitle: "缺货预警",
+    shortageSubtitle: "预计15天内存在断货风险",
+    slowTitle: "滞销库存",
+    slowSubtitle: "有库存但销售偏弱",
+    hotTitle: "热销商品排行",
+    hotSubtitle: "按销售数量排序",
+    replenishmentTitle: "补货建议",
+    replenishmentSubtitle: "优先采购清单",
+    returnTitle: "退货问题分析",
+    returnSubtitle: "当前筛选周期退货入库",
+    stock: "库存",
+    suggested: "建议",
+    yearSales: "年销量",
+    revenue: "销售额",
+    saleableDays: "可售",
+    returnRate: "退货率",
+    noSales: "无销量",
+    days: "天"
+  };
 }
 
 function monthlyAnalysisCopy(language: "zh" | "ko") {
@@ -1908,11 +2029,6 @@ function monthlyAnalysisCopy(language: "zh" | "ko") {
       colorAnalysisSubtitle: "Color Sales Mix",
       sizeAnalysis: "사이즈 분석",
       sizeAnalysisSubtitle: "Size Performance Ranking",
-      topQuantity: "TOP 판매량 SKU",
-      topRevenue: "TOP 매출 SKU",
-      topProfit: "TOP 이익 SKU",
-      topStock: "TOP 재고 SKU",
-      topTurnover: "TOP 회전 SKU",
       monthCompare: "월별 비교 분석",
       monthCompareSubtitle: "MoM / YoY Analysis",
       quantity: "판매량",
@@ -1953,11 +2069,6 @@ function monthlyAnalysisCopy(language: "zh" | "ko") {
     colorAnalysisSubtitle: "Color Sales Mix",
     sizeAnalysis: "尺寸分析",
     sizeAnalysisSubtitle: "Size Performance Ranking",
-    topQuantity: "TOP销量SKU",
-    topRevenue: "TOP销售额SKU",
-    topProfit: "TOP利润SKU",
-    topStock: "TOP库存SKU",
-    topTurnover: "TOP周转SKU",
     monthCompare: "月份对比分析",
     monthCompareSubtitle: "MoM / YoY Analysis",
     quantity: "销量",
@@ -2193,20 +2304,28 @@ function validSales(salesRows: SaleDaily[]) {
     .filter((sale) => Boolean(sale.product_id) && Boolean(sale.sale_date) && sale.quantity > 0);
 }
 
+function isReturnInboundMovement(movement: MovementRow) {
+  const memo = String(movement.memo ?? "");
+  return (
+    movement.type === "return_inbound" ||
+    memo.startsWith("\u9000\u8d27\u5165\u5e93\u5728\u552e") ||
+    memo.startsWith("\ubc18\ud488 \uc785\uace0 \ud310\ub9e4\uac00\ub2a5")
+  );
+}
+
+function isLossMovement(movement: MovementRow) {
+  const memo = String(movement.memo ?? "");
+  return (
+    movement.type === "loss" ||
+    memo.startsWith("\u635f\u8017\u4e22\u5931") ||
+    memo.startsWith("\uc190\uc0c1/\ubd84\uc2e4")
+  );
+}
+
 function countTypedMovements(movements: MovementRow[], target: "return_inbound" | "loss") {
   return movements.reduce((sum, movement) => {
-    const memo = String(movement.memo ?? "");
-    const isReturnInbound =
-      target === "return_inbound" &&
-      (movement.type === "return_inbound" ||
-        memo.startsWith("\u9000\u8d27\u5165\u5e93\u5728\u552e") ||
-        memo.startsWith("\ubc18\ud488 \uc785\uace0 \ud310\ub9e4\uac00\ub2a5"));
-    const isLoss =
-      target === "loss" &&
-      (movement.type === "loss" ||
-        memo.startsWith("\u635f\u8017\u4e22\u5931") ||
-        memo.startsWith("\uc190\uc0c1/\ubd84\uc2e4"));
-
+    const isReturnInbound = target === "return_inbound" && isReturnInboundMovement(movement);
+    const isLoss = target === "loss" && isLossMovement(movement);
     return isReturnInbound || isLoss ? sum + Math.max(0, Number(movement.quantity ?? 0)) : sum;
   }, 0);
 }
