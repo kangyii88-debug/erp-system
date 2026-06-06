@@ -11,8 +11,9 @@ declare
   signed_qty integer;
 begin
   signed_qty := case
-    when new.type::text in ('purchase', 'inbound', 'return_resell', 'return_inbound', 'adjustment') then new.quantity
+    when new.type::text in ('purchase', 'inbound', 'adjustment') then new.quantity
     when new.type::text in ('sale', 'outbound', 'damaged', 'lost', 'loss') then -new.quantity
+    when new.type::text in ('return_resell', 'return_inbound') then 0
     else 0
   end;
 

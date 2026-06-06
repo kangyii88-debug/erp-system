@@ -1,15 +1,3 @@
-alter type movement_type add value if not exists 'purchase';
-alter type movement_type add value if not exists 'return_resell';
-alter type movement_type add value if not exists 'damaged';
-alter type movement_type add value if not exists 'lost';
-alter type movement_type add value if not exists 'adjustment';
-
-alter table stock_movements
-  drop constraint if exists stock_movements_quantity_check;
-
-alter table stock_movements
-  add constraint stock_movements_quantity_check check (quantity <> 0);
-
 create or replace function apply_stock_movement()
 returns trigger language plpgsql as $$
 declare

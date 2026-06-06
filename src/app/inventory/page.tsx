@@ -180,6 +180,12 @@ function adjustmentMemoRequiredMessage(language: Language) {
   return language === "ko" ? "수량 조정은 조정 사유를 입력해야 합니다." : "数量调整必须填写调整原因。";
 }
 
+function returnResellNotice(language: Language) {
+  return language === "ko"
+    ? "이 유형은 반품 상품의 재판매 가능 상태를 기록하는 용도이며 현재 재고 수량에는 영향을 주지 않습니다."
+    : "该类型仅用于记录退货商品重新上架情况，不会影响当前库存数量。";
+}
+
 function adjustmentDetailLabels(language: Language) {
   return language === "ko"
     ? { before: "조정 전 재고", delta: "조정 수량", after: "조정 후 재고", reason: "조정 사유" }
@@ -487,6 +493,11 @@ function InventoryContent() {
             {editingId ? ui.update : ui.save}
           </button>
         </form>
+        {form.type === "return_resell" ? (
+          <div className="mt-4 rounded-xl border border-teal-200 bg-teal-50 px-4 py-3 text-sm font-medium text-teal-800">
+            {returnResellNotice(language)}
+          </div>
+        ) : null}
         {message ? <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{message}</div> : null}
       </section>
 
@@ -608,7 +619,7 @@ function inventoryMetricLabels(language: Language) {
       flowTitle: "재고 흐름 관계",
       flowDescription: "현재 판매 가능 재고가 어떤 입출고 기록으로 구성되는지 한눈에 확인합니다.",
       flowEquals: "현재 판매 가능 재고",
-      flowFormulaNote: "구매 입고 - 판매 출고 + 반품 재입고 판매 - 손상/불량/분실"
+      flowFormulaNote: "구매 입고 - 판매 출고 - 손상/불량/분실"
     };
   }
 
@@ -633,7 +644,7 @@ function inventoryMetricLabels(language: Language) {
     flowTitle: "库存流转关系",
     flowDescription: "把当前可售库存的来源拆开显示，库存人员不需要手动倒推。",
     flowEquals: "当前可售库存",
-    flowFormulaNote: "采购入库 - 销售出库 + 退货重新入库在售 - 损耗/不良/丢失"
+    flowFormulaNote: "采购入库 - 销售出库 - 损耗/不良/丢失"
   };
 }
 
@@ -644,7 +655,7 @@ function InventoryFlowCard({ metrics, labels, language }: { metrics: ReturnType<
   const items = [
     { label: labels.totalInbound, value: metrics.inbound, sign: "+", tone: "text-[#1e5a4e] bg-[#1e5a4e]/8" },
     { label: labels.totalSalesOut, value: metrics.salesOut, sign: "-", tone: "text-[#406a7a] bg-[#406a7a]/8" },
-    { label: labels.returnRestock, value: metrics.returnInbound, sign: "+", tone: "text-[#48596f] bg-[#48596f]/8" },
+    { label: labels.returnRestock, value: metrics.returnInbound, sign: "record", tone: "text-[#48596f] bg-[#48596f]/8" },
     { label: labels.totalLoss, value: metrics.loss, sign: "-", tone: "text-[#9a3f3f] bg-[#9a3f3f]/8" },
     { label: adjustmentLabelText, value: Math.abs(adjustment), sign: adjustmentSign, tone: "text-blue-700 bg-blue-50" }
   ];
@@ -667,8 +678,6 @@ function InventoryFlowCard({ metrics, labels, language }: { metrics: ReturnType<
         <FormulaPill label={labels.totalInbound} value={metrics.inbound} tone="text-[#1e5a4e] bg-[#1e5a4e]/8" />
         <FormulaOperator value="-" />
         <FormulaPill label={labels.totalSalesOut} value={metrics.salesOut} tone="text-[#406a7a] bg-[#406a7a]/8" />
-        <FormulaOperator value="+" />
-        <FormulaPill label={labels.returnRestock} value={metrics.returnInbound} tone="text-[#48596f] bg-[#48596f]/8" />
         <FormulaOperator value="-" />
         <FormulaPill label={labels.totalLoss} value={metrics.loss} tone="text-[#9a3f3f] bg-[#9a3f3f]/8" />
         <FormulaOperator value={adjustmentSign} />
@@ -680,12 +689,12 @@ function InventoryFlowCard({ metrics, labels, language }: { metrics: ReturnType<
       <div className="mt-4 flex flex-wrap gap-2">
         {items.map((item) => (
           <span key={item.label} className={`rounded-full px-3 py-1.5 text-xs font-semibold ${item.tone}`}>
-            {item.sign}
+            {item.sign === "record" ? "" : item.sign}
             {formatNumber(item.value)} {item.label}
           </span>
         ))}
       </div>
-      <p className="mt-3 text-xs text-muted">{labels.flowFormulaNote} +/- {adjustmentLabelText}</p>
+      <p className="mt-3 text-xs text-muted">{labels.flowFormulaNote} +/- {adjustmentLabelText}. {returnResellNotice(language)}</p>
     </div>
   );
 }
@@ -842,6 +851,7 @@ function HistoryRow({
   const absQuantity = Math.abs(safeQuantity(movement.quantity));
   const adjustmentLabels = adjustmentDetailLabels(language);
   const memoText = stripSystemMemo(movement.memo);
+  const recordOnly = movement.actionType === "return_resell";
 
   return (
     <tr className={`group transition hover:bg-[#f7f4ec] ${highlighted ? "bg-emerald-50/70" : "bg-card/70"}`}>
@@ -857,8 +867,8 @@ function HistoryRow({
         <MovementTag type={movement.actionType} label={actionTypeLabel(movement.actionType, ui, language)} />
       </HistoryTd>
       <HistoryTd className="text-right">
-        <span className={`font-semibold tabular-nums ${signed >= 0 ? "text-emerald-700" : "text-red-700"}`}>
-          {signed >= 0 ? "+" : "-"}
+        <span className={`font-semibold tabular-nums ${recordOnly ? "text-teal-700" : signed >= 0 ? "text-emerald-700" : "text-red-700"}`}>
+          {recordOnly ? "" : signed >= 0 ? "+" : "-"}
           {formatNumber(absQuantity)}
         </span>
       </HistoryTd>
@@ -866,7 +876,12 @@ function HistoryRow({
         <span className={`font-semibold tabular-nums ${movement.afterStock < 0 ? "text-red-700" : "text-ink"}`}>{formatNumber(movement.afterStock)}</span>
       </HistoryTd>
       <HistoryTd>
-        {movement.actionType === "adjustment" ? (
+        {recordOnly ? (
+          <div className="space-y-1">
+            <span className="text-muted">{memoText || "-"}</span>
+            <div className="text-xs font-medium text-teal-700">{returnResellNotice(language)}</div>
+          </div>
+        ) : movement.actionType === "adjustment" ? (
           <div className="grid gap-1 text-xs text-muted sm:grid-cols-2">
             <span>
               {adjustmentLabels.before}: <b className="tabular-nums text-ink">{formatNumber(beforeStock)}</b>
@@ -983,7 +998,7 @@ function calculateMetrics(products: ProductWithStock[], movements: StockMovement
     returnInbound,
     loss,
     adjustment,
-    flowResult: inbound - salesOut + returnInbound - loss + adjustment
+    flowResult: inbound - salesOut - loss + adjustment
   };
 }
 
@@ -1038,14 +1053,16 @@ function dbTypeForAction(type: InventoryActionType): StockMovement["type"] {
 
 function signedQuantity(type: StockMovement["type"], quantity: number) {
   const safe = safeQuantity(quantity);
-  if (type === "purchase" || type === "inbound" || type === "return_resell" || type === "return_inbound" || type === "adjustment") return safe;
+  if (type === "return_resell" || type === "return_inbound") return 0;
+  if (type === "purchase" || type === "inbound" || type === "adjustment") return safe;
   return -safe;
 }
 
 function signedMovementQuantity(movement: StockMovement) {
   const safe = safeQuantity(movement.quantity);
   const actionType = actionTypeOf(movement);
-  if (actionType === "purchase" || actionType === "return_resell" || actionType === "adjustment") return safe;
+  if (actionType === "return_resell") return 0;
+  if (actionType === "purchase" || actionType === "adjustment") return safe;
   return -safe;
 }
 
