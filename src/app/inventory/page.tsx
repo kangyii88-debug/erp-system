@@ -807,7 +807,7 @@ function HistoryRow({
   onEdit: () => void;
   onDelete: () => void;
 }) {
-  const signed = signedQuantity(movement.type, movement.quantity);
+  const signed = signedMovementQuantity(movement);
 
   return (
     <tr className={`group transition hover:bg-[#f7f4ec] ${highlighted ? "bg-emerald-50/70" : "bg-card/70"}`}>
@@ -912,13 +912,8 @@ function SkeletonRow() {
 function calculateMetrics(products: ProductWithStock[], movements: StockMovement[]) {
   const inbound = movements.filter((movement) => movement.type === "inbound" && actionTypeOf(movement) === "inbound").reduce((sum, movement) => sum + safeQuantity(movement.quantity), 0);
   const salesOut = movements.filter((movement) => movement.type === "sale" || movement.type === "outbound").reduce((sum, movement) => sum + safeQuantity(movement.quantity), 0);
-  const returnInbound = movements.filter((movement) => actionTypeOf(movement) === "return_inbound").reduce((sum, movement) => sum + safeQuantity(movement.quantity), 0);
-  const loss = movements
-    .filter((movement) => {
-      const type = actionTypeOf(movement);
-      return type === "loss_bad" || type === "missing";
-    })
-    .reduce((sum, movement) => sum + safeQuantity(movement.quantity), 0);
+  const returnInbound = movements.filter(isInventoryReturnInboundMovement).reduce((sum, movement) => sum + safeQuantity(movement.quantity), 0);
+  const loss = movements.filter(isInventoryLossMovement).reduce((sum, movement) => sum + safeQuantity(movement.quantity), 0);
 
   return {
     saleable: products.reduce((sum, product) => sum + getCurrentStock(product), 0),
@@ -940,7 +935,7 @@ function attachAfterStock(movements: StockMovement[], products: ProductWithStock
     .sort((a, b) => new Date(b.happened_at).getTime() - new Date(a.happened_at).getTime())
     .map((movement) => {
       const afterStock = rolling.get(movement.product_id) ?? 0;
-      rolling.set(movement.product_id, afterStock - signedQuantity(movement.type, movement.quantity));
+      rolling.set(movement.product_id, afterStock - signedMovementQuantity(movement));
       return { ...movement, afterStock, actionType: actionTypeOf(movement) };
     });
 }
@@ -988,11 +983,53 @@ function signedQuantity(type: StockMovement["type"], quantity: number) {
   return -safe;
 }
 
+function signedMovementQuantity(movement: StockMovement) {
+  const safe = safeQuantity(movement.quantity);
+  const actionType = actionTypeOf(movement);
+  if (actionType === "inbound" || actionType === "return_inbound" || actionType === "adjustment") return safe;
+  return -safe;
+}
+
 function actionTypeOf(movement: StockMovement): MovementFilterType {
-  if (movement.type === "return_inbound" || (movement.type === "inbound" && hasPrefix(movement.memo, RETURN_PREFIXES))) return "return_inbound";
-  if (movement.type === "loss" && hasPrefix(movement.memo, MISSING_PREFIXES)) return "missing";
+  if (isInventoryReturnInboundMovement(movement)) return "return_inbound";
+  if (isInventoryLossMovement(movement)) {
+    if (isInventoryMissingMovement(movement)) return "missing";
+    return "loss_bad";
+  }
   if (movement.type === "loss") return "loss_bad";
   return movement.type;
+}
+
+function isInventoryReturnInboundMovement(movement: StockMovement) {
+  const memo = String(movement.memo ?? "");
+  return (
+    movement.type === "return_inbound" ||
+    (movement.type === "inbound" && hasPrefix(movement.memo, RETURN_PREFIXES)) ||
+    memo.startsWith("\u9000\u8d27\u5165\u5e93\u5728\u552e") ||
+    memo.startsWith("\ubc18\ud488 \uc785\uace0 \ud310\ub9e4\uac00\ub2a5") ||
+    memo.startsWith("\ubc18\ud488 \uc785\uace0 \ud310\ub9e4")
+  );
+}
+
+function isInventoryLossMovement(movement: StockMovement) {
+  const memo = String(movement.memo ?? "");
+  return (
+    movement.type === "loss" ||
+    memo.startsWith("\u635f\u8017\u4e22\u5931") ||
+    memo.startsWith("\u635f\u8017/\u4e0d\u826f") ||
+    memo.startsWith("\u635f\u8017") ||
+    memo.startsWith("\u4e0d\u826f") ||
+    memo.startsWith("\u4e22\u5931") ||
+    memo.startsWith("\uc190\uc0c1/\ubd88\ub7c9") ||
+    memo.startsWith("\uc190\uc0c1/\ubd84\uc2e4") ||
+    memo.startsWith("\ubd88\ub7c9") ||
+    memo.startsWith("\ubd84\uc2e4")
+  );
+}
+
+function isInventoryMissingMovement(movement: StockMovement) {
+  const memo = String(movement.memo ?? "");
+  return hasPrefix(movement.memo, MISSING_PREFIXES) || memo.startsWith("\u4e22\u5931") || memo.startsWith("\ubd84\uc2e4");
 }
 
 function editableActionType(movement: StockMovement): InventoryActionType {
