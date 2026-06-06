@@ -20,7 +20,7 @@ import { supabase } from "@/lib/supabase";
 import { getCurrentStock } from "@/lib/stock";
 import type { Language, ProductWithStock, StockMovement } from "@/lib/types";
 
-type InventoryActionType = "inbound" | "sale" | "return_inbound" | "loss_bad" | "missing";
+type InventoryActionType = "inbound" | "sale" | "return_inbound" | "loss_bad" | "missing" | "adjustment";
 type MovementFilterType = "all" | InventoryActionType | "outbound" | "adjustment";
 type MovementPayload = {
   product_id: string;
@@ -39,6 +39,8 @@ const COLOR_ORDER = ["WH", "BL", "GR", "BE", "OTHER"] as const;
 const LOSS_BAD_PREFIXES = ["损耗/不良", "손상/불량", "损耗", "불량"];
 const MISSING_PREFIXES = ["丢失", "분실"];
 const RETURN_PREFIXES = ["退货入库在售", "반품 입고 판매"];
+
+const ADJUSTMENT_PREFIXES = ["数量调整", "库存调整", "수량 조정", "재고 조정"];
 
 const copy = {
   zh: {
@@ -169,6 +171,20 @@ function today() {
   return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
 }
 
+function adjustmentLabel(language: Language) {
+  return language === "ko" ? "수량 조정" : "数量调整";
+}
+
+function adjustmentMemoRequiredMessage(language: Language) {
+  return language === "ko" ? "수량 조정은 조정 사유를 입력해야 합니다." : "数量调整必须填写调整原因。";
+}
+
+function adjustmentDetailLabels(language: Language) {
+  return language === "ko"
+    ? { before: "조정 전 재고", delta: "조정 수량", after: "조정 후 재고", reason: "조정 사유" }
+    : { before: "调整前库存", delta: "调整数量", after: "调整后库存", reason: "调整原因" };
+}
+
 export default function InventoryPage() {
   return (
     <AppShell>
@@ -234,12 +250,16 @@ function InventoryContent() {
     if (!auth.user) return;
 
     const quantity = Number(form.quantity);
-    if (!form.product_id || !Number.isFinite(quantity) || quantity <= 0) {
+    if (!form.product_id || !Number.isFinite(quantity) || (form.type === "adjustment" ? quantity === 0 : quantity <= 0)) {
       setMessage(ui.invalidForm);
       return;
     }
+    if (form.type === "adjustment" && !form.memo.trim()) {
+      setMessage(adjustmentMemoRequiredMessage(language));
+      return;
+    }
 
-    const payload = buildPayload(form, ui);
+    const payload = buildPayload(form, ui, language);
     if (editingId) {
       const error = await updateMovement(editingId, payload);
       if (error) {
@@ -424,7 +444,7 @@ function InventoryContent() {
           <MetricCard icon={RotateCcw} label={metricLabels.returnRestock} value={formatNumber(metrics.returnInbound)} hint={metricLabels.returnRestockHint} tone="slate" delay="480ms" />
           <MetricCard icon={AlertTriangle} label={metricLabels.totalLoss} value={formatNumber(metrics.loss)} hint={metricLabels.lossHint} tone="red" delay="560ms" />
         </div>
-        <InventoryFlowCard metrics={metrics} labels={metricLabels} />
+        <InventoryFlowCard metrics={metrics} labels={metricLabels} language={language} />
       </section>
 
       <section className="erp-card animate-[kpi-rise_0.6s_ease-out] p-5">
@@ -446,7 +466,7 @@ function InventoryContent() {
           </Field>
           <Field label={ui.type}>
             <select className="h-11 w-full" value={form.type} onChange={(event) => setForm({ ...form, type: event.target.value as InventoryActionType })}>
-              {actionOptions(ui).map((option) => (
+              {actionOptions(ui, language).map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>
@@ -457,7 +477,7 @@ function InventoryContent() {
             <input className="h-11 w-full" type="date" value={form.movement_date} onChange={(event) => setForm({ ...form, movement_date: event.target.value })} />
           </Field>
           <Field label={ui.quantity}>
-            <input className="h-11 w-full" type="number" min="1" value={form.quantity} onChange={(event) => setForm({ ...form, quantity: event.target.value })} />
+            <input className="h-11 w-full" type="number" min={form.type === "adjustment" ? undefined : "1"} step="1" value={form.quantity} onChange={(event) => setForm({ ...form, quantity: event.target.value })} />
           </Field>
           <Field label={ui.memo}>
             <input className="h-11 w-full" placeholder={ui.memo} value={form.memo} onChange={(event) => setForm({ ...form, memo: event.target.value })} />
@@ -485,7 +505,7 @@ function InventoryContent() {
             <ProductSelect products={products} value={filters.productId} onChange={(value) => setFilters({ ...filters, productId: value })} />
             <select className="h-10" value={filters.type} onChange={(event) => setFilters({ ...filters, type: event.target.value as MovementFilterType })}>
               <option value="all">{ui.allTypes}</option>
-              {actionOptions(ui).map((option) => (
+              {actionOptions(ui, language).map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>
@@ -526,6 +546,7 @@ function InventoryContent() {
                         key={movement.id}
                         movement={movement}
                         ui={ui}
+                        language={language}
                         formatDate={formatDate}
                         highlighted={highlightId === movement.id}
                         onEdit={() => startEdit(movement)}
@@ -615,12 +636,16 @@ function inventoryMetricLabels(language: Language) {
   };
 }
 
-function InventoryFlowCard({ metrics, labels }: { metrics: ReturnType<typeof calculateMetrics>; labels: ReturnType<typeof inventoryMetricLabels> }) {
+function InventoryFlowCard({ metrics, labels, language }: { metrics: ReturnType<typeof calculateMetrics>; labels: ReturnType<typeof inventoryMetricLabels>; language: Language }) {
+  const adjustment = metrics.adjustment;
+  const adjustmentSign = adjustment >= 0 ? "+" : "-";
+  const adjustmentLabelText = adjustmentLabel(language);
   const items = [
     { label: labels.totalInbound, value: metrics.inbound, sign: "+", tone: "text-[#1e5a4e] bg-[#1e5a4e]/8" },
     { label: labels.totalSalesOut, value: metrics.salesOut, sign: "-", tone: "text-[#406a7a] bg-[#406a7a]/8" },
     { label: labels.returnRestock, value: metrics.returnInbound, sign: "+", tone: "text-[#48596f] bg-[#48596f]/8" },
-    { label: labels.totalLoss, value: metrics.loss, sign: "-", tone: "text-[#9a3f3f] bg-[#9a3f3f]/8" }
+    { label: labels.totalLoss, value: metrics.loss, sign: "-", tone: "text-[#9a3f3f] bg-[#9a3f3f]/8" },
+    { label: adjustmentLabelText, value: Math.abs(adjustment), sign: adjustmentSign, tone: "text-blue-700 bg-blue-50" }
   ];
 
   return (
@@ -637,7 +662,7 @@ function InventoryFlowCard({ metrics, labels }: { metrics: ReturnType<typeof cal
         </div>
       </div>
 
-      <div className="mt-5 grid gap-3 xl:grid-cols-[1fr_auto_1fr_auto_1fr_auto_1fr_auto_1fr]">
+      <div className="mt-5 grid gap-3 xl:grid-cols-[1fr_auto_1fr_auto_1fr_auto_1fr_auto_1fr_auto_1fr]">
         <FormulaPill label={labels.totalInbound} value={metrics.inbound} tone="text-[#1e5a4e] bg-[#1e5a4e]/8" />
         <FormulaOperator value="-" />
         <FormulaPill label={labels.totalSalesOut} value={metrics.salesOut} tone="text-[#406a7a] bg-[#406a7a]/8" />
@@ -645,6 +670,8 @@ function InventoryFlowCard({ metrics, labels }: { metrics: ReturnType<typeof cal
         <FormulaPill label={labels.returnRestock} value={metrics.returnInbound} tone="text-[#48596f] bg-[#48596f]/8" />
         <FormulaOperator value="-" />
         <FormulaPill label={labels.totalLoss} value={metrics.loss} tone="text-[#9a3f3f] bg-[#9a3f3f]/8" />
+        <FormulaOperator value={adjustmentSign} />
+        <FormulaPill label={adjustmentLabelText} value={Math.abs(adjustment)} tone="text-blue-700 bg-blue-50" />
         <FormulaOperator value="=" />
         <FormulaPill label={labels.flowEquals} value={metrics.flowResult} tone="text-[#0f3d35] bg-[#0f3d35]/10" strong />
       </div>
@@ -657,7 +684,7 @@ function InventoryFlowCard({ metrics, labels }: { metrics: ReturnType<typeof cal
           </span>
         ))}
       </div>
-      <p className="mt-3 text-xs text-muted">{labels.flowFormulaNote}</p>
+      <p className="mt-3 text-xs text-muted">{labels.flowFormulaNote} +/- {adjustmentLabelText}</p>
     </div>
   );
 }
@@ -795,6 +822,7 @@ function StockProductCard({ product, ui }: { product: ProductWithStock; ui: (typ
 function HistoryRow({
   movement,
   ui,
+  language,
   formatDate,
   highlighted,
   onEdit,
@@ -802,12 +830,17 @@ function HistoryRow({
 }: {
   movement: MovementRow;
   ui: (typeof copy)[Language];
+  language: Language;
   formatDate: ReturnType<typeof useLanguage>["formatDate"];
   highlighted: boolean;
   onEdit: () => void;
   onDelete: () => void;
 }) {
   const signed = signedMovementQuantity(movement);
+  const beforeStock = movement.afterStock - signed;
+  const absQuantity = Math.abs(safeQuantity(movement.quantity));
+  const adjustmentLabels = adjustmentDetailLabels(language);
+  const memoText = stripSystemMemo(movement.memo);
 
   return (
     <tr className={`group transition hover:bg-[#f7f4ec] ${highlighted ? "bg-emerald-50/70" : "bg-card/70"}`}>
@@ -820,19 +853,40 @@ function HistoryRow({
         <span className="text-xs font-medium text-muted">{movement.products?.sku ?? "-"}</span>
       </HistoryTd>
       <HistoryTd>
-        <MovementTag type={movement.actionType} label={actionTypeLabel(movement.actionType, ui)} />
+        <MovementTag type={movement.actionType} label={actionTypeLabel(movement.actionType, ui, language)} />
       </HistoryTd>
       <HistoryTd className="text-right">
         <span className={`font-semibold tabular-nums ${signed >= 0 ? "text-emerald-700" : "text-red-700"}`}>
           {signed >= 0 ? "+" : "-"}
-          {formatNumber(movement.quantity)}
+          {formatNumber(absQuantity)}
         </span>
       </HistoryTd>
       <HistoryTd className="text-right">
         <span className={`font-semibold tabular-nums ${movement.afterStock < 0 ? "text-red-700" : "text-ink"}`}>{formatNumber(movement.afterStock)}</span>
       </HistoryTd>
       <HistoryTd>
-        <span className="text-muted">{stripSystemMemo(movement.memo) || "-"}</span>
+        {movement.actionType === "adjustment" ? (
+          <div className="grid gap-1 text-xs text-muted sm:grid-cols-2">
+            <span>
+              {adjustmentLabels.before}: <b className="tabular-nums text-ink">{formatNumber(beforeStock)}</b>
+            </span>
+            <span>
+              {adjustmentLabels.delta}:{" "}
+              <b className={`tabular-nums ${signed >= 0 ? "text-emerald-700" : "text-red-700"}`}>
+                {signed >= 0 ? "+" : "-"}
+                {formatNumber(absQuantity)}
+              </b>
+            </span>
+            <span>
+              {adjustmentLabels.after}: <b className="tabular-nums text-ink">{formatNumber(movement.afterStock)}</b>
+            </span>
+            <span className="sm:col-span-2">
+              {adjustmentLabels.reason}: <b className="font-semibold text-ink">{memoText || "-"}</b>
+            </span>
+          </div>
+        ) : (
+          <span className="text-muted">{memoText || "-"}</span>
+        )}
       </HistoryTd>
       <HistoryTd className="text-right">
         <div className="flex justify-end gap-2">
@@ -868,7 +922,9 @@ function MovementTag({ type, label }: { type: MovementFilterType; label: string 
             ? "border-red-200 bg-red-50 text-red-700"
             : type === "loss_bad"
               ? "border-yellow-200 bg-yellow-50 text-yellow-800"
-              : "border-line bg-panel text-muted";
+              : type === "adjustment"
+                ? "border-blue-200 bg-blue-50 text-blue-700"
+                : "border-line bg-panel text-muted";
   return <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${className}`}>{label}</span>;
 }
 
@@ -914,6 +970,7 @@ function calculateMetrics(products: ProductWithStock[], movements: StockMovement
   const salesOut = movements.filter((movement) => movement.type === "sale" || movement.type === "outbound").reduce((sum, movement) => sum + safeQuantity(movement.quantity), 0);
   const returnInbound = movements.filter(isInventoryReturnInboundMovement).reduce((sum, movement) => sum + safeQuantity(movement.quantity), 0);
   const loss = movements.filter(isInventoryLossMovement).reduce((sum, movement) => sum + safeQuantity(movement.quantity), 0);
+  const adjustment = movements.filter((movement) => movement.type === "adjustment").reduce((sum, movement) => sum + safeQuantity(movement.quantity), 0);
 
   return {
     saleable: products.reduce((sum, product) => sum + getCurrentStock(product), 0),
@@ -924,7 +981,8 @@ function calculateMetrics(products: ProductWithStock[], movements: StockMovement
     salesOut,
     returnInbound,
     loss,
-    flowResult: inbound - salesOut + returnInbound - loss
+    adjustment,
+    flowResult: inbound - salesOut + returnInbound - loss + adjustment
   };
 }
 
@@ -958,10 +1016,11 @@ function applyFilters(rows: MovementRow[], filters: { productId: string; type: M
 
 function buildPayload(
   form: { product_id: string; type: InventoryActionType; movement_date: string; quantity: string; memo: string },
-  ui: (typeof copy)[Language]
+  ui: (typeof copy)[Language],
+  language: Language
 ): MovementPayload {
   const cleanMemo = form.memo.trim();
-  const systemLabel = form.type === "return_inbound" || form.type === "loss_bad" || form.type === "missing" ? actionTypeLabel(form.type, ui) : "";
+  const systemLabel = form.type === "return_inbound" || form.type === "loss_bad" || form.type === "missing" || form.type === "adjustment" ? actionTypeLabel(form.type, ui, language) : "";
 
   return {
     product_id: form.product_id,
@@ -1035,22 +1094,22 @@ function isInventoryMissingMovement(movement: StockMovement) {
 function editableActionType(movement: StockMovement): InventoryActionType {
   const type = actionTypeOf(movement);
   if (type === "outbound") return "sale";
-  if (type === "adjustment") return "inbound";
   if (type === "all") return "inbound";
   return type;
 }
 
-function actionOptions(ui: (typeof copy)[Language]) {
+function actionOptions(ui: (typeof copy)[Language], language: Language) {
   return [
     { value: "inbound", label: ui.purchaseInbound },
     { value: "sale", label: ui.salesOutbound },
     { value: "return_inbound", label: ui.returnInbound },
     { value: "loss_bad", label: ui.lossBad },
-    { value: "missing", label: ui.missing }
+    { value: "missing", label: ui.missing },
+    { value: "adjustment", label: adjustmentLabel(language) }
   ] as const;
 }
 
-function actionTypeLabel(type: MovementFilterType, ui: (typeof copy)[Language]) {
+function actionTypeLabel(type: MovementFilterType, ui: (typeof copy)[Language], language: Language) {
   const labels: Record<MovementFilterType, string> = {
     all: ui.allTypes,
     inbound: ui.purchaseInbound,
@@ -1059,13 +1118,13 @@ function actionTypeLabel(type: MovementFilterType, ui: (typeof copy)[Language]) 
     loss_bad: ui.lossBad,
     missing: ui.missing,
     outbound: ui.salesOutbound,
-    adjustment: ui.adjustment
+    adjustment: adjustmentLabel(language)
   };
   return labels[type];
 }
 
 function stripSystemMemo(memo: string | null) {
-  const prefixes = [...RETURN_PREFIXES, ...LOSS_BAD_PREFIXES, ...MISSING_PREFIXES];
+  const prefixes = [...RETURN_PREFIXES, ...LOSS_BAD_PREFIXES, ...MISSING_PREFIXES, ...ADJUSTMENT_PREFIXES];
   for (const prefix of prefixes) {
     if (memo?.startsWith(`${prefix} - `)) return memo.replace(`${prefix} - `, "");
     if (memo === prefix) return "";

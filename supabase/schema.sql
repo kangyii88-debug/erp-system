@@ -37,7 +37,7 @@ create table if not exists stock_movements (
   user_id uuid not null references auth.users(id) on delete cascade,
   product_id uuid not null references products(id) on delete cascade,
   type movement_type not null,
-  quantity integer not null check (quantity > 0),
+  quantity integer not null check (quantity <> 0),
   happened_at timestamptz not null default now(),
   memo text,
   created_at timestamptz not null default now()
