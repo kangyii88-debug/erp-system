@@ -212,5 +212,10 @@
   "dashboard.kpi.returnInboundSubtitle": "Returned and saleable stock",
   "dashboard.kpi.lossSubtitle": "Loss / Defect / Missing",
   "dashboard.kpi.currentStockSubtitle": "Available inventory units",
-  "dashboard.kpi.skuSubtitle": "Active SKU portfolio"
+  "dashboard.kpi.skuSubtitle": "Active SKU portfolio",
+  "purchase.editTitle": "编辑采购单",
+  "purchase.update": "更新",
+  "purchase.cancelEdit": "取消编辑",
+  "purchase.deleteConfirm": "确定要删除这条采购单吗？删除后无法恢复。",
+  "purchase.empty": "暂无采购单数据"
 }

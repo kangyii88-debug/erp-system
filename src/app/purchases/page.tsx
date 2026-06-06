@@ -22,6 +22,7 @@ function PurchasesContent() {
   const { t, formatDate } = useLanguage();
   const [products, setProducts] = useState<ProductWithStock[]>([]);
   const [orders, setOrders] = useState<PurchaseOrder[]>([]);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({
     product_id: "",
     factory_name: "",
@@ -32,6 +33,8 @@ function PurchasesContent() {
     memo: ""
   });
   const [message, setMessage] = useState("");
+
+  const isEditing = Boolean(editingId);
 
   useEffect(() => {
     load();
@@ -50,7 +53,8 @@ function PurchasesContent() {
     event.preventDefault();
     const { data: auth } = await supabase.auth.getUser();
     if (!auth.user) return;
-    const { error } = await supabase.from("purchase_orders").insert({
+
+    const payload = {
       user_id: auth.user.id,
       product_id: form.product_id,
       factory_name: form.factory_name,
@@ -59,7 +63,11 @@ function PurchasesContent() {
       shipping_status: form.shipping_status,
       expected_arrival_date: form.expected_arrival_date || null,
       memo: form.memo || null
-    });
+    };
+
+    const { error } = editingId
+      ? await supabase.from("purchase_orders").update(payload).eq("id", editingId)
+      : await supabase.from("purchase_orders").insert(payload);
 
     if (error) {
       setMessage(error.message);
@@ -67,6 +75,36 @@ function PurchasesContent() {
     }
 
     setMessage("");
+    resetForm();
+    await load();
+  }
+
+  async function updateOrder(id: string, patch: Partial<PurchaseOrder>) {
+    const { error } = await supabase.from("purchase_orders").update(patch).eq("id", id);
+    if (error) {
+      setMessage(error.message);
+      return;
+    }
+    setMessage("");
+    await load();
+  }
+
+  function startEdit(order: PurchaseOrder) {
+    setEditingId(order.id);
+    setMessage("");
+    setForm({
+      product_id: order.product_id,
+      factory_name: order.factory_name ?? "",
+      quantity: String(order.quantity ?? 1),
+      production_status: order.production_status || "pending",
+      shipping_status: order.shipping_status || "not_shipped",
+      expected_arrival_date: order.expected_arrival_date ?? "",
+      memo: order.memo ?? ""
+    });
+  }
+
+  function resetForm() {
+    setEditingId(null);
     setForm({
       product_id: "",
       factory_name: "",
@@ -76,11 +114,19 @@ function PurchasesContent() {
       expected_arrival_date: "",
       memo: ""
     });
-    await load();
   }
 
-  async function updateOrder(id: string, patch: Partial<PurchaseOrder>) {
-    await supabase.from("purchase_orders").update(patch).eq("id", id);
+  async function deleteOrder(id: string) {
+    if (!window.confirm(t("purchase.deleteConfirm"))) return;
+    const { error } = await supabase.from("purchase_orders").delete().eq("id", id);
+
+    if (error) {
+      setMessage(error.message);
+      return;
+    }
+
+    if (editingId === id) resetForm();
+    setMessage("");
     await load();
   }
 
@@ -91,7 +137,18 @@ function PurchasesContent() {
     <>
       <PageHeader title={t("purchase.title")} />
       <Card className="mb-5">
-        <h2 className="mb-3 font-semibold">{t("purchase.add")}</h2>
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h2 className="font-semibold">{isEditing ? t("purchase.editTitle") : t("purchase.add")}</h2>
+          {isEditing ? (
+            <button
+              type="button"
+              onClick={resetForm}
+              className="rounded-lg border border-line bg-white px-3 py-1.5 text-xs font-semibold text-muted transition hover:border-brand/30 hover:text-brand"
+            >
+              {t("purchase.cancelEdit")}
+            </button>
+          ) : null}
+        </div>
         <form onSubmit={submit} className="grid gap-3 md:grid-cols-4">
           <ProductSelect products={products} value={form.product_id} onChange={(value) => setForm({ ...form, product_id: value })} />
           <input placeholder={t("common.factory")} value={form.factory_name} onChange={(e) => setForm({ ...form, factory_name: e.target.value })} required />
@@ -112,7 +169,20 @@ function PurchasesContent() {
             ))}
           </select>
           <input className="md:col-span-1" placeholder={t("common.memo")} value={form.memo} onChange={(e) => setForm({ ...form, memo: e.target.value })} />
-          <button className="rounded bg-brand px-4 py-2 text-sm font-semibold text-white">{t("common.save")}</button>
+          <div className="flex gap-2">
+            <button className="flex-1 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-brandDark">
+              {isEditing ? t("purchase.update") : t("common.save")}
+            </button>
+            {isEditing ? (
+              <button
+                type="button"
+                onClick={resetForm}
+                className="rounded-lg border border-line bg-white px-4 py-2 text-sm font-semibold text-muted transition hover:border-brand/30 hover:text-brand"
+              >
+                {t("purchase.cancelEdit")}
+              </button>
+            ) : null}
+          </div>
         </form>
         {message ? <div className="mt-3 rounded bg-red-50 px-3 py-2 text-sm text-red-700">{message}</div> : null}
       </Card>
@@ -128,6 +198,7 @@ function PurchasesContent() {
             <Th>{t("purchase.shippingStatus")}</Th>
             <Th>{t("purchase.eta")}</Th>
             <Th>{t("common.memo")}</Th>
+            <Th>{t("common.actions")}</Th>
           </tr>
         </thead>
         <tbody>
@@ -157,8 +228,33 @@ function PurchasesContent() {
               </Td>
               <Td>{order.expected_arrival_date ? formatDate(`${order.expected_arrival_date}T12:00:00`) : "-"}</Td>
               <Td>{order.memo}</Td>
+              <Td>
+                <div className="flex min-w-[128px] justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => startEdit(order)}
+                    className="rounded-lg border border-line bg-white px-3 py-1.5 text-xs font-semibold text-ink transition hover:border-brand/30 hover:text-brand"
+                  >
+                    {t("common.edit")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => deleteOrder(order.id)}
+                    className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700 transition hover:bg-red-100"
+                  >
+                    {t("common.delete")}
+                  </button>
+                </div>
+              </Td>
             </tr>
           ))}
+          {!orders.length ? (
+            <tr>
+              <td colSpan={9} className="border-b border-line px-4 py-8 text-center text-sm text-muted">
+                {t("purchase.empty")}
+              </td>
+            </tr>
+          ) : null}
         </tbody>
       </Table>
     </>
