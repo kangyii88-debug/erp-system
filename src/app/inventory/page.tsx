@@ -6,10 +6,12 @@ import {
   ArrowDownCircle,
   Boxes,
   ClipboardList,
+  DollarSign,
+  Layers,
   PackageCheck,
   PackagePlus,
+  RotateCcw,
   Search,
-  Trash2
 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { ProductSelect } from "@/components/ProductSelect";
@@ -176,8 +178,9 @@ export default function InventoryPage() {
 }
 
 function InventoryContent() {
-  const { language, formatDate } = useLanguage();
+  const { language, formatDate, formatCurrency } = useLanguage();
   const ui = copy[language];
+  const metricLabels = inventoryMetricLabels(language);
   const [products, setProducts] = useState<ProductWithStock[]>([]);
   const [movements, setMovements] = useState<StockMovement[]>([]);
   const [form, setForm] = useState({
@@ -408,11 +411,20 @@ function InventoryContent() {
         </div>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <MetricCard icon={Boxes} label={ui.saleableStock} value={formatNumber(metrics.saleable)} hint={ui.saleableHint} tone="green" delay="0ms" />
-        <MetricCard icon={PackagePlus} label={ui.totalInbound} value={formatNumber(metrics.inbound)} hint={ui.inboundHint} tone="blue" delay="80ms" />
-        <MetricCard icon={ArrowDownCircle} label={ui.totalSalesOut} value={formatNumber(metrics.salesOut)} hint={ui.salesOutHint} tone="slate" delay="160ms" />
-        <MetricCard icon={AlertTriangle} label={ui.totalLoss} value={formatNumber(metrics.loss)} hint={ui.lossHint} tone="red" delay="240ms" />
+      <section className="space-y-4">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <MetricCard icon={Boxes} label={metricLabels.saleableStock} value={formatNumber(metrics.saleable)} hint={metricLabels.saleableHint} tone="green" delay="0ms" />
+          <MetricCard icon={DollarSign} label={metricLabels.inventoryValue} value={formatCurrency(metrics.inventoryValue)} hint={metricLabels.inventoryValueHint} tone="blue" delay="80ms" />
+          <MetricCard icon={AlertTriangle} label={metricLabels.riskSkuCount} value={formatNumber(metrics.riskSkuCount)} hint={metricLabels.riskSkuHint} tone="red" delay="160ms" />
+          <MetricCard icon={Layers} label={metricLabels.skuTotal} value={formatNumber(metrics.skuTotal)} hint={metricLabels.skuTotalHint} tone="slate" delay="240ms" />
+        </div>
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <MetricCard icon={PackagePlus} label={metricLabels.totalInbound} value={formatNumber(metrics.inbound)} hint={metricLabels.inboundHint} tone="green" delay="320ms" />
+          <MetricCard icon={ArrowDownCircle} label={metricLabels.totalSalesOut} value={formatNumber(metrics.salesOut)} hint={metricLabels.salesOutHint} tone="blue" delay="400ms" />
+          <MetricCard icon={RotateCcw} label={metricLabels.returnRestock} value={formatNumber(metrics.returnInbound)} hint={metricLabels.returnRestockHint} tone="slate" delay="480ms" />
+          <MetricCard icon={AlertTriangle} label={metricLabels.totalLoss} value={formatNumber(metrics.loss)} hint={metricLabels.lossHint} tone="red" delay="560ms" />
+        </div>
+        <InventoryFlowCard metrics={metrics} labels={metricLabels} />
       </section>
 
       <section className="erp-card animate-[kpi-rise_0.6s_ease-out] p-5">
@@ -549,6 +561,118 @@ function InventoryContent() {
       </section>
     </div>
   );
+}
+
+function inventoryMetricLabels(language: Language) {
+  if (language === "ko") {
+    return {
+      saleableStock: "현재 판매 가능 재고",
+      inventoryValue: "재고 가치",
+      riskSkuCount: "위험 SKU 수",
+      skuTotal: "SKU 총수",
+      totalInbound: "누적 구매 입고",
+      totalSalesOut: "누적 판매 출고",
+      returnRestock: "반품 재입고 판매",
+      totalLoss: "손상/불량/분실",
+      saleableHint: "전체 SKU의 현재 판매 가능 수량",
+      inventoryValueHint: "매입가 기준 현재 재고 원가",
+      riskSkuHint: "현재 재고 10개 미만 SKU",
+      skuTotalHint: "현재 운영 중인 SKU 수",
+      inboundHint: "구매 입고 수량 합계",
+      salesOutHint: "판매 출고 수량 합계",
+      returnRestockHint: "반품 후 다시 판매 가능한 재고",
+      lossHint: "손상, 불량, 분실 수량 합계",
+      flowEyebrow: "Inventory Flow",
+      flowTitle: "재고 흐름 관계",
+      flowDescription: "현재 판매 가능 재고가 어떤 입출고 기록으로 구성되는지 한눈에 확인합니다.",
+      flowEquals: "현재 판매 가능 재고",
+      flowFormulaNote: "구매 입고 - 판매 출고 + 반품 재입고 판매 - 손상/불량/분실"
+    };
+  }
+
+  return {
+    saleableStock: "当前可售库存",
+    inventoryValue: "库存价值",
+    riskSkuCount: "风险SKU数量",
+    skuTotal: "SKU总数",
+    totalInbound: "累计采购入库",
+    totalSalesOut: "累计销售出库",
+    returnRestock: "退货重新入库在售",
+    totalLoss: "损耗/不良/丢失",
+    saleableHint: "全部 SKU 当前可销售数量",
+    inventoryValueHint: "按采购价计算的当前库存成本",
+    riskSkuHint: "当前库存低于 10 的 SKU",
+    skuTotalHint: "当前启用的商品 SKU 数量",
+    inboundHint: "采购入库数量合计",
+    salesOutHint: "销售出库数量合计",
+    returnRestockHint: "退货后重新入库且可继续销售",
+    lossHint: "损耗、不良、丢失数量合计",
+    flowEyebrow: "Inventory Flow",
+    flowTitle: "库存流转关系",
+    flowDescription: "把当前可售库存的来源拆开显示，库存人员不需要手动倒推。",
+    flowEquals: "当前可售库存",
+    flowFormulaNote: "采购入库 - 销售出库 + 退货重新入库在售 - 损耗/不良/丢失"
+  };
+}
+
+function InventoryFlowCard({ metrics, labels }: { metrics: ReturnType<typeof calculateMetrics>; labels: ReturnType<typeof inventoryMetricLabels> }) {
+  const items = [
+    { label: labels.totalInbound, value: metrics.inbound, sign: "+", tone: "text-[#1e5a4e] bg-[#1e5a4e]/8" },
+    { label: labels.totalSalesOut, value: metrics.salesOut, sign: "-", tone: "text-[#406a7a] bg-[#406a7a]/8" },
+    { label: labels.returnRestock, value: metrics.returnInbound, sign: "+", tone: "text-[#48596f] bg-[#48596f]/8" },
+    { label: labels.totalLoss, value: metrics.loss, sign: "-", tone: "text-[#9a3f3f] bg-[#9a3f3f]/8" }
+  ];
+
+  return (
+    <div className="erp-card overflow-hidden p-5" style={{ animation: "kpi-rise 0.7s ease-out both", animationDelay: "640ms" }}>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-[0.2em] text-muted">{labels.flowEyebrow}</div>
+          <h2 className="mt-1 text-xl font-semibold text-ink">{labels.flowTitle}</h2>
+          <p className="mt-1 text-sm text-muted">{labels.flowDescription}</p>
+        </div>
+        <div className="rounded-2xl border border-border bg-white/70 px-4 py-3 text-right shadow-soft">
+          <div className="text-xs font-semibold text-muted">{labels.flowEquals}</div>
+          <div className="mt-1 text-3xl font-semibold tabular-nums text-ink">{formatNumber(metrics.saleable)}</div>
+        </div>
+      </div>
+
+      <div className="mt-5 grid gap-3 xl:grid-cols-[1fr_auto_1fr_auto_1fr_auto_1fr_auto_1fr]">
+        <FormulaPill label={labels.totalInbound} value={metrics.inbound} tone="text-[#1e5a4e] bg-[#1e5a4e]/8" />
+        <FormulaOperator value="-" />
+        <FormulaPill label={labels.totalSalesOut} value={metrics.salesOut} tone="text-[#406a7a] bg-[#406a7a]/8" />
+        <FormulaOperator value="+" />
+        <FormulaPill label={labels.returnRestock} value={metrics.returnInbound} tone="text-[#48596f] bg-[#48596f]/8" />
+        <FormulaOperator value="-" />
+        <FormulaPill label={labels.totalLoss} value={metrics.loss} tone="text-[#9a3f3f] bg-[#9a3f3f]/8" />
+        <FormulaOperator value="=" />
+        <FormulaPill label={labels.flowEquals} value={metrics.flowResult} tone="text-[#0f3d35] bg-[#0f3d35]/10" strong />
+      </div>
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        {items.map((item) => (
+          <span key={item.label} className={`rounded-full px-3 py-1.5 text-xs font-semibold ${item.tone}`}>
+            {item.sign}
+            {formatNumber(item.value)} {item.label}
+          </span>
+        ))}
+      </div>
+      <p className="mt-3 text-xs text-muted">{labels.flowFormulaNote}</p>
+    </div>
+  );
+}
+
+function FormulaPill({ label, value, tone, strong = false }: { label: string; value: number; tone: string; strong?: boolean }) {
+  return (
+    <div className={`rounded-2xl px-4 py-3 ${tone}`}>
+      <div className="text-xs font-semibold opacity-80">{label}</div>
+      <div className={`mt-1 tabular-nums ${strong ? "text-2xl font-semibold" : "text-xl font-semibold"}`}>{formatNumber(value)}</div>
+    </div>
+  );
+}
+
+function FormulaOperator({ value }: { value: string }) {
+  return <div className="hidden items-center justify-center text-xl font-semibold text-muted xl:flex">{value}</div>;
 }
 
 function MetricCard({
@@ -786,16 +910,26 @@ function SkeletonRow() {
 }
 
 function calculateMetrics(products: ProductWithStock[], movements: StockMovement[]) {
+  const inbound = movements.filter((movement) => movement.type === "inbound" && actionTypeOf(movement) === "inbound").reduce((sum, movement) => sum + safeQuantity(movement.quantity), 0);
+  const salesOut = movements.filter((movement) => movement.type === "sale" || movement.type === "outbound").reduce((sum, movement) => sum + safeQuantity(movement.quantity), 0);
+  const returnInbound = movements.filter((movement) => actionTypeOf(movement) === "return_inbound").reduce((sum, movement) => sum + safeQuantity(movement.quantity), 0);
+  const loss = movements
+    .filter((movement) => {
+      const type = actionTypeOf(movement);
+      return type === "loss_bad" || type === "missing";
+    })
+    .reduce((sum, movement) => sum + safeQuantity(movement.quantity), 0);
+
   return {
     saleable: products.reduce((sum, product) => sum + getCurrentStock(product), 0),
-    inbound: movements.filter((movement) => movement.type === "inbound" && actionTypeOf(movement) === "inbound").reduce((sum, movement) => sum + safeQuantity(movement.quantity), 0),
-    salesOut: movements.filter((movement) => movement.type === "sale" || movement.type === "outbound").reduce((sum, movement) => sum + safeQuantity(movement.quantity), 0),
-    loss: movements
-      .filter((movement) => {
-        const type = actionTypeOf(movement);
-        return type === "loss_bad" || type === "missing";
-      })
-      .reduce((sum, movement) => sum + safeQuantity(movement.quantity), 0)
+    inventoryValue: products.reduce((sum, product) => sum + getCurrentStock(product) * safeMoney(product.purchase_price), 0),
+    riskSkuCount: products.filter((product) => getCurrentStock(product) < 10).length,
+    skuTotal: products.length,
+    inbound,
+    salesOut,
+    returnInbound,
+    loss,
+    flowResult: inbound - salesOut + returnInbound - loss
   };
 }
 
@@ -964,6 +1098,10 @@ function toDateString(value: string) {
 
 function safeQuantity(value: number) {
   return Number.isFinite(Number(value)) ? Math.trunc(Number(value)) : 0;
+}
+
+function safeMoney(value: number) {
+  return Number.isFinite(Number(value)) ? Number(value) : 0;
 }
 
 function formatNumber(value: number) {
