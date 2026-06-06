@@ -56,6 +56,7 @@ type MonthlySkuMetric = "quantity" | "revenue" | "profit" | "stock";
 type DecisionSortKey = "risk" | "stock" | "sales" | "days" | "suggested" | "lostRevenue";
 type ActionTab = "immediate" | "soon" | "watch";
 type LifecycleStatus = "danger" | "warning" | "stable" | "slow";
+type InventoryRiskLevel = "danger" | "warning" | "normal";
 type SalesPoint = { date: string; label: string; orders: number; quantity: number; revenue: number; profit: number };
 type AnnualPoint = SalesPoint & {
   month: number;
@@ -85,6 +86,7 @@ type LifecycleRow = ReplenishmentRow & {
 };
 
 const STANDARD_SIZE_OPTIONS = ["58.4x163", "76.2x163", "87.6x163", "91.4x163", "99.1x163"];
+const REPLENISHMENT_LEAD_DAYS = REPLENISHMENT_CYCLE_DAYS;
 
 export default function DashboardPage() {
   return (
@@ -1497,14 +1499,16 @@ function StockRiskRanking({
   const { language, t, formatCurrency, formatNumber } = useLanguage();
   const copy = decisionCopy(language);
   const riskRows = rows
-    .filter((row) => row.currentStock === 0 || row.dailyAverage > 0)
-    .filter((row) => statusFilter === "all" || row.status === statusFilter)
+    .filter((row) => statusFilter === "all" || getRowRiskLevel(row) === statusFilter)
     .filter((row) => matchesDecisionSearch(row, search));
-  const visibleRows = sortDecisionRows(riskRows, sortKey).slice(0, 14);
-  const within3 = rows.filter((row) => row.dailyAverage > 0 && row.saleableDays <= 3).length;
-  const within7 = rows.filter((row) => row.dailyAverage > 0 && row.saleableDays <= 7).length;
+  const visibleRows = sortRiskRankingRows(riskRows, sortKey).slice(0, 14);
+  const within3 = rows.filter((row) => getRowRiskLevel(row) === "danger").length;
+  const within7 = rows.filter((row) => {
+    const level = getRowRiskLevel(row);
+    return level === "danger" || level === "warning";
+  }).length;
   const lostRevenue = rows.reduce((sum, row) => sum + estimatedLostRevenue(row), 0);
-  const immediate = rows.filter((row) => row.status === "danger").length;
+  const immediate = within3;
 
   return (
     <DecisionPanel
@@ -1551,13 +1555,13 @@ function StockRiskRanking({
           </DecisionTableHeader>
           <div className="divide-y divide-line/80">
             {visibleRows.map((row, index) => (
-              <DecisionRow key={row.product.id} status={row.status} columns="grid-cols-[64px_minmax(320px,2.1fr)_minmax(120px,0.65fr)_minmax(120px,0.7fr)_minmax(120px,0.7fr)_minmax(140px,0.95fr)_minmax(150px,1fr)_minmax(120px,0.8fr)]">
+              <DecisionRow key={row.product.id} status={getRowRiskLevel(row)} columns="grid-cols-[64px_minmax(320px,2.1fr)_minmax(120px,0.65fr)_minmax(120px,0.7fr)_minmax(120px,0.7fr)_minmax(140px,0.95fr)_minmax(150px,1fr)_minmax(120px,0.8fr)]">
                 <div className="font-bold text-ink/70">{index + 1}</div>
                 <ProductInfoCell product={row.product} />
                 <NumberCell>{formatNumber(row.currentStock)}</NumberCell>
                 <NumberCell>{formatNumber(row.dailyAverage)}</NumberCell>
                 <NumberCell>{formatSaleableDaysText(row, copy)}</NumberCell>
-                <div className="text-center text-sm font-semibold text-ink/70">{stockoutDate(row.saleableDays, anchorDate, t)}</div>
+                <div className="text-center text-sm font-semibold text-ink/70">{calculateEstimatedStockoutDate(getRowDaysOfStock(row), anchorDate, t)}</div>
                 <NumberCell>{formatCurrency(estimatedLostRevenue(row))}</NumberCell>
                 <div className="text-center"><RiskBadge row={row} copy={copy} /></div>
               </DecisionRow>
@@ -1817,7 +1821,7 @@ function DecisionSkeleton() {
 }
 
 function RiskBadge({ row, copy }: { row: SmartReplenishmentRow; copy: DecisionCopy }) {
-  const tone = row.currentStock === 0 || row.saleableDays <= 3 ? "danger" : row.saleableDays <= 7 ? "warning" : "normal";
+  const tone = getRowRiskLevel(row);
   const label = row.currentStock === 0 ? copy.soldOut : tone === "danger" ? copy.danger : tone === "warning" ? copy.warning : copy.normal;
   const className = tone === "danger" ? "border-red-200 bg-red-50 text-red-800" :
     tone === "warning" ? "border-amber-200 bg-amber-50 text-amber-800" :
@@ -1844,8 +1848,9 @@ function actionLabel(row: SmartReplenishmentRow, copy: DecisionCopy) {
 
 function riskLabel(row: SmartReplenishmentRow, copy: DecisionCopy) {
   if (row.currentStock === 0) return copy.soldOut;
-  if (row.saleableDays <= 3) return copy.danger;
-  if (row.saleableDays <= 7) return copy.warning;
+  const level = getRowRiskLevel(row);
+  if (level === "danger") return copy.danger;
+  if (level === "warning") return copy.warning;
   return copy.normal;
 }
 
@@ -1867,6 +1872,23 @@ function sortDecisionRows(rows: SmartReplenishmentRow[], key: DecisionSortKey) {
   });
 }
 
+function sortRiskRankingRows(rows: SmartReplenishmentRow[], key: DecisionSortKey) {
+  return [...rows].sort((a, b) => {
+    if (key === "stock") return b.currentStock - a.currentStock;
+    if (key === "sales") return b.dailyAverage - a.dailyAverage;
+    if (key === "days") return normalizedSaleableDays(a) - normalizedSaleableDays(b);
+    if (key === "lostRevenue") return estimatedLostRevenue(b) - estimatedLostRevenue(a);
+
+    const riskDiff = riskPriority(getRowRiskLevel(a)) - riskPriority(getRowRiskLevel(b));
+    if (riskDiff !== 0) return riskDiff;
+
+    const dayDiff = normalizedSaleableDays(a) - normalizedSaleableDays(b);
+    if (dayDiff !== 0) return dayDiff;
+
+    return estimatedLostRevenue(b) - estimatedLostRevenue(a);
+  });
+}
+
 function sortLifecycleRows(rows: LifecycleRow[], key: DecisionSortKey) {
   return [...rows].sort((a, b) => {
     if (key === "stock") return b.currentStock - a.currentStock;
@@ -1879,25 +1901,72 @@ function sortLifecycleRows(rows: LifecycleRow[], key: DecisionSortKey) {
 function riskSortValue(row: SmartReplenishmentRow | LifecycleRow) {
   if (row.currentStock === 0) return -1;
   if (row.dailyAverage === 0) return 9999;
-  return row.saleableDays;
+  return normalizedSaleableDays(row);
 }
 
 function normalizedSaleableDays(row: SmartReplenishmentRow | LifecycleRow) {
-  if (row.currentStock === 0) return 0;
-  if (row.dailyAverage === 0) return 9999;
-  return row.saleableDays;
+  const days = calculateDaysOfStock(row.currentStock, row.dailyAverage);
+  return Number.isFinite(days) ? days : 9999;
 }
 
 function estimatedLostRevenue(row: SmartReplenishmentRow) {
-  if (row.dailyAverage <= 0) return 0;
-  const uncoveredDays = Math.max(0, REPLENISHMENT_CYCLE_DAYS - row.saleableDays);
-  return uncoveredDays * row.dailyAverage * money(row.product.sale_price);
+  return calculateEstimatedLostSales(getRowDaysOfStock(row), row.dailyAverage, money(row.product.sale_price));
 }
 
 function formatSaleableDaysText(row: SmartReplenishmentRow | LifecycleRow, copy: DecisionCopy) {
   if (row.currentStock === 0) return copy.soldOut;
   if (row.dailyAverage === 0) return copy.noSales;
-  return `${row.saleableDays}${copy.dayUnit}`;
+  return `${formatDaysValue(calculateDaysOfStock(row.currentStock, row.dailyAverage))}${copy.dayUnit}`;
+}
+
+function calculateDaysOfStock(stock: number, avgDailySales: number) {
+  const currentStock = Math.max(0, Number(stock ?? 0));
+  const average = Math.max(0, Number(avgDailySales ?? 0));
+  if (currentStock <= 0) return 0;
+  if (average <= 0) return Number.POSITIVE_INFINITY;
+  return currentStock / average;
+}
+
+function getRiskLevel(daysOfStock: number, stock: number, avgDailySales: number): InventoryRiskLevel {
+  if (Math.max(0, Number(stock ?? 0)) <= 0) return "danger";
+  if (Math.max(0, Number(avgDailySales ?? 0)) <= 0 || !Number.isFinite(daysOfStock)) return "normal";
+  if (daysOfStock <= 3) return "danger";
+  if (daysOfStock <= 7) return "warning";
+  return "normal";
+}
+
+function calculateEstimatedStockoutDate(daysOfStock: number, anchorDate: Date, t: TFunction) {
+  if (!Number.isFinite(daysOfStock)) return t("unit.noRisk");
+  const date = new Date(anchorDate);
+  date.setDate(anchorDate.getDate() + Math.max(0, Math.ceil(daysOfStock)));
+  return toDateKey(date);
+}
+
+function calculateEstimatedLostSales(daysOfStock: number, avgDailySales: number, price: number) {
+  const average = Math.max(0, Number(avgDailySales ?? 0));
+  if (average <= 0 || !Number.isFinite(daysOfStock)) return 0;
+  const uncoveredDays = Math.max(0, REPLENISHMENT_LEAD_DAYS - daysOfStock);
+  return uncoveredDays * average * money(price);
+}
+
+function getRowDaysOfStock(row: SmartReplenishmentRow | LifecycleRow) {
+  return calculateDaysOfStock(row.currentStock, row.dailyAverage);
+}
+
+function getRowRiskLevel(row: SmartReplenishmentRow): InventoryRiskLevel {
+  return getRiskLevel(getRowDaysOfStock(row), row.currentStock, row.dailyAverage);
+}
+
+function riskPriority(level: InventoryRiskLevel) {
+  if (level === "danger") return 0;
+  if (level === "warning") return 1;
+  return 2;
+}
+
+function formatDaysValue(days: number) {
+  if (!Number.isFinite(days)) return "∞";
+  const rounded = Math.round(days * 10) / 10;
+  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
 }
 
 function formatProductLabel(product: ProductWithStock) {
@@ -2087,14 +2156,14 @@ type SmartReplenishmentRow = ReplenishmentRow & {
 
 function buildSmartReplenishment(rows: ReplenishmentRow[], t: TFunction): SmartReplenishmentRow[] {
   return rows.map((row) => {
-    const saleableDays = row.currentStock === 0 ? 0 : row.dailyAverage > 0 ? Math.floor(row.currentStock / row.dailyAverage) : 999;
+    const saleableDays = calculateDaysOfStock(row.currentStock, row.dailyAverage);
     const status: SmartReplenishmentRow["status"] = row.currentStock === 0 ? "danger" : saleableDays < 7 ? "danger" : saleableDays < 15 ? "warning" : "normal";
     const action = status === "danger" ? t("dashboard.replenishment.immediate") : status === "warning" ? t("dashboard.replenishment.within7Days") : t("dashboard.replenishment.noNeed");
 
     return { ...row, saleableDays, status, action };
   }).sort((a, b) => {
     if (b.suggestedQty !== a.suggestedQty) return b.suggestedQty - a.suggestedQty;
-    return a.saleableDays - b.saleableDays;
+    return normalizedSaleableDays(a) - normalizedSaleableDays(b);
   });
 }
 
@@ -2548,7 +2617,7 @@ function buildLifecycleRows(rows: ReplenishmentRow[], salesRows: SaleDaily[], an
 
   return rows.map((row) => {
     const stats = productSales.get(row.product.id) ?? { recent7: 0, recent30: 0, previous: 0 };
-    const saleableDays = row.currentStock === 0 ? 0 : row.dailyAverage > 0 ? Math.floor(row.currentStock / row.dailyAverage) : 999;
+    const saleableDays = calculateDaysOfStock(row.currentStock, row.dailyAverage);
     const status: SmartReplenishmentRow["status"] = row.currentStock === 0 ? "danger" : saleableDays < 7 ? "danger" : saleableDays < 15 ? "warning" : "normal";
 
     let lifecycleStatus: LifecycleStatus = "stable";
@@ -2923,17 +2992,6 @@ function emptyAnnualPoint(year: number): AnnualPoint {
     previousRevenue: 0,
     previousProfit: 0
   };
-}
-
-function formatSaleableDays(days: number, t: TFunction) {
-  return days >= 999 ? t("unit.noSales") : `${days}${t("unit.day")}`;
-}
-
-function stockoutDate(days: number, anchorDate: Date, t: TFunction) {
-  if (days >= 999) return t("unit.noRisk");
-  const date = new Date(anchorDate);
-  date.setDate(anchorDate.getDate() + Math.max(0, days));
-  return toDateKey(date);
 }
 
 function buildYearOptions() {
