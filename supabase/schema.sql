@@ -1,7 +1,7 @@
 create extension if not exists "pgcrypto";
 
 create type platform_type as enum ('Coupang', 'Naver', '11st', 'Gmarket', 'Other');
-create type movement_type as enum ('inbound', 'outbound', 'sale', 'return_inbound', 'loss', 'adjustment');
+create type movement_type as enum ('purchase', 'sale', 'return_resell', 'damaged', 'lost', 'adjustment');
 create type production_status as enum ('pending', 'producing', 'completed', 'delayed', 'cancelled');
 create type shipping_status as enum ('not_shipped', 'shipped_from_china', 'customs', 'in_korea', 'received');
 
@@ -111,8 +111,9 @@ declare
   signed_qty integer;
 begin
   signed_qty := case
-    when new.type in ('inbound', 'return_inbound', 'adjustment') then new.quantity
-    when new.type in ('outbound', 'sale', 'loss') then -new.quantity
+    when new.type::text in ('purchase', 'inbound', 'return_resell', 'return_inbound', 'adjustment') then new.quantity
+    when new.type::text in ('sale', 'outbound', 'damaged', 'lost', 'loss') then -new.quantity
+    else 0
   end;
 
   insert into inventory_balances (product_id, current_stock)
@@ -121,7 +122,7 @@ begin
     set current_stock = inventory_balances.current_stock + signed_qty,
         updated_at = now();
 
-  if new.type = 'sale' then
+  if new.type::text = 'sale' then
     insert into sales_daily (user_id, product_id, sale_date, quantity)
     values (new.user_id, new.product_id, new.happened_at::date, new.quantity)
     on conflict (user_id, product_id, sale_date)

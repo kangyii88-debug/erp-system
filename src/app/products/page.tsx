@@ -98,7 +98,7 @@ function ProductsContent() {
       const { error } = await supabase.from("stock_movements").insert({
         user_id: auth.user.id,
         product_id: productId,
-        type: "inbound",
+        type: "purchase",
         quantity: initialStock,
         memo: t("product.initialStock")
       });

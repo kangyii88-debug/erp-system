@@ -20,8 +20,9 @@ import { supabase } from "@/lib/supabase";
 import { getCurrentStock } from "@/lib/stock";
 import type { Language, ProductWithStock, StockMovement } from "@/lib/types";
 
-type InventoryActionType = "inbound" | "sale" | "return_inbound" | "loss_bad" | "missing" | "adjustment";
-type MovementFilterType = "all" | InventoryActionType | "outbound" | "adjustment";
+type InventoryActionType = "purchase" | "sale" | "return_resell" | "damaged" | "lost" | "adjustment";
+type LegacyMovementType = "inbound" | "outbound" | "return_inbound" | "loss";
+type MovementFilterType = "all" | InventoryActionType | LegacyMovementType;
 type MovementPayload = {
   product_id: string;
   type: StockMovement["type"];
@@ -201,7 +202,7 @@ function InventoryContent() {
   const [movements, setMovements] = useState<StockMovement[]>([]);
   const [form, setForm] = useState({
     product_id: "",
-    type: "inbound" as InventoryActionType,
+    type: "purchase" as InventoryActionType,
     movement_date: today(),
     quantity: "1",
     memo: ""
@@ -379,7 +380,7 @@ function InventoryContent() {
 
   function resetForm() {
     setEditingId(null);
-    setForm({ product_id: "", type: "inbound", movement_date: today(), quantity: "1", memo: "" });
+    setForm({ product_id: "", type: "purchase", movement_date: today(), quantity: "1", memo: "" });
   }
 
   async function deleteMovement(movement: MovementRow) {
@@ -912,15 +913,15 @@ function HistoryTd({ children, className = "" }: { children: ReactNode; classNam
 
 function MovementTag({ type, label }: { type: MovementFilterType; label: string }) {
   const className =
-    type === "inbound"
+    type === "purchase" || type === "inbound"
       ? "border-emerald-200 bg-emerald-50 text-emerald-700"
       : type === "sale" || type === "outbound"
         ? "border-sky-200 bg-sky-50 text-sky-700"
-        : type === "return_inbound"
+        : type === "return_resell" || type === "return_inbound"
           ? "border-teal-200 bg-teal-50 text-teal-700"
-          : type === "missing"
+          : type === "lost"
             ? "border-red-200 bg-red-50 text-red-700"
-            : type === "loss_bad"
+            : type === "damaged" || type === "loss"
               ? "border-yellow-200 bg-yellow-50 text-yellow-800"
               : type === "adjustment"
                 ? "border-blue-200 bg-blue-50 text-blue-700"
@@ -966,10 +967,10 @@ function SkeletonRow() {
 }
 
 function calculateMetrics(products: ProductWithStock[], movements: StockMovement[]) {
-  const inbound = movements.filter((movement) => movement.type === "inbound" && actionTypeOf(movement) === "inbound").reduce((sum, movement) => sum + safeQuantity(movement.quantity), 0);
-  const salesOut = movements.filter((movement) => movement.type === "sale" || movement.type === "outbound").reduce((sum, movement) => sum + safeQuantity(movement.quantity), 0);
-  const returnInbound = movements.filter(isInventoryReturnInboundMovement).reduce((sum, movement) => sum + safeQuantity(movement.quantity), 0);
-  const loss = movements.filter(isInventoryLossMovement).reduce((sum, movement) => sum + safeQuantity(movement.quantity), 0);
+  const inbound = movements.filter((movement) => actionTypeOf(movement) === "purchase").reduce((sum, movement) => sum + safeQuantity(movement.quantity), 0);
+  const salesOut = movements.filter((movement) => actionTypeOf(movement) === "sale").reduce((sum, movement) => sum + safeQuantity(movement.quantity), 0);
+  const returnInbound = movements.filter((movement) => actionTypeOf(movement) === "return_resell").reduce((sum, movement) => sum + safeQuantity(movement.quantity), 0);
+  const loss = movements.filter((movement) => actionTypeOf(movement) === "damaged" || actionTypeOf(movement) === "lost").reduce((sum, movement) => sum + safeQuantity(movement.quantity), 0);
   const adjustment = movements.filter((movement) => movement.type === "adjustment").reduce((sum, movement) => sum + safeQuantity(movement.quantity), 0);
 
   return {
@@ -1020,7 +1021,7 @@ function buildPayload(
   language: Language
 ): MovementPayload {
   const cleanMemo = form.memo.trim();
-  const systemLabel = form.type === "return_inbound" || form.type === "loss_bad" || form.type === "missing" || form.type === "adjustment" ? actionTypeLabel(form.type, ui, language) : "";
+  const systemLabel = form.type === "return_resell" || form.type === "damaged" || form.type === "lost" || form.type === "adjustment" ? actionTypeLabel(form.type, ui, language) : "";
 
   return {
     product_id: form.product_id,
@@ -1032,36 +1033,38 @@ function buildPayload(
 }
 
 function dbTypeForAction(type: InventoryActionType): StockMovement["type"] {
-  if (type === "loss_bad" || type === "missing") return "loss";
   return type;
 }
 
 function signedQuantity(type: StockMovement["type"], quantity: number) {
   const safe = safeQuantity(quantity);
-  if (type === "inbound" || type === "return_inbound" || type === "adjustment") return safe;
+  if (type === "purchase" || type === "inbound" || type === "return_resell" || type === "return_inbound" || type === "adjustment") return safe;
   return -safe;
 }
 
 function signedMovementQuantity(movement: StockMovement) {
   const safe = safeQuantity(movement.quantity);
   const actionType = actionTypeOf(movement);
-  if (actionType === "inbound" || actionType === "return_inbound" || actionType === "adjustment") return safe;
+  if (actionType === "purchase" || actionType === "return_resell" || actionType === "adjustment") return safe;
   return -safe;
 }
 
 function actionTypeOf(movement: StockMovement): MovementFilterType {
-  if (isInventoryReturnInboundMovement(movement)) return "return_inbound";
-  if (isInventoryLossMovement(movement)) {
-    if (isInventoryMissingMovement(movement)) return "missing";
-    return "loss_bad";
-  }
-  if (movement.type === "loss") return "loss_bad";
+  if (isInventoryReturnInboundMovement(movement)) return "return_resell";
+  if (isInventoryMissingMovement(movement)) return "lost";
+  if (isInventoryLossMovement(movement)) return "damaged";
+  if (movement.type === "purchase") return "purchase";
+  if (movement.type === "inbound") return "purchase";
+  if (movement.type === "outbound") return "sale";
+  if (movement.type === "return_inbound") return "return_resell";
+  if (movement.type === "loss") return "damaged";
   return movement.type;
 }
 
 function isInventoryReturnInboundMovement(movement: StockMovement) {
   const memo = String(movement.memo ?? "");
   return (
+    movement.type === "return_resell" ||
     movement.type === "return_inbound" ||
     (movement.type === "inbound" && hasPrefix(movement.memo, RETURN_PREFIXES)) ||
     memo.startsWith("\u9000\u8d27\u5165\u5e93\u5728\u552e") ||
@@ -1073,6 +1076,8 @@ function isInventoryReturnInboundMovement(movement: StockMovement) {
 function isInventoryLossMovement(movement: StockMovement) {
   const memo = String(movement.memo ?? "");
   return (
+    movement.type === "damaged" ||
+    movement.type === "lost" ||
     movement.type === "loss" ||
     memo.startsWith("\u635f\u8017\u4e22\u5931") ||
     memo.startsWith("\u635f\u8017/\u4e0d\u826f") ||
@@ -1088,23 +1093,25 @@ function isInventoryLossMovement(movement: StockMovement) {
 
 function isInventoryMissingMovement(movement: StockMovement) {
   const memo = String(movement.memo ?? "");
-  return hasPrefix(movement.memo, MISSING_PREFIXES) || memo.startsWith("\u4e22\u5931") || memo.startsWith("\ubd84\uc2e4");
+  return movement.type === "lost" || hasPrefix(movement.memo, MISSING_PREFIXES) || memo.startsWith("\u4e22\u5931") || memo.startsWith("\ubd84\uc2e4");
 }
 
 function editableActionType(movement: StockMovement): InventoryActionType {
   const type = actionTypeOf(movement);
+  if (type === "all" || type === "inbound") return "purchase";
   if (type === "outbound") return "sale";
-  if (type === "all") return "inbound";
+  if (type === "return_inbound") return "return_resell";
+  if (type === "loss") return "damaged";
   return type;
 }
 
 function actionOptions(ui: (typeof copy)[Language], language: Language) {
   return [
-    { value: "inbound", label: ui.purchaseInbound },
+    { value: "purchase", label: ui.purchaseInbound },
     { value: "sale", label: ui.salesOutbound },
-    { value: "return_inbound", label: ui.returnInbound },
-    { value: "loss_bad", label: ui.lossBad },
-    { value: "missing", label: ui.missing },
+    { value: "return_resell", label: ui.returnInbound },
+    { value: "damaged", label: ui.lossBad },
+    { value: "lost", label: ui.missing },
     { value: "adjustment", label: adjustmentLabel(language) }
   ] as const;
 }
@@ -1112,11 +1119,14 @@ function actionOptions(ui: (typeof copy)[Language], language: Language) {
 function actionTypeLabel(type: MovementFilterType, ui: (typeof copy)[Language], language: Language) {
   const labels: Record<MovementFilterType, string> = {
     all: ui.allTypes,
+    purchase: ui.purchaseInbound,
     inbound: ui.purchaseInbound,
     sale: ui.salesOutbound,
+    return_resell: ui.returnInbound,
     return_inbound: ui.returnInbound,
-    loss_bad: ui.lossBad,
-    missing: ui.missing,
+    damaged: ui.lossBad,
+    lost: ui.missing,
+    loss: ui.lossBad,
     outbound: ui.salesOutbound,
     adjustment: adjustmentLabel(language)
   };

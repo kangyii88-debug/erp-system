@@ -2781,6 +2781,7 @@ function validSales(salesRows: SaleDaily[]) {
 function isReturnInboundMovement(movement: MovementRow) {
   const memo = String(movement.memo ?? "");
   return (
+    movement.type === "return_resell" ||
     movement.type === "return_inbound" ||
     memo.startsWith("\u9000\u8d27\u5165\u5e93\u5728\u552e") ||
     memo.startsWith("\ubc18\ud488 \uc785\uace0 \ud310\ub9e4\uac00\ub2a5")
@@ -2790,8 +2791,15 @@ function isReturnInboundMovement(movement: MovementRow) {
 function isLossMovement(movement: MovementRow) {
   const memo = String(movement.memo ?? "");
   return (
+    movement.type === "damaged" ||
+    movement.type === "lost" ||
     movement.type === "loss" ||
     memo.startsWith("\u635f\u8017\u4e22\u5931") ||
+    memo.startsWith("\u635f\u8017/\u4e0d\u826f") ||
+    memo.startsWith("\u635f\u8017") ||
+    memo.startsWith("\u4e0d\u826f") ||
+    memo.startsWith("\u4e22\u5931") ||
+    memo.startsWith("\uc190\uc0c1/\ubd88\ub7c9") ||
     memo.startsWith("\uc190\uc0c1/\ubd84\uc2e4")
   );
 }

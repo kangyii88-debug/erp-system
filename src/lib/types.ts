@@ -26,7 +26,17 @@ export type ProductWithStock = Product & {
 export type StockMovement = {
   id: string;
   product_id: string;
-  type: "inbound" | "outbound" | "sale" | "return_inbound" | "loss" | "adjustment";
+  type:
+    | "purchase"
+    | "sale"
+    | "return_resell"
+    | "damaged"
+    | "lost"
+    | "adjustment"
+    | "inbound"
+    | "outbound"
+    | "return_inbound"
+    | "loss";
   quantity: number;
   happened_at: string;
   memo: string | null;
