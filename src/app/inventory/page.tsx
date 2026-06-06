@@ -1,18 +1,170 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, ReactNode, useEffect, useMemo, useState } from "react";
+import {
+  AlertTriangle,
+  ArrowDownCircle,
+  Boxes,
+  ClipboardList,
+  PackageCheck,
+  PackagePlus,
+  Search,
+  Trash2
+} from "lucide-react";
 import { AppShell } from "@/components/AppShell";
-import { Card } from "@/components/Card";
-import { PageHeader } from "@/components/PageHeader";
 import { ProductSelect } from "@/components/ProductSelect";
-import { Table, Td, Th } from "@/components/Table";
 import { useLanguage } from "@/components/LanguageProvider";
 import { supabase } from "@/lib/supabase";
 import { getCurrentStock } from "@/lib/stock";
-import type { ProductWithStock, StockMovement } from "@/lib/types";
+import type { Language, ProductWithStock, StockMovement } from "@/lib/types";
+
+type InventoryActionType = "inbound" | "sale" | "return_inbound" | "loss_bad" | "missing";
+type MovementFilterType = "all" | InventoryActionType | "outbound" | "adjustment";
+type MovementPayload = {
+  product_id: string;
+  type: StockMovement["type"];
+  quantity: number;
+  happened_at: string;
+  memo: string | null;
+};
+type MovementRow = StockMovement & {
+  actionType: MovementFilterType;
+  afterStock: number;
+};
+
+const PAGE_SIZE = 12;
+const COLOR_ORDER = ["WH", "BL", "GR", "BE", "OTHER"] as const;
+const LOSS_BAD_PREFIXES = ["损耗/不良", "손상/불량", "损耗", "불량"];
+const MISSING_PREFIXES = ["丢失", "분실"];
+const RETURN_PREFIXES = ["退货入库在售", "반품 입고 판매"];
+
+const copy = {
+  zh: {
+    pageTitle: "库存管理",
+    subtitle: "管理 Coupang 仓库库存、销售出库、退货入库及损耗记录",
+    saleableStock: "当前可售库存",
+    totalInbound: "累计采购/入库",
+    totalSalesOut: "累计销售出库",
+    totalLoss: "损耗/不良/丢失",
+    saleableHint: "按所有 SKU 当前库存汇总",
+    inboundHint: "历史采购入库数量合计",
+    salesOutHint: "历史销售出库数量合计",
+    lossHint: "损耗、不良、丢失合计",
+    entryEyebrow: "Stock Movement",
+    entryTitle: "库存变动录入",
+    editTitle: "编辑库存变动",
+    productName: "商品名称",
+    type: "类型",
+    date: "日期",
+    quantity: "数量",
+    memo: "备注",
+    save: "保存",
+    update: "更新",
+    cancelEdit: "取消编辑",
+    purchaseInbound: "采购入库",
+    salesOutbound: "销售出库",
+    returnInbound: "退货入库在售",
+    lossBad: "损耗/不良",
+    missing: "丢失",
+    adjustment: "库存调整",
+    currentEyebrow: "Current Stock",
+    currentTitle: "当前可售库存",
+    currentDescription: "按颜色分组查看每个 SKU 当前可售数量和风险状态。",
+    totalStock: "合计库存",
+    skuCount: "SKU 数量",
+    stock: "库存",
+    risk: "风险",
+    watch: "注意",
+    normal: "正常",
+    historyEyebrow: "Movement History",
+    historyTitle: "库存变动明细",
+    historyDescription: "筛选、编辑和删除库存变动记录；变动后库存会根据统一库存逻辑计算。",
+    allTypes: "全部类型",
+    searchPlaceholder: "搜索备注 / SKU / 商品名",
+    sku: "SKU",
+    afterStock: "变动后库存",
+    actions: "操作",
+    edit: "编辑",
+    delete: "删除",
+    empty: "暂无数据",
+    emptyStock: "暂无库存商品。请先在商品管理中新增商品。",
+    emptyHistory: "暂无库存变动记录。",
+    invalidForm: "请选择商品，并输入大于 0 的数量。",
+    confirmDelete: "确定要删除这条库存变动记录吗？删除后无法恢复。",
+    showing: "显示",
+    prev: "上一页",
+    next: "下一页",
+    colorWhite: "白色",
+    colorBlack: "黑色",
+    colorGray: "灰色",
+    colorBeige: "米色",
+    colorOther: "其他"
+  },
+  ko: {
+    pageTitle: "재고 관리",
+    subtitle: "Coupang 창고 재고, 판매 출고, 반품 입고 및 손실 기록을 관리합니다",
+    saleableStock: "현재 판매 가능 재고",
+    totalInbound: "누적 구매/입고",
+    totalSalesOut: "누적 판매 출고",
+    totalLoss: "손상/불량/분실",
+    saleableHint: "전체 SKU 현재 재고 합계",
+    inboundHint: "구매 입고 수량 합계",
+    salesOutHint: "판매 출고 수량 합계",
+    lossHint: "손상, 불량, 분실 합계",
+    entryEyebrow: "Stock Movement",
+    entryTitle: "재고 변동 입력",
+    editTitle: "재고 변동 수정",
+    productName: "상품명",
+    type: "유형",
+    date: "날짜",
+    quantity: "수량",
+    memo: "메모",
+    save: "저장",
+    update: "업데이트",
+    cancelEdit: "수정 취소",
+    purchaseInbound: "구매 입고",
+    salesOutbound: "판매 출고",
+    returnInbound: "반품 입고 판매",
+    lossBad: "손상/불량",
+    missing: "분실",
+    adjustment: "재고 조정",
+    currentEyebrow: "Current Stock",
+    currentTitle: "현재 판매 가능 재고",
+    currentDescription: "색상별로 SKU의 판매 가능 수량과 위험 상태를 확인합니다.",
+    totalStock: "총 재고",
+    skuCount: "SKU 수",
+    stock: "재고",
+    risk: "위험",
+    watch: "주의",
+    normal: "정상",
+    historyEyebrow: "Movement History",
+    historyTitle: "재고 변동 내역",
+    historyDescription: "재고 변동 기록을 필터링, 수정, 삭제합니다. 변동 후 재고는 동일한 계산 로직으로 표시됩니다.",
+    allTypes: "전체 유형",
+    searchPlaceholder: "메모 / SKU / 상품명 검색",
+    sku: "SKU",
+    afterStock: "변동 후 재고",
+    actions: "작업",
+    edit: "수정",
+    delete: "삭제",
+    empty: "데이터 없음",
+    emptyStock: "재고 상품이 없습니다. 먼저 상품 관리에서 상품을 추가하세요.",
+    emptyHistory: "재고 변동 기록이 없습니다.",
+    invalidForm: "상품을 선택하고 0보다 큰 수량을 입력하세요.",
+    confirmDelete: "이 재고 변동 기록을 삭제하시겠습니까? 삭제 후 복구할 수 없습니다.",
+    showing: "표시",
+    prev: "이전",
+    next: "다음",
+    colorWhite: "화이트",
+    colorBlack: "블랙",
+    colorGray: "그레이",
+    colorBeige: "베이지",
+    colorOther: "기타"
+  }
+} satisfies Record<Language, Record<string, string>>;
 
 function today() {
-  return new Date().toISOString().slice(0, 10);
+  return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
 }
 
 export default function InventoryPage() {
@@ -24,140 +176,138 @@ export default function InventoryPage() {
 }
 
 function InventoryContent() {
-  const { t, formatDate } = useLanguage();
+  const { language, formatDate } = useLanguage();
+  const ui = copy[language];
   const [products, setProducts] = useState<ProductWithStock[]>([]);
   const [movements, setMovements] = useState<StockMovement[]>([]);
-  const [form, setForm] = useState({ product_id: "", type: "inbound", movement_date: today(), quantity: "1", memo: "" });
+  const [form, setForm] = useState({
+    product_id: "",
+    type: "inbound" as InventoryActionType,
+    movement_date: today(),
+    quantity: "1",
+    memo: ""
+  });
+  const [filters, setFilters] = useState({
+    productId: "",
+    type: "all" as MovementFilterType,
+    startDate: "",
+    endDate: "",
+    query: ""
+  });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [highlightId, setHighlightId] = useState<string | null>(null);
 
   useEffect(() => {
     load();
   }, []);
 
+  useEffect(() => {
+    setPage(1);
+  }, [filters]);
+
   async function load() {
-    const [{ data: productRows }, { data: movementRows }] = await Promise.all([
+    setLoading(true);
+    const [{ data: productRows, error: productError }, { data: movementRows, error: movementError }] = await Promise.all([
       supabase.from("products").select("*, inventory_balances(current_stock)").order("sku"),
       supabase
         .from("stock_movements")
-        .select("*, products(name, sku)")
+        .select("*, products(name, sku, color)")
         .order("happened_at", { ascending: false })
-        .limit(100)
+        .limit(500)
     ]);
+
     setProducts((productRows ?? []) as ProductWithStock[]);
     setMovements((movementRows ?? []) as StockMovement[]);
+    setMessage(productError?.message ?? movementError?.message ?? "");
+    setLoading(false);
   }
 
   async function submit(event: FormEvent) {
     event.preventDefault();
     const { data: auth } = await supabase.auth.getUser();
     if (!auth.user) return;
-    const dbType = form.type === "return_inbound" ? "inbound" : form.type === "loss" ? "outbound" : form.type;
-    const businessMemo =
-      form.type === "return_inbound"
-        ? `${t("movement.returnInbound")}${form.memo ? ` - ${form.memo}` : ""}`
-        : form.type === "loss"
-          ? `${t("movement.loss")}${form.memo ? ` - ${form.memo}` : ""}`
-          : form.memo || null;
 
     const quantity = Number(form.quantity);
-    const happenedAt = new Date(`${form.movement_date}T12:00:00`).toISOString();
-    const payload = {
-      product_id: form.product_id,
-      type: dbType,
-      quantity,
-      happened_at: happenedAt,
-      memo: businessMemo
-    };
+    if (!form.product_id || !Number.isFinite(quantity) || quantity <= 0) {
+      setMessage(ui.invalidForm);
+      return;
+    }
 
+    const payload = buildPayload(form, ui);
     if (editingId) {
       const error = await updateMovement(editingId, payload);
       if (error) {
         setMessage(error.message);
         return;
       }
+      setHighlightId(editingId);
     } else {
-      const { error } = await supabase.from("stock_movements").insert({
-        user_id: auth.user.id,
-        ...payload
-      });
+      const { data, error } = await supabase
+        .from("stock_movements")
+        .insert({ user_id: auth.user.id, ...payload })
+        .select("id")
+        .single();
       if (error) {
         setMessage(error.message);
         return;
       }
+      setHighlightId(data?.id ?? null);
     }
+
+    window.setTimeout(() => setHighlightId(null), 1800);
     setMessage("");
-    setEditingId(null);
-    setForm({ product_id: "", type: "inbound", movement_date: today(), quantity: "1", memo: "" });
+    resetForm();
     await load();
   }
 
-  async function updateMovement(
-    id: string,
-    payload: { product_id: string; type: string; quantity: number; happened_at: string; memo: string | null }
-  ) {
+  async function updateMovement(id: string, payload: MovementPayload) {
     const original = movements.find((movement) => movement.id === id);
-    if (!original) return { message: t("common.originalMovementMissing") };
+    if (!original) return { message: "Original movement is missing." };
 
     const originalSigned = signedQuantity(original.type, original.quantity);
     const nextSigned = signedQuantity(payload.type, payload.quantity);
-
     const { error: movementError } = await supabase.from("stock_movements").update(payload).eq("id", id);
     if (movementError) return movementError;
 
     if (original.product_id === payload.product_id) {
       const delta = nextSigned - originalSigned;
       if (delta !== 0) {
-        const current = products.find((product) => product.id === payload.product_id);
-        const nextStock = Math.max(0, safeStock(current) + delta);
-        const { error } = await supabase
-          .from("inventory_balances")
-          .update({ current_stock: nextStock })
-          .eq("product_id", payload.product_id);
-        if (error) return error;
+        const product = products.find((item) => item.id === payload.product_id);
+        const stockError = await upsertStock(payload.product_id, currentStock(product) + delta);
+        if (stockError) return stockError;
       }
     } else {
-      const oldProduct = products.find((product) => product.id === original.product_id);
-      const newProduct = products.find((product) => product.id === payload.product_id);
-      const { error: oldError } = await supabase
-        .from("inventory_balances")
-        .update({ current_stock: Math.max(0, safeStock(oldProduct) - originalSigned) })
-        .eq("product_id", original.product_id);
+      const oldProduct = products.find((item) => item.id === original.product_id);
+      const newProduct = products.find((item) => item.id === payload.product_id);
+      const oldError = await upsertStock(original.product_id, currentStock(oldProduct) - originalSigned);
       if (oldError) return oldError;
-      const { error: newError } = await supabase
-        .from("inventory_balances")
-        .update({ current_stock: Math.max(0, safeStock(newProduct) + nextSigned) })
-        .eq("product_id", payload.product_id);
+      const newError = await upsertStock(payload.product_id, currentStock(newProduct) + nextSigned);
       if (newError) return newError;
     }
 
-    const salesError = await adjustSalesDaily(original, payload);
-    if (salesError) return salesError;
-
-    return null;
+    const salesError = await syncSalesDailyAfterEdit(original, payload);
+    return salesError;
   }
 
-  function safeStock(product: ProductWithStock | undefined) {
-    return product ? getCurrentStock(product) : 0;
+  async function upsertStock(productId: string, value: number) {
+    const { error } = await supabase
+      .from("inventory_balances")
+      .upsert({ product_id: productId, current_stock: Math.trunc(value), updated_at: new Date().toISOString() }, { onConflict: "product_id" });
+    return error;
   }
 
-  async function adjustSalesDaily(
-    original: StockMovement,
-    payload: { product_id: string; type: string; quantity: number; happened_at: string }
-  ) {
-    const originalDate = new Date(original.happened_at).toISOString().slice(0, 10);
-    const nextDate = new Date(payload.happened_at).toISOString().slice(0, 10);
-
+  async function syncSalesDailyAfterEdit(original: StockMovement, payload: MovementPayload) {
     if (original.type === "sale") {
-      const error = await changeSalesDaily(original.product_id, originalDate, -original.quantity);
+      const error = await changeSalesDaily(original.product_id, toDateString(original.happened_at), -original.quantity);
       if (error) return error;
     }
-
     if (payload.type === "sale") {
-      const error = await changeSalesDaily(payload.product_id, nextDate, payload.quantity);
+      const error = await changeSalesDaily(payload.product_id, toDateString(payload.happened_at), payload.quantity);
       if (error) return error;
     }
-
     return null;
   }
 
@@ -188,81 +338,40 @@ function InventoryContent() {
       });
       return error;
     }
-
     return null;
   }
 
-  function signedQuantity(type: string, quantity: number) {
-    return type === "inbound" || type === "adjustment" ? quantity : -quantity;
-  }
-
-  function displayType(movement: StockMovement) {
-    if (movement.type === "inbound" && isBusinessMemo(movement.memo, "return_inbound")) return t("movement.returnInbound");
-    if (movement.type === "outbound" && isBusinessMemo(movement.memo, "loss")) return t("movement.loss");
-    return movementLabel(movement.type, t);
-  }
-
-  function editableType(movement: StockMovement) {
-    if (movement.type === "inbound" && isBusinessMemo(movement.memo, "return_inbound")) return "return_inbound";
-    if (movement.type === "outbound" && isBusinessMemo(movement.memo, "loss")) return "loss";
-    return movement.type;
-  }
-
-  function editableMemo(movement: StockMovement) {
-    const labels = [
-      t("movement.returnInbound"),
-      t("movement.loss"),
-      "\u9000\u8d27\u5165\u5e93\u5728\u552e",
-      "\ubc18\ud488 \uc785\uace0 \ud310\ub9e4\uac00\ub2a5",
-      "\u635f\u8017\u4e22\u5931",
-      "\uc190\uc0c1/\ubd84\uc2e4"
-    ];
-    for (const label of labels) {
-      if (movement.memo?.startsWith(`${label} - `)) return movement.memo.replace(`${label} - `, "");
-      if (movement.memo === label) return "";
-    }
-    return movement.memo ?? "";
-  }
-
-  function startEdit(movement: StockMovement) {
+  function startEdit(movement: MovementRow) {
     setEditingId(movement.id);
     setMessage("");
     setForm({
       product_id: movement.product_id,
-      type: editableType(movement),
-      movement_date: new Date(movement.happened_at).toISOString().slice(0, 10),
+      type: editableActionType(movement),
+      movement_date: toDateString(movement.happened_at),
       quantity: String(movement.quantity),
-      memo: editableMemo(movement)
+      memo: stripSystemMemo(movement.memo)
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  function cancelEdit() {
+  function resetForm() {
     setEditingId(null);
     setForm({ product_id: "", type: "inbound", movement_date: today(), quantity: "1", memo: "" });
-    setMessage("");
   }
 
-  const inventoryGroups = groupProductsByColor(products, t);
-  const movementGroups = groupMovementsByColor(movements, t);
+  async function deleteMovement(movement: MovementRow) {
+    if (!window.confirm(`${ui.confirmDelete}\n${movement.products?.sku ?? ""}`)) return;
 
-  async function deleteMovement(movement: StockMovement) {
-    if (!window.confirm(`${t("common.confirmDelete")}: ${movement.products?.sku ?? ""} ${movement.quantity}`)) return;
-
-    const current = products.find((product) => product.id === movement.product_id);
-    const rollbackStock = Math.max(0, safeStock(current) - signedQuantity(movement.type, movement.quantity));
-    const { error: stockError } = await supabase
-      .from("inventory_balances")
-      .update({ current_stock: rollbackStock })
-      .eq("product_id", movement.product_id);
+    const product = products.find((item) => item.id === movement.product_id);
+    const rollbackStock = currentStock(product) - signedQuantity(movement.type, movement.quantity);
+    const stockError = await upsertStock(movement.product_id, rollbackStock);
     if (stockError) {
       setMessage(stockError.message);
       return;
     }
 
     if (movement.type === "sale") {
-      const saleDate = new Date(movement.happened_at).toISOString().slice(0, 10);
-      const salesError = await changeSalesDaily(movement.product_id, saleDate, -movement.quantity);
+      const salesError = await changeSalesDaily(movement.product_id, toDateString(movement.happened_at), -movement.quantity);
       if (salesError) {
         setMessage(salesError.message);
         return;
@@ -275,243 +384,589 @@ function InventoryContent() {
       return;
     }
 
-    if (editingId === movement.id) cancelEdit();
+    if (editingId === movement.id) resetForm();
+    setMessage("");
     await load();
   }
 
+  const movementRows = useMemo(() => attachAfterStock(movements, products), [movements, products]);
+  const metrics = useMemo(() => calculateMetrics(products, movements), [products, movements]);
+  const inventoryGroups = useMemo(() => groupProductsByColor(products, ui), [products, ui]);
+  const filteredRows = useMemo(() => applyFilters(movementRows, filters), [movementRows, filters]);
+  const pageCount = Math.max(1, Math.ceil(filteredRows.length / PAGE_SIZE));
+  const currentPage = Math.min(page, pageCount);
+  const pagedRows = filteredRows.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
   return (
-    <>
-      <PageHeader title={t("inventory.title")} />
-      <section className="mb-6">
-        <div className="mb-3 flex items-end justify-between gap-3">
+    <div className="space-y-8">
+      <section className="animate-[kpi-rise_0.5s_ease-out]">
+        <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <div className="text-sm font-medium text-ink/55">{t("movement.type")}</div>
-            <h2 className="text-xl font-semibold text-ink">{editingId ? t("inventory.update") : t("inventory.record")}</h2>
+            <h1 className="text-3xl font-semibold tracking-tight text-ink">{ui.pageTitle}</h1>
+            <p className="mt-2 max-w-3xl text-sm text-muted">{ui.subtitle}</p>
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <MetricCard icon={Boxes} label={ui.saleableStock} value={formatNumber(metrics.saleable)} hint={ui.saleableHint} tone="green" delay="0ms" />
+        <MetricCard icon={PackagePlus} label={ui.totalInbound} value={formatNumber(metrics.inbound)} hint={ui.inboundHint} tone="blue" delay="80ms" />
+        <MetricCard icon={ArrowDownCircle} label={ui.totalSalesOut} value={formatNumber(metrics.salesOut)} hint={ui.salesOutHint} tone="slate" delay="160ms" />
+        <MetricCard icon={AlertTriangle} label={ui.totalLoss} value={formatNumber(metrics.loss)} hint={ui.lossHint} tone="red" delay="240ms" />
+      </section>
+
+      <section className="erp-card animate-[kpi-rise_0.6s_ease-out] p-5">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-[0.2em] text-muted">{ui.entryEyebrow}</div>
+            <h2 className="mt-1 text-xl font-semibold text-ink">{editingId ? ui.editTitle : ui.entryTitle}</h2>
           </div>
           {editingId ? (
-            <button className="rounded border border-line bg-white px-3 py-1.5 text-sm font-medium" type="button" onClick={cancelEdit}>
-              {t("common.cancel")}
+            <button className="erp-button-subtle px-3 py-2 text-sm font-semibold" type="button" onClick={resetForm}>
+              {ui.cancelEdit}
             </button>
           ) : null}
         </div>
 
-        <form onSubmit={submit} className="rounded border border-line bg-white p-4 shadow-soft">
-          <div className="grid gap-4 lg:grid-cols-[1.4fr_0.9fr_0.8fr_0.6fr_1fr_auto]">
-            <label className="block">
-              <span className="mb-1 block text-xs font-semibold text-ink/60">{t("common.productName")}</span>
-              <ProductSelect products={products} value={form.product_id} onChange={(value) => setForm({ ...form, product_id: value })} />
-            </label>
-
-            <label className="block">
-              <span className="mb-1 block text-xs font-semibold text-ink/60">{t("movement.type")}</span>
-              <select className="w-full" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>
-                <option value="inbound">{t("movement.inbound")}</option>
-                <option value="outbound">{t("movement.outbound")}</option>
-                <option value="sale">{t("movement.sale")}</option>
-                <option value="return_inbound">{t("movement.returnInbound")}</option>
-                <option value="loss">{t("movement.loss")}</option>
-                <option value="adjustment">{t("movement.adjustment")}</option>
-              </select>
-            </label>
-
-            <label className="block">
-              <span className="mb-1 block text-xs font-semibold text-ink/60">{t("common.date")}</span>
-              <input className="w-full" type="date" value={form.movement_date} onChange={(e) => setForm({ ...form, movement_date: e.target.value })} />
-            </label>
-
-            <label className="block">
-              <span className="mb-1 block text-xs font-semibold text-ink/60">{t("common.quantity")}</span>
-              <input className="w-full" type="number" min="1" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} />
-            </label>
-
-            <label className="block">
-              <span className="mb-1 block text-xs font-semibold text-ink/60">{t("common.memo")}</span>
-              <input className="w-full" placeholder={t("common.memo")} value={form.memo} onChange={(e) => setForm({ ...form, memo: e.target.value })} />
-            </label>
-
-            <button className="self-end rounded bg-brand px-8 py-2 text-sm font-semibold text-white">{t("common.save")}</button>
-          </div>
+        <form onSubmit={submit} className="grid gap-3 xl:grid-cols-[1.5fr_0.82fr_0.75fr_0.52fr_1fr_auto]">
+          <Field label={ui.productName}>
+            <ProductSelect products={products} value={form.product_id} onChange={(value) => setForm({ ...form, product_id: value })} />
+          </Field>
+          <Field label={ui.type}>
+            <select className="h-11 w-full" value={form.type} onChange={(event) => setForm({ ...form, type: event.target.value as InventoryActionType })}>
+              {actionOptions(ui).map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label={ui.date}>
+            <input className="h-11 w-full" type="date" value={form.movement_date} onChange={(event) => setForm({ ...form, movement_date: event.target.value })} />
+          </Field>
+          <Field label={ui.quantity}>
+            <input className="h-11 w-full" type="number" min="1" value={form.quantity} onChange={(event) => setForm({ ...form, quantity: event.target.value })} />
+          </Field>
+          <Field label={ui.memo}>
+            <input className="h-11 w-full" placeholder={ui.memo} value={form.memo} onChange={(event) => setForm({ ...form, memo: event.target.value })} />
+          </Field>
+          <button className="erp-button-primary h-11 self-end px-8 text-sm font-semibold shadow-sm hover:shadow-lg" type="submit">
+            {editingId ? ui.update : ui.save}
+          </button>
         </form>
-        {message ? <div className="mt-3 rounded bg-red-50 px-3 py-2 text-sm text-red-700">{message}</div> : null}
+        {message ? <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{message}</div> : null}
       </section>
 
-      <section className="mb-6">
-        <div className="mb-3">
-          <div className="text-sm font-medium text-ink/55">{t("common.currentStock")}</div>
-          <h2 className="text-xl font-semibold text-ink">{t("common.currentStock")}</h2>
+      <section className="animate-[kpi-rise_0.7s_ease-out]">
+        <SectionTitle eyebrow={ui.currentEyebrow} title={ui.currentTitle} description={ui.currentDescription} />
+        <div className="mt-4 space-y-5">
+          {loading ? <InventorySkeleton /> : null}
+          {!loading && inventoryGroups.map((group) => <ColorStockGroup key={group.key} group={group} ui={ui} />)}
+          {!loading && inventoryGroups.length === 0 ? <EmptyState title={ui.empty} description={ui.emptyStock} /> : null}
         </div>
+      </section>
 
-        <div className="space-y-5">
-          {inventoryGroups.map((group) => (
-            <div key={group.key}>
-              <div className="mb-2 flex items-center justify-between gap-3">
-                <h3 className="text-lg font-semibold text-ink">{group.products[0]?.color || group.label}</h3>
-                <div className="rounded bg-white px-3 py-1 text-sm font-medium text-ink/60">{group.products.length} SKU</div>
-              </div>
-
-              <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-5">
-                {group.products.map((product) => (
-                  <div key={product.id} className="rounded border border-line bg-white p-4 shadow-soft">
-                    <div className="mb-3">
-                      <div className="text-xs font-medium text-ink/50">{product.sku}</div>
-                      <div className="mt-1 line-clamp-2 font-medium text-ink">{product.name}</div>
-                    </div>
-                    <div className="flex items-end justify-between gap-3">
-                      <div className="text-3xl font-semibold text-ink">{getCurrentStock(product)}</div>
-                      <div className="rounded bg-panel px-2 py-1 text-xs font-medium text-ink/60">{normalizedSize(product.size)}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+      <section className="animate-[kpi-rise_0.75s_ease-out]">
+        <SectionTitle eyebrow={ui.historyEyebrow} title={ui.historyTitle} description={ui.historyDescription} />
+        <div className="erp-card mt-4 overflow-hidden">
+          <div className="grid gap-3 border-b border-line bg-card/70 p-4 lg:grid-cols-[1.2fr_0.85fr_0.8fr_0.8fr_1fr]">
+            <ProductSelect products={products} value={filters.productId} onChange={(value) => setFilters({ ...filters, productId: value })} />
+            <select className="h-10" value={filters.type} onChange={(event) => setFilters({ ...filters, type: event.target.value as MovementFilterType })}>
+              <option value="all">{ui.allTypes}</option>
+              {actionOptions(ui).map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <input className="h-10" type="date" value={filters.startDate} onChange={(event) => setFilters({ ...filters, startDate: event.target.value })} />
+            <input className="h-10" type="date" value={filters.endDate} onChange={(event) => setFilters({ ...filters, endDate: event.target.value })} />
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+              <input
+                className="h-10 w-full pl-9"
+                placeholder={ui.searchPlaceholder}
+                value={filters.query}
+                onChange={(event) => setFilters({ ...filters, query: event.target.value })}
+              />
             </div>
-          ))}
-        </div>
-      </section>
+          </div>
 
-      <section>
-        <div className="mb-3">
-          <div className="text-sm font-medium text-ink/55">{t("movement.type")}</div>
-          <h2 className="text-xl font-semibold text-ink">{t("inventory.history")}</h2>
-        </div>
-
-        <div className="space-y-5">
-          {movementGroups.map((group) => (
-            <div key={group.key}>
-              <div className="mb-2 flex items-center justify-between gap-3">
-                <h3 className="text-lg font-semibold text-ink">{group.label}</h3>
-                <div className="rounded bg-white px-3 py-1 text-sm font-medium text-ink/60">{group.movements.length}</div>
-              </div>
-
-              <Table>
-                <thead>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[1120px] border-separate border-spacing-0 text-sm">
+              <thead className="sticky top-0 z-[1]">
+                <tr>
+                  <HistoryTh className="w-[140px]">{ui.date}</HistoryTh>
+                  <HistoryTh className="min-w-[260px]">{ui.productName}</HistoryTh>
+                  <HistoryTh className="w-[160px]">{ui.sku}</HistoryTh>
+                  <HistoryTh className="w-[150px]">{ui.type}</HistoryTh>
+                  <HistoryTh className="w-[110px] text-right">{ui.quantity}</HistoryTh>
+                  <HistoryTh className="w-[130px] text-right">{ui.afterStock}</HistoryTh>
+                  <HistoryTh className="min-w-[190px]">{ui.memo}</HistoryTh>
+                  <HistoryTh className="w-[150px] text-right">{ui.actions}</HistoryTh>
+                </tr>
+              </thead>
+              <tbody>
+                {loading
+                  ? Array.from({ length: 6 }).map((_, index) => <SkeletonRow key={index} />)
+                  : pagedRows.map((movement) => (
+                      <HistoryRow
+                        key={movement.id}
+                        movement={movement}
+                        ui={ui}
+                        formatDate={formatDate}
+                        highlighted={highlightId === movement.id}
+                        onEdit={() => startEdit(movement)}
+                        onDelete={() => deleteMovement(movement)}
+                      />
+                    ))}
+                {!loading && pagedRows.length === 0 ? (
                   <tr>
-                    <Th>{t("common.sku")}</Th>
-                    <Th>{t("common.productName")}</Th>
-                    <Th>{t("movement.type")}</Th>
-                    <Th>{t("common.quantity")}</Th>
-                    <Th>{t("common.memo")}</Th>
-                    <Th>{t("common.date")}</Th>
-                    <Th>{t("common.actions")}</Th>
+                    <td colSpan={8} className="px-4 py-10">
+                      <EmptyState title={ui.empty} description={ui.emptyHistory} />
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {group.movements.map((movement) => (
-                    <tr key={movement.id}>
-                      <Td>{movement.products?.sku}</Td>
-                      <Td>{movement.products?.name}</Td>
-                      <Td>{displayType(movement)}</Td>
-                      <Td>{movement.quantity}</Td>
-                      <Td>{movement.memo}</Td>
-                      <Td>{formatDate(movement.happened_at, { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })}</Td>
-                      <Td>
-                        <div className="flex gap-2">
-                          <button className="rounded border border-line bg-white px-3 py-1.5 text-sm font-medium" onClick={() => startEdit(movement)}>
-                            {t("common.edit")}
-                          </button>
-                          <button className="rounded border border-red-200 bg-red-50 px-3 py-1.5 text-sm font-medium text-red-700" onClick={() => deleteMovement(movement)}>
-                            {t("common.delete")}
-                          </button>
-                        </div>
-                      </Td>
-                    </tr>
-                  ))}
-                </tbody>
-              </Table>
+                ) : null}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line bg-card/80 px-4 py-3 text-sm text-muted">
+            <div>
+              {ui.showing} {filteredRows.length ? (currentPage - 1) * PAGE_SIZE + 1 : 0}-{Math.min(currentPage * PAGE_SIZE, filteredRows.length)} /{" "}
+              {filteredRows.length}
             </div>
-          ))}
+            <div className="flex gap-2">
+              <button className="erp-button-subtle px-3 py-1.5 text-sm font-semibold disabled:opacity-40" disabled={currentPage === 1} onClick={() => setPage((value) => Math.max(1, value - 1))}>
+                {ui.prev}
+              </button>
+              <button className="erp-button-subtle px-3 py-1.5 text-sm font-semibold disabled:opacity-40" disabled={currentPage === pageCount} onClick={() => setPage((value) => Math.min(pageCount, value + 1))}>
+                {ui.next}
+              </button>
+            </div>
+          </div>
         </div>
       </section>
-    </>
+    </div>
   );
 }
 
-function groupProductsByColor(products: ProductWithStock[], t: ReturnType<typeof useLanguage>["t"]) {
-  const sortedProducts = [...products].sort(compareInventoryProducts);
-  const groups = new Map<string, ProductWithStock[]>();
+function MetricCard({
+  icon: Icon,
+  label,
+  value,
+  hint,
+  tone,
+  delay
+}: {
+  icon: typeof Boxes;
+  label: string;
+  value: string;
+  hint: string;
+  tone: "green" | "blue" | "slate" | "red";
+  delay: string;
+}) {
+  const tones = {
+    green: "from-[#17483f]/14 text-[#17483f]",
+    blue: "from-[#406a7a]/14 text-[#406a7a]",
+    slate: "from-[#48596f]/14 text-[#48596f]",
+    red: "from-[#9a3f3f]/14 text-[#9a3f3f]"
+  };
 
-  for (const product of sortedProducts) {
+  return (
+    <div className="erp-card group p-5 transition duration-300 hover:-translate-y-1 hover:shadow-lift" style={{ animation: "kpi-rise 0.6s ease-out both", animationDelay: delay }}>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted">{label}</div>
+          <div className="mt-3 text-3xl font-semibold tabular-nums text-ink">{value}</div>
+          <div className="mt-2 text-xs text-muted">{hint}</div>
+        </div>
+        <div className={`rounded-2xl bg-gradient-to-br ${tones[tone]} to-white p-3`}>
+          <Icon className="h-5 w-5" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Field({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <label className="block">
+      <span className="mb-1.5 block text-xs font-semibold text-muted">{label}</span>
+      {children}
+    </label>
+  );
+}
+
+function SectionTitle({ eyebrow, title, description }: { eyebrow: string; title: string; description: string }) {
+  return (
+    <div>
+      <div className="text-xs font-semibold uppercase tracking-[0.2em] text-muted">{eyebrow}</div>
+      <h2 className="mt-1 text-2xl font-semibold tracking-tight text-ink">{title}</h2>
+      <p className="mt-1 text-sm text-muted">{description}</p>
+    </div>
+  );
+}
+
+function ColorStockGroup({ group, ui }: { group: ReturnType<typeof groupProductsByColor>[number]; ui: (typeof copy)[Language] }) {
+  const total = group.products.reduce((sum, product) => sum + getCurrentStock(product), 0);
+
+  return (
+    <div className="erp-card p-4">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <span className={`h-3 w-3 rounded-full ${colorDotClass(group.key)}`} />
+          <h3 className="text-lg font-semibold text-ink">{group.label}</h3>
+        </div>
+        <div className="flex gap-2 text-xs font-semibold text-muted">
+          <span className="erp-chip px-3 py-1.5">
+            {ui.totalStock} {formatNumber(total)}
+          </span>
+          <span className="erp-chip px-3 py-1.5">
+            {ui.skuCount} {group.products.length}
+          </span>
+        </div>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5">
+        {group.products.map((product) => (
+          <StockProductCard key={product.id} product={product} ui={ui} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function StockProductCard({ product, ui }: { product: ProductWithStock; ui: (typeof copy)[Language] }) {
+  const stock = getCurrentStock(product);
+  const status = stock < 10 ? ui.risk : stock <= 20 ? ui.watch : ui.normal;
+  const statusClass =
+    stock < 0
+      ? "border-red-200 bg-red-50"
+      : stock < 10
+        ? "border-red-200 bg-red-50/70"
+        : stock <= 20
+          ? "border-yellow-200 bg-yellow-50/70"
+          : "border-emerald-200 bg-emerald-50/45";
+
+  return (
+    <div className={`rounded-2xl border p-4 transition duration-300 hover:-translate-y-1 hover:border-[#17483f]/30 hover:shadow-card ${statusClass}`}>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="text-xs font-semibold text-muted">{product.sku}</div>
+          <div className="mt-1 line-clamp-2 min-h-[2.5rem] font-semibold text-ink">{product.name}</div>
+        </div>
+        <span className="rounded-full bg-card/80 px-2.5 py-1 text-xs font-semibold text-muted">{normalizeSize(product.size)}</span>
+      </div>
+      <div className="mt-4 flex items-end justify-between">
+        <div className={`text-3xl font-semibold tabular-nums ${stock < 0 ? "text-red-700" : "text-ink"}`}>{formatNumber(stock)}</div>
+        <div className="text-right">
+          <div className="text-xs text-muted">{ui.stock}</div>
+          <div className="text-xs font-semibold text-muted">{status}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function HistoryRow({
+  movement,
+  ui,
+  formatDate,
+  highlighted,
+  onEdit,
+  onDelete
+}: {
+  movement: MovementRow;
+  ui: (typeof copy)[Language];
+  formatDate: ReturnType<typeof useLanguage>["formatDate"];
+  highlighted: boolean;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const signed = signedQuantity(movement.type, movement.quantity);
+
+  return (
+    <tr className={`group transition hover:bg-[#f7f4ec] ${highlighted ? "bg-emerald-50/70" : "bg-card/70"}`}>
+      <HistoryTd>{formatDate(movement.happened_at, { year: "numeric", month: "2-digit", day: "2-digit" })}</HistoryTd>
+      <HistoryTd>
+        <div className="font-semibold text-ink">{movement.products?.name ?? "-"}</div>
+        <div className="mt-1 text-xs text-muted">{movement.products?.color ?? ""}</div>
+      </HistoryTd>
+      <HistoryTd>
+        <span className="text-xs font-medium text-muted">{movement.products?.sku ?? "-"}</span>
+      </HistoryTd>
+      <HistoryTd>
+        <MovementTag type={movement.actionType} label={actionTypeLabel(movement.actionType, ui)} />
+      </HistoryTd>
+      <HistoryTd className="text-right">
+        <span className={`font-semibold tabular-nums ${signed >= 0 ? "text-emerald-700" : "text-red-700"}`}>
+          {signed >= 0 ? "+" : "-"}
+          {formatNumber(movement.quantity)}
+        </span>
+      </HistoryTd>
+      <HistoryTd className="text-right">
+        <span className={`font-semibold tabular-nums ${movement.afterStock < 0 ? "text-red-700" : "text-ink"}`}>{formatNumber(movement.afterStock)}</span>
+      </HistoryTd>
+      <HistoryTd>
+        <span className="text-muted">{stripSystemMemo(movement.memo) || "-"}</span>
+      </HistoryTd>
+      <HistoryTd className="text-right">
+        <div className="flex justify-end gap-2">
+          <button className="erp-button-subtle px-3 py-1.5 text-xs font-semibold" type="button" onClick={onEdit}>
+            {ui.edit}
+          </button>
+          <button className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700 transition hover:bg-red-100" type="button" onClick={onDelete}>
+            {ui.delete}
+          </button>
+        </div>
+      </HistoryTd>
+    </tr>
+  );
+}
+
+function HistoryTh({ children, className = "" }: { children: ReactNode; className?: string }) {
+  return <th className={`border-b border-line bg-[#f6f3ec] px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.14em] text-muted ${className}`}>{children}</th>;
+}
+
+function HistoryTd({ children, className = "" }: { children: ReactNode; className?: string }) {
+  return <td className={`border-b border-line px-4 py-4 align-middle ${className}`}>{children}</td>;
+}
+
+function MovementTag({ type, label }: { type: MovementFilterType; label: string }) {
+  const className =
+    type === "inbound"
+      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+      : type === "sale" || type === "outbound"
+        ? "border-sky-200 bg-sky-50 text-sky-700"
+        : type === "return_inbound"
+          ? "border-teal-200 bg-teal-50 text-teal-700"
+          : type === "missing"
+            ? "border-red-200 bg-red-50 text-red-700"
+            : type === "loss_bad"
+              ? "border-yellow-200 bg-yellow-50 text-yellow-800"
+              : "border-line bg-panel text-muted";
+  return <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${className}`}>{label}</span>;
+}
+
+function EmptyState({ title, description }: { title: string; description: string }) {
+  return (
+    <div className="rounded-2xl border border-dashed border-line bg-card/55 px-4 py-8 text-center">
+      <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-panel text-muted">
+        <ClipboardList className="h-5 w-5" />
+      </div>
+      <div className="font-semibold text-ink">{title}</div>
+      <div className="mt-1 text-sm text-muted">{description}</div>
+    </div>
+  );
+}
+
+function InventorySkeleton() {
+  return (
+    <div className="erp-card p-4">
+      <div className="mb-4 h-6 w-32 animate-pulse rounded bg-panel" />
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5">
+        {Array.from({ length: 8 }).map((_, index) => (
+          <div key={index} className="h-32 animate-pulse rounded-2xl bg-panel/80" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SkeletonRow() {
+  return (
+    <tr>
+      {Array.from({ length: 8 }).map((_, index) => (
+        <td key={index} className="border-b border-line px-4 py-4">
+          <div className="h-4 animate-pulse rounded bg-panel" />
+        </td>
+      ))}
+    </tr>
+  );
+}
+
+function calculateMetrics(products: ProductWithStock[], movements: StockMovement[]) {
+  return {
+    saleable: products.reduce((sum, product) => sum + getCurrentStock(product), 0),
+    inbound: movements.filter((movement) => movement.type === "inbound" && actionTypeOf(movement) === "inbound").reduce((sum, movement) => sum + safeQuantity(movement.quantity), 0),
+    salesOut: movements.filter((movement) => movement.type === "sale" || movement.type === "outbound").reduce((sum, movement) => sum + safeQuantity(movement.quantity), 0),
+    loss: movements
+      .filter((movement) => {
+        const type = actionTypeOf(movement);
+        return type === "loss_bad" || type === "missing";
+      })
+      .reduce((sum, movement) => sum + safeQuantity(movement.quantity), 0)
+  };
+}
+
+function attachAfterStock(movements: StockMovement[], products: ProductWithStock[]) {
+  const rolling = new Map(products.map((product) => [product.id, getCurrentStock(product)]));
+
+  return [...movements]
+    .sort((a, b) => new Date(b.happened_at).getTime() - new Date(a.happened_at).getTime())
+    .map((movement) => {
+      const afterStock = rolling.get(movement.product_id) ?? 0;
+      rolling.set(movement.product_id, afterStock - signedQuantity(movement.type, movement.quantity));
+      return { ...movement, afterStock, actionType: actionTypeOf(movement) };
+    });
+}
+
+function applyFilters(rows: MovementRow[], filters: { productId: string; type: MovementFilterType; startDate: string; endDate: string; query: string }) {
+  const query = filters.query.trim().toLowerCase();
+  return rows.filter((row) => {
+    if (filters.productId && row.product_id !== filters.productId) return false;
+    if (filters.type !== "all" && row.actionType !== filters.type) return false;
+    const rowDate = toDateString(row.happened_at);
+    if (filters.startDate && rowDate < filters.startDate) return false;
+    if (filters.endDate && rowDate > filters.endDate) return false;
+    if (query) {
+      const haystack = `${row.products?.sku ?? ""} ${row.products?.name ?? ""} ${row.memo ?? ""}`.toLowerCase();
+      if (!haystack.includes(query)) return false;
+    }
+    return true;
+  });
+}
+
+function buildPayload(
+  form: { product_id: string; type: InventoryActionType; movement_date: string; quantity: string; memo: string },
+  ui: (typeof copy)[Language]
+): MovementPayload {
+  const cleanMemo = form.memo.trim();
+  const systemLabel = form.type === "return_inbound" || form.type === "loss_bad" || form.type === "missing" ? actionTypeLabel(form.type, ui) : "";
+
+  return {
+    product_id: form.product_id,
+    type: dbTypeForAction(form.type),
+    quantity: Math.trunc(Number(form.quantity)),
+    happened_at: new Date(`${form.movement_date}T12:00:00+09:00`).toISOString(),
+    memo: systemLabel ? `${systemLabel}${cleanMemo ? ` - ${cleanMemo}` : ""}` : cleanMemo || null
+  };
+}
+
+function dbTypeForAction(type: InventoryActionType): StockMovement["type"] {
+  if (type === "loss_bad" || type === "missing") return "loss";
+  return type;
+}
+
+function signedQuantity(type: StockMovement["type"], quantity: number) {
+  const safe = safeQuantity(quantity);
+  if (type === "inbound" || type === "return_inbound" || type === "adjustment") return safe;
+  return -safe;
+}
+
+function actionTypeOf(movement: StockMovement): MovementFilterType {
+  if (movement.type === "return_inbound" || (movement.type === "inbound" && hasPrefix(movement.memo, RETURN_PREFIXES))) return "return_inbound";
+  if (movement.type === "loss" && hasPrefix(movement.memo, MISSING_PREFIXES)) return "missing";
+  if (movement.type === "loss") return "loss_bad";
+  return movement.type;
+}
+
+function editableActionType(movement: StockMovement): InventoryActionType {
+  const type = actionTypeOf(movement);
+  if (type === "outbound") return "sale";
+  if (type === "adjustment") return "inbound";
+  if (type === "all") return "inbound";
+  return type;
+}
+
+function actionOptions(ui: (typeof copy)[Language]) {
+  return [
+    { value: "inbound", label: ui.purchaseInbound },
+    { value: "sale", label: ui.salesOutbound },
+    { value: "return_inbound", label: ui.returnInbound },
+    { value: "loss_bad", label: ui.lossBad },
+    { value: "missing", label: ui.missing }
+  ] as const;
+}
+
+function actionTypeLabel(type: MovementFilterType, ui: (typeof copy)[Language]) {
+  const labels: Record<MovementFilterType, string> = {
+    all: ui.allTypes,
+    inbound: ui.purchaseInbound,
+    sale: ui.salesOutbound,
+    return_inbound: ui.returnInbound,
+    loss_bad: ui.lossBad,
+    missing: ui.missing,
+    outbound: ui.salesOutbound,
+    adjustment: ui.adjustment
+  };
+  return labels[type];
+}
+
+function stripSystemMemo(memo: string | null) {
+  const prefixes = [...RETURN_PREFIXES, ...LOSS_BAD_PREFIXES, ...MISSING_PREFIXES];
+  for (const prefix of prefixes) {
+    if (memo?.startsWith(`${prefix} - `)) return memo.replace(`${prefix} - `, "");
+    if (memo === prefix) return "";
+  }
+  return memo ?? "";
+}
+
+function groupProductsByColor(products: ProductWithStock[], ui: (typeof copy)[Language]) {
+  const groups = new Map<string, ProductWithStock[]>();
+  for (const product of [...products].sort(compareProducts)) {
     const key = colorKey(product);
     groups.set(key, [...(groups.get(key) ?? []), product]);
   }
 
-  return colorOrder
-    .map((key) => ({ key, label: colorLabel(key, t), products: groups.get(key) ?? [] }))
-    .filter((group) => group.products.length > 0);
+  return COLOR_ORDER.map((key) => ({ key, label: colorLabel(key, ui), products: groups.get(key) ?? [] })).filter((group) => group.products.length > 0);
 }
 
-function groupMovementsByColor(movements: StockMovement[], t: ReturnType<typeof useLanguage>["t"]) {
-  const sortedMovements = [...movements].sort((a, b) => {
-    const colorDiff =
-      colorOrder.indexOf(colorKeyFromSku(a.products?.sku ?? "")) -
-      colorOrder.indexOf(colorKeyFromSku(b.products?.sku ?? ""));
-    if (colorDiff !== 0) return colorDiff;
-    return new Date(b.happened_at).getTime() - new Date(a.happened_at).getTime();
-  });
-  const groups = new Map<string, StockMovement[]>();
-
-  for (const movement of sortedMovements) {
-    const key = colorKeyFromSku(movement.products?.sku ?? "");
-    groups.set(key, [...(groups.get(key) ?? []), movement]);
-  }
-
-  return colorOrder
-    .map((key) => ({ key, label: colorLabel(key, t), movements: groups.get(key) ?? [] }))
-    .filter((group) => group.movements.length > 0);
-}
-
-const colorOrder = ["WH", "BL", "GR", "BE", "OTHER"];
-
-function compareInventoryProducts(a: ProductWithStock, b: ProductWithStock) {
-  const colorDiff = colorOrder.indexOf(colorKey(a)) - colorOrder.indexOf(colorKey(b));
+function compareProducts(a: ProductWithStock, b: ProductWithStock) {
+  const colorDiff = COLOR_ORDER.indexOf(colorKey(a) as (typeof COLOR_ORDER)[number]) - COLOR_ORDER.indexOf(colorKey(b) as (typeof COLOR_ORDER)[number]);
   if (colorDiff !== 0) return colorDiff;
 
-  const aSize = normalizedSize(a.size) || baseSku(a.sku);
-  const bSize = normalizedSize(b.size) || baseSku(b.sku);
+  const aSize = normalizeSize(a.size) || baseSku(a.sku);
+  const bSize = normalizeSize(b.size) || baseSku(b.sku);
   if (aSize !== bSize) return aSize.localeCompare(bSize, undefined, { numeric: true });
-
   return a.sku.localeCompare(b.sku, undefined, { numeric: true });
 }
 
+function currentStock(product: ProductWithStock | undefined) {
+  return product ? getCurrentStock(product) : 0;
+}
+
 function colorKey(product: ProductWithStock) {
-  return colorKeyFromSku(product.sku);
+  return product.sku.match(/-(WH|BL|GR|BE)$/i)?.[1]?.toUpperCase() ?? "OTHER";
 }
 
-function colorKeyFromSku(sku: string) {
-  return sku.match(/-(WH|BL|GR|BE)$/i)?.[1]?.toUpperCase() ?? "OTHER";
+function colorLabel(key: string, ui: (typeof copy)[Language]) {
+  if (key === "WH") return ui.colorWhite;
+  if (key === "BL") return ui.colorBlack;
+  if (key === "GR") return ui.colorGray;
+  if (key === "BE") return ui.colorBeige;
+  return ui.colorOther;
 }
 
-function colorLabel(key: string, t: ReturnType<typeof useLanguage>["t"]) {
-  if (key === "WH") return t("color.white");
-  if (key === "BL") return t("color.black");
-  if (key === "GR") return t("color.gray");
-  if (key === "BE") return t("color.beige");
-  return t("color.other");
+function colorDotClass(key: string) {
+  if (key === "WH") return "bg-stone-200 ring-1 ring-stone-300";
+  if (key === "BL") return "bg-zinc-900";
+  if (key === "GR") return "bg-slate-400";
+  if (key === "BE") return "bg-[#c8b98d]";
+  return "bg-slate-300";
 }
 
-function movementLabel(type: StockMovement["type"] | string, t: ReturnType<typeof useLanguage>["t"]) {
-  const labels: Record<string, Parameters<typeof t>[0]> = {
-    inbound: "movement.inbound",
-    outbound: "movement.outbound",
-    sale: "movement.sale",
-    return_inbound: "movement.returnInbound",
-    loss: "movement.loss",
-    adjustment: "movement.adjustment"
-  };
-  return t(labels[type] ?? "movement.type");
-}
-
-function isBusinessMemo(memo: string | null, type: "return_inbound" | "loss") {
-  const prefixes =
-    type === "return_inbound"
-      ? ["\u9000\u8d27\u5165\u5e93\u5728\u552e", "\ubc18\ud488 \uc785\uace0 \ud310\ub9e4\uac00\ub2a5"]
-      : ["\u635f\u8017\u4e22\u5931", "\uc190\uc0c1/\ubd84\uc2e4"];
-  return prefixes.some((prefix) => memo?.startsWith(prefix));
+function normalizeSize(size: string | null | undefined) {
+  return (size ?? "").replace(/cm$/i, "").replace(/\s+/g, "").trim();
 }
 
 function baseSku(sku: string) {
   return sku.replace(/-(WH|BL|GR|BE)$/i, "");
 }
 
-function normalizedSize(size: string | null) {
-  return (size ?? "").replace(/\s+/g, "").trim();
+function hasPrefix(memo: string | null, prefixes: string[]) {
+  return prefixes.some((prefix) => memo?.startsWith(prefix));
+}
+
+function toDateString(value: string) {
+  return new Date(value).toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
+}
+
+function safeQuantity(value: number) {
+  return Number.isFinite(Number(value)) ? Math.trunc(Number(value)) : 0;
+}
+
+function formatNumber(value: number) {
+  if (!Number.isFinite(value)) return "0";
+  return Math.trunc(value).toLocaleString();
 }
