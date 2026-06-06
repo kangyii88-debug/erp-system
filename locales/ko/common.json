@@ -160,6 +160,7 @@
   "product.add": "상품 추가",
   "product.costDescription": "이 필드는 개당 이익, 이익률, TOP 이익 상품, 대시보드 이익 통계에 사용됩니다.",
   "product.costTitle": "비용 및 이익 설정",
+  "product.deleteConfirm": "이 상품을 삭제하시겠습니까? 삭제 후 복구할 수 없습니다.",
   "product.initialStock": "초기 재고",
   "product.lowStockThreshold": "부족 재고 기준",
   "product.title": "상품 관리",

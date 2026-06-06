@@ -9,6 +9,7 @@ import { useLanguage } from "@/components/LanguageProvider";
 import { supabase } from "@/lib/supabase";
 import { profitMargin, unitProfit } from "@/lib/profit";
 import { getCurrentStock } from "@/lib/stock";
+import { activeProducts, markProductDeletedMemo, stripDeletedProductMemo } from "@/lib/products";
 import type { ProductWithStock } from "@/lib/types";
 
 const emptyForm = {
@@ -52,7 +53,7 @@ function ProductsContent() {
       .from("products")
       .select("*, inventory_balances(current_stock)")
       .order("created_at", { ascending: false });
-    setProducts((data ?? []) as ProductWithStock[]);
+    setProducts(activeProducts((data ?? []) as ProductWithStock[]));
   }
 
   async function submit(event: FormEvent) {
@@ -132,9 +133,30 @@ function ProductsContent() {
       ad_cost: String(product.ad_cost ?? 0),
       initial_stock: String(getCurrentStock(product)),
       low_stock_threshold: String(product.low_stock_threshold ?? 10),
-      memo: product.memo ?? ""
+      memo: stripDeletedProductMemo(product.memo)
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  async function deleteProduct(product: ProductWithStock) {
+    if (!window.confirm(t("product.deleteConfirm"))) return;
+
+    const { error } = await supabase
+      .from("products")
+      .update({ memo: markProductDeletedMemo(product.memo) })
+      .eq("id", product.id);
+
+    if (error) {
+      setMessage(error.message);
+      return;
+    }
+
+    if (editingId === product.id) {
+      cancelEdit();
+    }
+
+    setMessage("");
+    await loadProducts();
   }
 
   function cancelEdit() {
@@ -209,7 +231,7 @@ function ProductsContent() {
             <Field label={t("common.internationalShipping")}>
               <input placeholder="0" type="number" min="0" value={form.international_shipping_cost} onChange={(event) => setForm({ ...form, international_shipping_cost: event.target.value })} />
             </Field>
-            <Field label={`Coupang ${t("common.inboundShipping")}`}>
+            <Field label={t("common.inboundShipping")}>
               <input placeholder="0" type="number" min="0" value={form.coupang_inbound_shipping_cost} onChange={(event) => setForm({ ...form, coupang_inbound_shipping_cost: event.target.value })} />
             </Field>
             <Field label={t("common.adCost")}>
@@ -276,7 +298,7 @@ function ProductsContent() {
                   <Th>{t("common.currentStock")}</Th>
                   <Th>{t("common.platform")}</Th>
                   <Th>{t("common.memo")}</Th>
-                  <Th>{t("common.edit")}</Th>
+                  <Th>{t("common.actions")}</Th>
                 </tr>
               </thead>
               <tbody>
@@ -299,11 +321,20 @@ function ProductsContent() {
                         <span className="text-base font-semibold text-ink">{getCurrentStock(product)}</span>
                       </Td>
                       <Td>{product.platform}</Td>
-                      <Td>{product.memo}</Td>
+                      <Td>{stripDeletedProductMemo(product.memo)}</Td>
                       <Td>
-                        <button className="rounded border border-line bg-white px-3 py-1.5 text-sm font-medium" onClick={() => startEdit(product)}>
-                          {t("common.edit")}
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button className="rounded border border-line bg-white px-3 py-1.5 text-sm font-medium" type="button" onClick={() => startEdit(product)}>
+                            {t("common.edit")}
+                          </button>
+                          <button
+                            className="rounded border border-red-200 bg-red-50 px-3 py-1.5 text-sm font-medium text-red-700 transition hover:border-red-300 hover:bg-red-100"
+                            type="button"
+                            onClick={() => deleteProduct(product)}
+                          >
+                            {t("common.delete")}
+                          </button>
+                        </div>
                       </Td>
                     </tr>
                   );

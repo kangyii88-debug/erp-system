@@ -1,6 +1,7 @@
 "use client";
 
 import type { ProductWithStock } from "@/lib/types";
+import { activeProducts } from "@/lib/products";
 import { useLanguage } from "./LanguageProvider";
 
 const colorOrder = ["WH", "BL", "GR", "BE", "OTHER"];
@@ -15,7 +16,7 @@ export function ProductSelect({
   onChange: (value: string) => void;
 }) {
   const { t } = useLanguage();
-  const groupedProducts = groupProductsByColor(products, t);
+  const groupedProducts = groupProductsByColor(activeProducts(products), t);
 
   return (
     <select value={value} onChange={(event) => onChange(event.target.value)} required>

@@ -160,6 +160,7 @@
   "product.add": "新增商品",
   "product.costDescription": "这些字段用于计算单件利润、利润率、TOP 利润商品和看板利润统计。",
   "product.costTitle": "成本与利润设置",
+  "product.deleteConfirm": "确定要删除该商品吗？删除后不可恢复。",
   "product.initialStock": "初始库存",
   "product.lowStockThreshold": "低库存阈值",
   "product.title": "商品管理",
