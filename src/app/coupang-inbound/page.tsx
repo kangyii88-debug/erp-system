@@ -281,6 +281,7 @@ function CoupangInboundContent() {
   });
 
   const visibleProducts = useMemo(() => activeProducts(products), [products]);
+  const productGroupsByColor = useMemo(() => groupProductsByColor(visibleProducts, language), [visibleProducts, language]);
 
   useEffect(() => {
     void loadData();
@@ -504,10 +505,14 @@ function CoupangInboundContent() {
           <Field label={text.fields.sku}>
             <select value={form.product_id} onChange={(event) => selectProduct(event.target.value)} required>
               <option value="">{text.selectSku}</option>
-              {visibleProducts.map((product) => (
-                <option key={product.id} value={product.id}>
-                  {product.sku} - {product.name}
-                </option>
+              {productGroupsByColor.map(([color, group]) => (
+                <optgroup key={color} label={`${color} (${group.length})`}>
+                  {group.map((product) => (
+                    <option key={product.id} value={product.id}>
+                      {productOptionLabel(product)}
+                    </option>
+                  ))}
+                </optgroup>
               ))}
             </select>
           </Field>
@@ -819,6 +824,76 @@ function DiscrepancyBadge({ status, label }: { status: ActiveDiscrepancyStatus; 
 
 function normalizeDiscrepancy(status: DiscrepancyStatus): ActiveDiscrepancyStatus {
   return status === "lost_or_damaged" ? "damaged" : status;
+}
+
+function groupProductsByColor(products: ProductWithStock[], language: "zh" | "ko") {
+  const groups = new Map<string, ProductWithStock[]>();
+
+  products
+    .slice()
+    .sort(compareProducts)
+    .forEach((product) => {
+      const color = localizedColor(product, language);
+      const group = groups.get(color) ?? [];
+      group.push(product);
+      groups.set(color, group);
+    });
+
+  return Array.from(groups.entries()).sort(([, productsA], [, productsB]) => colorSortIndex(productsA[0]) - colorSortIndex(productsB[0]));
+}
+
+function productOptionLabel(product: ProductWithStock) {
+  return `${normalizeSize(product.size)} | ${product.name}`;
+}
+
+function compareProducts(a: ProductWithStock, b: ProductWithStock) {
+  const sizeDiff = sizeSortIndex(a.size) - sizeSortIndex(b.size);
+  if (sizeDiff !== 0) return sizeDiff;
+
+  const colorDiff = colorSortIndex(a) - colorSortIndex(b);
+  if (colorDiff !== 0) return colorDiff;
+
+  return a.sku.localeCompare(b.sku);
+}
+
+function localizedColor(product: Pick<ProductWithStock, "sku" | "color">, language: "zh" | "ko") {
+  const suffix = product.sku?.match(/-(WH|BL|GR|BE)$/i)?.[1]?.toUpperCase();
+  const color = (product.color ?? "").trim().toLowerCase();
+
+  const colorKey =
+    suffix === "WH" || color.includes("white") || color.includes("白") || color.includes("화이트")
+      ? "white"
+      : suffix === "BL" || color.includes("black") || color.includes("黑") || color.includes("블랙")
+        ? "black"
+        : suffix === "GR" || color.includes("gray") || color.includes("grey") || color.includes("灰") || color.includes("그레이")
+          ? "gray"
+          : suffix === "BE" || color.includes("beige") || color.includes("米") || color.includes("베이지")
+            ? "beige"
+            : "other";
+
+  const labels = {
+    zh: { white: "白色", black: "黑色", gray: "灰色", beige: "米色", other: "其他颜色" },
+    ko: { white: "화이트", black: "블랙", gray: "그레이", beige: "베이지", other: "기타 색상" }
+  } as const;
+
+  return labels[language][colorKey];
+}
+
+function colorSortIndex(product: Pick<ProductWithStock, "sku" | "color">) {
+  const label = localizedColor(product, "zh");
+  const order: Record<string, number> = { 白色: 0, 黑色: 1, 灰色: 2, 米色: 3, 其他颜色: 99 };
+  return order[label] ?? 99;
+}
+
+function sizeSortIndex(size: string | null) {
+  const normalized = normalizeSize(size);
+  const order = ["58.4x163", "76.2x163", "87.6x163", "91.4x163", "99.1x163"];
+  const index = order.indexOf(normalized);
+  return index >= 0 ? index : 99;
+}
+
+function normalizeSize(size: string | null) {
+  return (size ?? "").replace(/\s+/g, "").replace(/×/g, "x").replace(/cm$/i, "") || "-";
 }
 
 function toDateInput(date: Date) {
