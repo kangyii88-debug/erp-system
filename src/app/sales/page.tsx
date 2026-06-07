@@ -1118,7 +1118,7 @@ function quickLabel(quick: QuickFilter, text: (typeof copy)["zh"]) {
 }
 
 function productOptionLabel(product: ProductWithStock, language: "zh" | "ko") {
-  return `${normalizeSize(product.size)} · ${localizedColor(product, language)} · ${product.sku} · ${product.name}`;
+  return `${normalizeSize(product.size)} ${localizedColor(product, language)} | ${product.name}`;
 }
 
 function localizedColor(product: Pick<Product, "sku" | "color"> | null | undefined, language: "zh" | "ko") {
@@ -1142,7 +1142,15 @@ function uniqueSorted(values: string[]) {
 function compareProductsForSales(a: ProductWithStock, b: ProductWithStock) {
   const sizeDiff = normalizeSize(a.size).localeCompare(normalizeSize(b.size), undefined, { numeric: true });
   if (sizeDiff !== 0) return sizeDiff;
+  const colorDiff = colorSortIndex(a) - colorSortIndex(b);
+  if (colorDiff !== 0) return colorDiff;
   return a.sku.localeCompare(b.sku, undefined, { numeric: true });
+}
+
+function colorSortIndex(product: Pick<Product, "sku">) {
+  const suffix = product.sku?.match(/-(WH|BL|GR|BE)$/i)?.[1]?.toUpperCase();
+  const order: Record<string, number> = { WH: 0, BL: 1, GR: 2, BE: 3 };
+  return suffix ? order[suffix] ?? 99 : 99;
 }
 
 function alignClass(align: "left" | "center" | "right") {
