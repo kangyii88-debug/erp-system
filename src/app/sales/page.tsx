@@ -252,6 +252,22 @@ function SalesContent() {
       .sort(compareProductsForSales);
   }, [productQuery, usableProducts]);
 
+  const filteredProductGroups = useMemo(() => {
+    const groups = new Map<string, ProductWithStock[]>();
+    filteredProductOptions.forEach((product) => {
+      const color = localizedColor(product, language);
+      const group = groups.get(color) ?? [];
+      group.push(product);
+      groups.set(color, group);
+    });
+
+    return Array.from(groups.entries()).sort(([colorA, productsA], [colorB, productsB]) => {
+      const colorDiff = colorSortIndex(productsA[0]) - colorSortIndex(productsB[0]);
+      if (colorDiff !== 0) return colorDiff;
+      return colorA.localeCompare(colorB);
+    });
+  }, [filteredProductOptions, language]);
+
   const filterOptions = useMemo(() => {
     const colors = uniqueSorted(usableProducts.map((product) => localizedColor(product, language)));
     const sizes = uniqueSorted(usableProducts.map((product) => normalizeSize(product.size)));
@@ -567,10 +583,14 @@ function SalesContent() {
                 onChange={(event) => setForm((current) => ({ ...current, product_id: event.target.value }))}
               >
                 <option value="">{text.noProduct}</option>
-                {filteredProductOptions.map((product) => (
-                  <option key={product.id} value={product.id}>
-                    {productOptionLabel(product, language)}
-                  </option>
+                {filteredProductGroups.map(([color, group]) => (
+                  <optgroup key={color} label={`${color} (${group.length})`}>
+                    {group.map((product) => (
+                      <option key={product.id} value={product.id}>
+                        {productOptionLabel(product, language)}
+                      </option>
+                    ))}
+                  </optgroup>
                 ))}
               </select>
             </Field>
@@ -1117,8 +1137,8 @@ function quickLabel(quick: QuickFilter, text: (typeof copy)["zh"]) {
   return text.all;
 }
 
-function productOptionLabel(product: ProductWithStock, language: "zh" | "ko") {
-  return `${normalizeSize(product.size)} ${localizedColor(product, language)} | ${product.name}`;
+function productOptionLabel(product: ProductWithStock, _language: "zh" | "ko") {
+  return `${normalizeSize(product.size)} | ${product.name}`;
 }
 
 function localizedColor(product: Pick<Product, "sku" | "color"> | null | undefined, language: "zh" | "ko") {
