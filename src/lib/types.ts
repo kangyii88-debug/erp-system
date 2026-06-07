@@ -61,3 +61,28 @@ export type SaleDaily = {
   sale_date: string;
   quantity: number;
 };
+
+export type CoupangInboundRecord = {
+  id: string;
+  user_id: string;
+  product_id: string | null;
+  inbound_date: string;
+  sku: string;
+  product_name: string;
+  box_count: number;
+  units_per_box: number;
+  confirmed_quantity: number;
+  inbound_method: "parcel" | "milk_run";
+  outbound_location: "warehouse" | "office";
+  milk_run_type: "parcel" | "pallet" | "truck" | null;
+  reservation_number: string | null;
+  receive_status: "pending" | "received" | "partial" | "issue";
+  discrepancy_status: "normal" | "quantity_mismatch" | "follow_up" | "lost" | "damaged" | "lost_or_damaged";
+  application_date: string | null;
+  expected_inbound_date: string | null;
+  purchase_batch_no: string | null;
+  memo: string | null;
+  created_at: string;
+  updated_at?: string | null;
+  products?: Pick<Product, "name" | "sku" | "color" | "size"> | null;
+};

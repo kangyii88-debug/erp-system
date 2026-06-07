@@ -78,6 +78,30 @@ create table if not exists sales_daily (
   unique (user_id, product_id, sale_date)
 );
 
+create table if not exists coupang_inbound_records (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  product_id uuid references products(id) on delete set null,
+  inbound_date date not null,
+  sku text not null,
+  product_name text not null,
+  box_count integer not null default 0,
+  units_per_box integer not null default 0,
+  confirmed_quantity integer not null default 0,
+  inbound_method text not null default 'parcel',
+  outbound_location text not null default 'warehouse',
+  milk_run_type text,
+  reservation_number text,
+  receive_status text not null default 'pending',
+  discrepancy_status text not null default 'normal',
+  application_date date,
+  expected_inbound_date date,
+  purchase_batch_no text,
+  memo text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 create or replace function set_updated_at()
 returns trigger language plpgsql as $$
 begin
@@ -90,6 +114,9 @@ create trigger products_updated_at before update on products
 for each row execute function set_updated_at();
 
 create trigger purchase_orders_updated_at before update on purchase_orders
+for each row execute function set_updated_at();
+
+create trigger coupang_inbound_records_updated_at before update on coupang_inbound_records
 for each row execute function set_updated_at();
 
 create or replace function ensure_inventory_balance()
@@ -143,6 +170,7 @@ alter table stock_movements enable row level security;
 alter table suppliers enable row level security;
 alter table purchase_orders enable row level security;
 alter table sales_daily enable row level security;
+alter table coupang_inbound_records enable row level security;
 
 create policy "products owner access" on products
 for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
@@ -164,4 +192,7 @@ create policy "purchases owner access" on purchase_orders
 for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 create policy "sales owner access" on sales_daily
+for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+create policy "coupang inbound owner access" on coupang_inbound_records
 for all using (auth.uid() = user_id) with check (auth.uid() = user_id);

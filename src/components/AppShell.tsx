@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { BarChart3, Boxes, ClipboardList, FileSpreadsheet, LogOut, Package, ShoppingCart } from "lucide-react";
+import { BarChart3, Boxes, ClipboardList, FileSpreadsheet, LogOut, Package, ShoppingCart, Warehouse } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { LanguageProvider, useLanguage } from "./LanguageProvider";
 
@@ -13,6 +13,7 @@ const navItems = [
   { href: "/inventory", key: "nav.inventory", icon: Boxes },
   { href: "/sales", key: "nav.sales", icon: ShoppingCart },
   { href: "/purchases", key: "nav.purchases", icon: ClipboardList },
+  { href: "/coupang-inbound", key: "nav.coupangInbound", icon: Warehouse },
   { href: "/import-export", key: "nav.importExport", icon: FileSpreadsheet }
 ] as const;
 
