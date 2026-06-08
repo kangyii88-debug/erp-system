@@ -10,7 +10,7 @@ import { supabase } from "@/lib/supabase";
 import { profitMargin, unitProfit } from "@/lib/profit";
 import { buildInventoryMetricsByProduct, getComputedCurrentStock, type InventoryMetrics, type InventoryMovementLike } from "@/lib/stock";
 import { fetchAllStockMovements } from "@/lib/stock-movements";
-import { activeProducts, markProductDeletedMemo, stripDeletedProductMemo } from "@/lib/products";
+import { activeProducts, isDeletedProduct, markProductDeletedMemo, stripDeletedProductMemo } from "@/lib/products";
 import type { ProductWithStock } from "@/lib/types";
 
 const emptyForm = {
@@ -72,8 +72,8 @@ function ProductsContent() {
     if (!auth.user) return;
 
     const payload = {
-      name: form.name,
-      sku: form.sku,
+      name: form.name.trim(),
+      sku: form.sku.trim(),
       color: form.color || null,
       size: form.size || null,
       purchase_price: Number(form.purchase_price || 0),
@@ -101,6 +101,27 @@ function ProductsContent() {
         .single();
       errorMessage = error?.message ?? "";
       productId = data?.id ?? null;
+
+      if (isDuplicateSkuError(errorMessage)) {
+        const { data: existingProduct, error: existingError } = await supabase
+          .from("products")
+          .select("id, memo")
+          .eq("user_id", auth.user.id)
+          .eq("sku", payload.sku)
+          .maybeSingle();
+
+        if (!existingError && existingProduct && isDeletedProduct(existingProduct)) {
+          const restoredPayload = {
+            ...payload,
+            memo: (payload.memo ?? stripDeletedProductMemo(existingProduct.memo)) || null
+          };
+          const { error: restoreError } = await supabase.from("products").update(restoredPayload).eq("id", existingProduct.id);
+          errorMessage = restoreError?.message ?? "";
+          productId = restoreError ? null : existingProduct.id;
+        } else {
+          errorMessage = t("product.duplicateSku");
+        }
+      }
     }
 
     const initialStock = Math.max(0, Number(form.initial_stock || 0));
@@ -429,4 +450,8 @@ function colorName(key: string, t: ReturnType<typeof useLanguage>["t"]) {
   if (key === "GR") return t("color.gray");
   if (key === "BE") return t("color.beige");
   return t("color.other");
+}
+
+function isDuplicateSkuError(message: string) {
+  return message.includes("products_user_id_sku_key") || message.toLowerCase().includes("duplicate key");
 }
