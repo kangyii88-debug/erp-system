@@ -8,6 +8,8 @@ import {
   ArrowUpRight,
   Boxes,
   CalendarDays,
+  ChevronDown,
+  ChevronRight,
   CircleAlert,
   CircleCheck,
   Download,
@@ -1402,7 +1404,7 @@ function ReplenishmentActionCenter({
   onSearchChange: (value: string) => void;
   onSortChange: (key: DecisionSortKey) => void;
 }) {
-  const { language, formatNumber } = useLanguage();
+  const { language, t, formatNumber } = useLanguage();
   const copy = decisionCopy(language);
   const tabRows = rows.filter((row) => actionTabForRow(row) === tab);
   const visibleRows = sortDecisionRows(
@@ -1410,6 +1412,14 @@ function ReplenishmentActionCenter({
     sortKey
   ).slice(0, 18);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [openCategoryKey, setOpenCategoryKey] = useState<string | null>("FIRST");
+  const groupedRows = groupDecisionRowsByCategory(visibleRows, t);
+  const activeCategoryKey =
+    openCategoryKey === "FIRST"
+      ? groupedRows[0]?.key ?? null
+      : openCategoryKey && groupedRows.some((group) => group.key === openCategoryKey)
+        ? openCategoryKey
+        : groupedRows[0]?.key ?? null;
 
   const selectedRows = visibleRows.filter((row) => selectedIds.has(row.product.id));
   const tabs: Array<{ key: ActionTab; label: string; count: number }> = [
@@ -1492,42 +1502,45 @@ function ReplenishmentActionCenter({
       </div>
 
       {loading ? <DecisionSkeleton /> : (
-        <DecisionTable columns="grid-cols-[44px_minmax(320px,2.1fr)_minmax(120px,0.75fr)_minmax(120px,0.75fr)_minmax(120px,0.8fr)_minmax(120px,0.8fr)_minmax(150px,1fr)_minmax(150px,0.95fr)]">
-          <DecisionTableHeader columns="grid-cols-[44px_minmax(320px,2.1fr)_minmax(120px,0.75fr)_minmax(120px,0.75fr)_minmax(120px,0.8fr)_minmax(120px,0.8fr)_minmax(150px,1fr)_minmax(150px,0.95fr)]">
-            <div />
-            <div>{copy.productInfo}</div>
-            <SortButton label={copy.currentStock} active={sortKey === "stock"} onClick={() => onSortChange("stock")} align="right" />
-            <SortButton label={copy.dailyAverage} active={sortKey === "sales"} onClick={() => onSortChange("sales")} align="right" />
-            <SortButton label={copy.saleableDays} active={sortKey === "days"} onClick={() => onSortChange("days")} align="right" />
-            <div className="text-center">{copy.status}</div>
-            <div className="text-center">{copy.action}</div>
-            <SortButton label={copy.suggestedQty} active={sortKey === "suggested"} onClick={() => onSortChange("suggested")} align="right" />
-          </DecisionTableHeader>
-          <div className="divide-y divide-line/80">
-            {visibleRows.map((row) => (
-              <DecisionRow key={row.product.id} status={row.status} columns="grid-cols-[44px_minmax(320px,2.1fr)_minmax(120px,0.75fr)_minmax(120px,0.75fr)_minmax(120px,0.8fr)_minmax(120px,0.8fr)_minmax(150px,1fr)_minmax(150px,0.95fr)]">
-                <input
-                  type="checkbox"
-                  checked={selectedIds.has(row.product.id)}
-                  onChange={() => toggleRow(row.product.id)}
-                  className="h-4 w-4 rounded border-line text-brand"
-                />
-                <ProductInfoCell product={row.product} />
-                <NumberCell>{formatNumber(row.currentStock)}</NumberCell>
-                <NumberCell>{formatNumber(row.dailyAverage)}</NumberCell>
-                <SaleableDaysCell row={row} copy={copy} />
-                <div className="text-center"><StatusBadge status={row.status} /></div>
-                <div className="text-center font-semibold text-ink">{actionLabel(row, copy)}</div>
-                <NumberCell>
-                  <span className="inline-flex rounded-full bg-brand/10 px-3 py-1 text-sm font-bold text-brand">
-                    {copy.suggestedCapsule} {formatNumber(row.suggestedQty)}
-                  </span>
-                </NumberCell>
-              </DecisionRow>
-            ))}
-            {!visibleRows.length ? <DecisionEmpty text={copy.emptyAction} /> : null}
-          </div>
-        </DecisionTable>
+        <DecisionCategoryStack groups={groupedRows} activeKey={activeCategoryKey} onToggle={setOpenCategoryKey} emptyText={copy.emptyAction} formatNumber={formatNumber}>
+          {(categoryRows) => (
+            <DecisionTable columns="grid-cols-[44px_minmax(320px,2.1fr)_minmax(120px,0.75fr)_minmax(120px,0.75fr)_minmax(120px,0.8fr)_minmax(120px,0.8fr)_minmax(150px,1fr)_minmax(150px,0.95fr)]">
+              <DecisionTableHeader columns="grid-cols-[44px_minmax(320px,2.1fr)_minmax(120px,0.75fr)_minmax(120px,0.75fr)_minmax(120px,0.8fr)_minmax(120px,0.8fr)_minmax(150px,1fr)_minmax(150px,0.95fr)]">
+                <div />
+                <div>{copy.productInfo}</div>
+                <SortButton label={copy.currentStock} active={sortKey === "stock"} onClick={() => onSortChange("stock")} align="right" />
+                <SortButton label={copy.dailyAverage} active={sortKey === "sales"} onClick={() => onSortChange("sales")} align="right" />
+                <SortButton label={copy.saleableDays} active={sortKey === "days"} onClick={() => onSortChange("days")} align="right" />
+                <div className="text-center">{copy.status}</div>
+                <div className="text-center">{copy.action}</div>
+                <SortButton label={copy.suggestedQty} active={sortKey === "suggested"} onClick={() => onSortChange("suggested")} align="right" />
+              </DecisionTableHeader>
+              <div className="divide-y divide-line/80">
+                {categoryRows.map((row) => (
+                  <DecisionRow key={row.product.id} status={row.status} columns="grid-cols-[44px_minmax(320px,2.1fr)_minmax(120px,0.75fr)_minmax(120px,0.75fr)_minmax(120px,0.8fr)_minmax(120px,0.8fr)_minmax(150px,1fr)_minmax(150px,0.95fr)]">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(row.product.id)}
+                      onChange={() => toggleRow(row.product.id)}
+                      className="h-4 w-4 rounded border-line text-brand"
+                    />
+                    <ProductInfoCell product={row.product} />
+                    <NumberCell>{formatNumber(row.currentStock)}</NumberCell>
+                    <NumberCell>{formatNumber(row.dailyAverage)}</NumberCell>
+                    <SaleableDaysCell row={row} copy={copy} />
+                    <div className="text-center"><StatusBadge status={row.status} /></div>
+                    <div className="text-center font-semibold text-ink">{actionLabel(row, copy)}</div>
+                    <NumberCell>
+                      <span className="inline-flex rounded-full bg-brand/10 px-3 py-1 text-sm font-bold text-brand">
+                        {copy.suggestedCapsule} {formatNumber(row.suggestedQty)}
+                      </span>
+                    </NumberCell>
+                  </DecisionRow>
+                ))}
+              </div>
+            </DecisionTable>
+          )}
+        </DecisionCategoryStack>
       )}
     </DecisionPanel>
   );
@@ -1567,6 +1580,14 @@ function StockRiskRanking({
   }).length;
   const lostRevenue = rows.reduce((sum, row) => sum + estimatedLostRevenue(row), 0);
   const immediate = within3;
+  const [openCategoryKey, setOpenCategoryKey] = useState<string | null>("FIRST");
+  const groupedRows = groupDecisionRowsByCategory(visibleRows, t);
+  const activeCategoryKey =
+    openCategoryKey === "FIRST"
+      ? groupedRows[0]?.key ?? null
+      : openCategoryKey && groupedRows.some((group) => group.key === openCategoryKey)
+        ? openCategoryKey
+        : groupedRows[0]?.key ?? null;
 
   return (
     <DecisionPanel
@@ -1600,33 +1621,36 @@ function StockRiskRanking({
       </div>
 
       {loading ? <DecisionSkeleton /> : (
-        <DecisionTable columns="grid-cols-[64px_minmax(320px,2.1fr)_minmax(120px,0.65fr)_minmax(120px,0.7fr)_minmax(120px,0.7fr)_minmax(140px,0.95fr)_minmax(150px,1fr)_minmax(120px,0.8fr)]">
-          <DecisionTableHeader columns="grid-cols-[64px_minmax(320px,2.1fr)_minmax(120px,0.65fr)_minmax(120px,0.7fr)_minmax(120px,0.7fr)_minmax(140px,0.95fr)_minmax(150px,1fr)_minmax(120px,0.8fr)]">
-            <div>{copy.rank}</div>
-            <div>{copy.productInfo}</div>
-            <SortButton label={copy.currentStock} active={sortKey === "stock"} onClick={() => onSortChange("stock")} align="right" />
-            <SortButton label={copy.dailyAverage} active={sortKey === "sales"} onClick={() => onSortChange("sales")} align="right" />
-            <SortButton label={copy.saleableDays} active={sortKey === "days"} onClick={() => onSortChange("days")} align="right" />
-            <div className="text-center">{copy.stockoutDate}</div>
-            <SortButton label={copy.lostRevenue} active={sortKey === "lostRevenue"} onClick={() => onSortChange("lostRevenue")} align="right" />
-            <div className="text-center">{copy.riskLevel}</div>
-          </DecisionTableHeader>
-          <div className="divide-y divide-line/80">
-            {visibleRows.map((row, index) => (
-              <DecisionRow key={row.product.id} status={getRowRiskLevel(row)} columns="grid-cols-[64px_minmax(320px,2.1fr)_minmax(120px,0.65fr)_minmax(120px,0.7fr)_minmax(120px,0.7fr)_minmax(140px,0.95fr)_minmax(150px,1fr)_minmax(120px,0.8fr)]">
-                <div className="font-bold text-ink/70">{index + 1}</div>
-                <ProductInfoCell product={row.product} />
-                <NumberCell>{formatNumber(row.currentStock)}</NumberCell>
-                <NumberCell>{formatNumber(row.dailyAverage)}</NumberCell>
-                <SaleableDaysCell row={row} copy={copy} />
-                <div className="text-center text-sm font-semibold text-ink/70">{calculateEstimatedStockoutDate(getRowDaysOfStock(row), anchorDate, t)}</div>
-                <NumberCell>{formatCurrency(estimatedLostRevenue(row))}</NumberCell>
-                <div className="text-center"><RiskBadge row={row} copy={copy} /></div>
-              </DecisionRow>
-            ))}
-            {!visibleRows.length ? <DecisionEmpty text={copy.emptyRisk} /> : null}
-          </div>
-        </DecisionTable>
+        <DecisionCategoryStack groups={groupedRows} activeKey={activeCategoryKey} onToggle={setOpenCategoryKey} emptyText={copy.emptyRisk} formatNumber={formatNumber}>
+          {(categoryRows, startIndex) => (
+            <DecisionTable columns="grid-cols-[64px_minmax(320px,2.1fr)_minmax(120px,0.65fr)_minmax(120px,0.7fr)_minmax(120px,0.7fr)_minmax(140px,0.95fr)_minmax(150px,1fr)_minmax(120px,0.8fr)]">
+              <DecisionTableHeader columns="grid-cols-[64px_minmax(320px,2.1fr)_minmax(120px,0.65fr)_minmax(120px,0.7fr)_minmax(120px,0.7fr)_minmax(140px,0.95fr)_minmax(150px,1fr)_minmax(120px,0.8fr)]">
+                <div>{copy.rank}</div>
+                <div>{copy.productInfo}</div>
+                <SortButton label={copy.currentStock} active={sortKey === "stock"} onClick={() => onSortChange("stock")} align="right" />
+                <SortButton label={copy.dailyAverage} active={sortKey === "sales"} onClick={() => onSortChange("sales")} align="right" />
+                <SortButton label={copy.saleableDays} active={sortKey === "days"} onClick={() => onSortChange("days")} align="right" />
+                <div className="text-center">{copy.stockoutDate}</div>
+                <SortButton label={copy.lostRevenue} active={sortKey === "lostRevenue"} onClick={() => onSortChange("lostRevenue")} align="right" />
+                <div className="text-center">{copy.riskLevel}</div>
+              </DecisionTableHeader>
+              <div className="divide-y divide-line/80">
+                {categoryRows.map((row, index) => (
+                  <DecisionRow key={row.product.id} status={getRowRiskLevel(row)} columns="grid-cols-[64px_minmax(320px,2.1fr)_minmax(120px,0.65fr)_minmax(120px,0.7fr)_minmax(120px,0.7fr)_minmax(140px,0.95fr)_minmax(150px,1fr)_minmax(120px,0.8fr)]">
+                    <div className="font-bold text-ink/70">{startIndex + index + 1}</div>
+                    <ProductInfoCell product={row.product} />
+                    <NumberCell>{formatNumber(row.currentStock)}</NumberCell>
+                    <NumberCell>{formatNumber(row.dailyAverage)}</NumberCell>
+                    <SaleableDaysCell row={row} copy={copy} />
+                    <div className="text-center text-sm font-semibold text-ink/70">{calculateEstimatedStockoutDate(getRowDaysOfStock(row), anchorDate, t)}</div>
+                    <NumberCell>{formatCurrency(estimatedLostRevenue(row))}</NumberCell>
+                    <div className="text-center"><RiskBadge row={row} copy={copy} /></div>
+                  </DecisionRow>
+                ))}
+              </div>
+            </DecisionTable>
+          )}
+        </DecisionCategoryStack>
       )}
     </DecisionPanel>
   );
@@ -1651,7 +1675,7 @@ function SkuLifecycleCenter({
   onStatusChange: (value: string) => void;
   onSortChange: (key: DecisionSortKey) => void;
 }) {
-  const { language, formatNumber } = useLanguage();
+  const { language, t, formatNumber } = useLanguage();
   const copy = decisionCopy(language);
   const visibleRows = sortLifecycleRows(
     rows
@@ -1662,6 +1686,14 @@ function SkuLifecycleCenter({
   const highRisk = rows.filter((row) => row.status === "danger").length;
   const stable = rows.filter((row) => row.lifecycleStatus === "stable").length;
   const slow = rows.filter((row) => row.lifecycleStatus === "slow").length;
+  const [openCategoryKey, setOpenCategoryKey] = useState<string | null>("FIRST");
+  const groupedRows = groupDecisionRowsByCategory(visibleRows, t);
+  const activeCategoryKey =
+    openCategoryKey === "FIRST"
+      ? groupedRows[0]?.key ?? null
+      : openCategoryKey && groupedRows.some((group) => group.key === openCategoryKey)
+        ? openCategoryKey
+        : groupedRows[0]?.key ?? null;
 
   return (
     <DecisionPanel
@@ -1696,31 +1728,34 @@ function SkuLifecycleCenter({
       </div>
 
       {loading ? <DecisionSkeleton /> : (
-        <DecisionTable columns="grid-cols-[minmax(320px,2.1fr)_minmax(120px,0.7fr)_minmax(130px,0.85fr)_minmax(120px,0.75fr)_minmax(120px,0.85fr)_minmax(140px,0.95fr)_minmax(160px,1fr)]">
-          <DecisionTableHeader columns="grid-cols-[minmax(320px,2.1fr)_minmax(120px,0.7fr)_minmax(130px,0.85fr)_minmax(120px,0.75fr)_minmax(120px,0.85fr)_minmax(140px,0.95fr)_minmax(160px,1fr)]">
-            <div>{copy.productInfo}</div>
-            <SortButton label={copy.currentStock} active={sortKey === "stock"} onClick={() => onSortChange("stock")} align="right" />
-            <SortButton label={copy.sales730} active={sortKey === "sales"} onClick={() => onSortChange("sales")} align="right" />
-            <div className="text-right tabular-nums">{copy.dailyAverage}</div>
-            <SortButton label={copy.saleableDays} active={sortKey === "days"} onClick={() => onSortChange("days")} align="right" />
-            <div className="text-center">{copy.lifecycleStatus}</div>
-            <div className="text-center">{copy.action}</div>
-          </DecisionTableHeader>
-          <div className="divide-y divide-line/80">
-            {visibleRows.map((row) => (
-              <DecisionRow key={row.product.id} status={row.status} columns="grid-cols-[minmax(320px,2.1fr)_minmax(120px,0.7fr)_minmax(130px,0.85fr)_minmax(120px,0.75fr)_minmax(120px,0.85fr)_minmax(140px,0.95fr)_minmax(160px,1fr)]">
-                <ProductInfoCell product={row.product} />
-                <NumberCell>{formatNumber(row.currentStock)}</NumberCell>
-                <NumberCell>{formatNumber(row.sales7)} / {formatNumber(row.salesInWindow)}</NumberCell>
-                <NumberCell>{formatNumber(row.dailyAverage)}</NumberCell>
-                <SaleableDaysCell row={row} copy={copy} />
-                <div className="text-center"><LifecycleBadge label={row.lifecycle} status={row.lifecycleStatus} /></div>
-                <div className="text-center font-semibold text-ink">{row.lifecycleAction}</div>
-              </DecisionRow>
-            ))}
-            {!visibleRows.length ? <DecisionEmpty text={copy.emptyLifecycle} /> : null}
-          </div>
-        </DecisionTable>
+        <DecisionCategoryStack groups={groupedRows} activeKey={activeCategoryKey} onToggle={setOpenCategoryKey} emptyText={copy.emptyLifecycle} formatNumber={formatNumber}>
+          {(categoryRows) => (
+            <DecisionTable columns="grid-cols-[minmax(320px,2.1fr)_minmax(120px,0.7fr)_minmax(130px,0.85fr)_minmax(120px,0.75fr)_minmax(120px,0.85fr)_minmax(140px,0.95fr)_minmax(160px,1fr)]">
+              <DecisionTableHeader columns="grid-cols-[minmax(320px,2.1fr)_minmax(120px,0.7fr)_minmax(130px,0.85fr)_minmax(120px,0.75fr)_minmax(120px,0.85fr)_minmax(140px,0.95fr)_minmax(160px,1fr)]">
+                <div>{copy.productInfo}</div>
+                <SortButton label={copy.currentStock} active={sortKey === "stock"} onClick={() => onSortChange("stock")} align="right" />
+                <SortButton label={copy.sales730} active={sortKey === "sales"} onClick={() => onSortChange("sales")} align="right" />
+                <div className="text-right tabular-nums">{copy.dailyAverage}</div>
+                <SortButton label={copy.saleableDays} active={sortKey === "days"} onClick={() => onSortChange("days")} align="right" />
+                <div className="text-center">{copy.lifecycleStatus}</div>
+                <div className="text-center">{copy.action}</div>
+              </DecisionTableHeader>
+              <div className="divide-y divide-line/80">
+                {categoryRows.map((row) => (
+                  <DecisionRow key={row.product.id} status={row.status} columns="grid-cols-[minmax(320px,2.1fr)_minmax(120px,0.7fr)_minmax(130px,0.85fr)_minmax(120px,0.75fr)_minmax(120px,0.85fr)_minmax(140px,0.95fr)_minmax(160px,1fr)]">
+                    <ProductInfoCell product={row.product} />
+                    <NumberCell>{formatNumber(row.currentStock)}</NumberCell>
+                    <NumberCell>{formatNumber(row.sales7)} / {formatNumber(row.salesInWindow)}</NumberCell>
+                    <NumberCell>{formatNumber(row.dailyAverage)}</NumberCell>
+                    <SaleableDaysCell row={row} copy={copy} />
+                    <div className="text-center"><LifecycleBadge label={row.lifecycle} status={row.lifecycleStatus} /></div>
+                    <div className="text-center font-semibold text-ink">{row.lifecycleAction}</div>
+                  </DecisionRow>
+                ))}
+              </div>
+            </DecisionTable>
+          )}
+        </DecisionCategoryStack>
       )}
     </DecisionPanel>
   );
@@ -1758,6 +1793,69 @@ function DecisionPanel({
         </div>
       </div>
       {children}
+    </div>
+  );
+}
+
+type DecisionCategoryGroup<T extends { product: ProductWithStock; currentStock: number }> = {
+  key: string;
+  label: string;
+  rows: T[];
+  startIndex: number;
+  totalStock: number;
+};
+
+function DecisionCategoryStack<T extends { product: ProductWithStock; currentStock: number }>({
+  groups,
+  activeKey,
+  onToggle,
+  emptyText,
+  formatNumber,
+  children
+}: {
+  groups: DecisionCategoryGroup<T>[];
+  activeKey: string | null;
+  onToggle: (key: string | null) => void;
+  emptyText: string;
+  formatNumber: (value: number, options?: Intl.NumberFormatOptions) => string;
+  children: (rows: T[], startIndex: number) => React.ReactNode;
+}) {
+  const { t } = useLanguage();
+  if (!groups.length) return <DecisionEmpty text={emptyText} />;
+
+  return (
+    <div className="space-y-4">
+      {groups.map((group) => {
+        const expanded = group.key === activeKey;
+        return (
+          <div key={group.key} className={`rounded-[26px] border border-white/65 bg-white/72 shadow-[0_16px_42px_rgba(23,33,29,0.06)] backdrop-blur transition duration-200 ${expanded ? "p-4" : "p-0 hover:-translate-y-0.5 hover:shadow-soft"}`}>
+            <button
+              type="button"
+              onClick={() => onToggle(expanded ? null : group.key)}
+              className={`flex w-full flex-wrap items-center justify-between gap-3 text-left transition ${expanded ? "rounded-2xl border-b border-line pb-4" : "rounded-[26px] p-4 hover:bg-[#f7f4ec]"}`}
+            >
+              <div className="flex items-center gap-3">
+                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-brand shadow-sm">
+                  {expanded ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
+                </span>
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-[0.2em] text-muted">{t("common.category")}</div>
+                  <h3 className="mt-1 text-2xl font-semibold tracking-tight text-ink">{group.label}</h3>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2 text-xs font-semibold text-muted">
+                <span className="premium-status-chip px-3 py-1.5">
+                  SKU {formatNumber(group.rows.length)}
+                </span>
+                <span className="premium-status-chip px-3 py-1.5">
+                  {t("common.currentStock")} {formatNumber(group.totalStock)}
+                </span>
+              </div>
+            </button>
+            {expanded ? <div className="mt-4">{children(group.rows, group.startIndex)}</div> : null}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -1937,6 +2035,43 @@ function matchesDecisionSearch(row: SmartReplenishmentRow | LifecycleRow, search
   if (!normalized) return true;
   const product = row.product;
   return `${product.name} ${product.sku} ${product.color ?? ""} ${product.size ?? ""}`.toLowerCase().includes(normalized);
+}
+
+function groupDecisionRowsByCategory<T extends { product: ProductWithStock; currentStock: number }>(rows: T[], t: TFunction): DecisionCategoryGroup<T>[] {
+  const map = new Map<string, DecisionCategoryGroup<T>>();
+
+  rows.forEach((row, index) => {
+    const key = categoryKey(row.product);
+    const current = map.get(key) ?? {
+      key,
+      label: categoryLabel(key, t),
+      rows: [],
+      startIndex: index,
+      totalStock: 0
+    };
+
+    current.rows.push(row);
+    current.totalStock += row.currentStock;
+    map.set(key, current);
+  });
+
+  return Array.from(map.values()).sort((a, b) => categorySortOrder(a.key) - categorySortOrder(b.key) || a.label.localeCompare(b.label));
+}
+
+function categoryKey(product: Pick<ProductWithStock, "sku"> | null | undefined) {
+  return product?.sku?.split("-")[0]?.trim().toUpperCase() || "OTHER";
+}
+
+function categoryLabel(key: string, t: TFunction) {
+  if (key === "4LK") return t("category.4lk");
+  if (key === "BLD") return t("category.bld");
+  return key;
+}
+
+function categorySortOrder(key: string) {
+  if (key === "4LK") return 0;
+  if (key === "BLD") return 1;
+  return 99;
 }
 
 function sortDecisionRows(rows: SmartReplenishmentRow[], key: DecisionSortKey) {
