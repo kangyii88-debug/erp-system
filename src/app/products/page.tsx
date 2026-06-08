@@ -46,6 +46,93 @@ const emptyForm = {
 
 const DEFAULT_OPEN_CATEGORY = "__DEFAULT_OPEN_CATEGORY__";
 
+const pageCopy = {
+  zh: {
+    heroEyebrow: "商品管理中心",
+    heroTitle: "商品管理中心",
+    heroSubtitle: "管理 SKU、成本、利润与库存，用经营视角判断每一个商品是否值得继续投入。",
+    totalSku: "总 SKU",
+    saleableSku: "在售 SKU",
+    averageMargin: "平均利润率",
+    totalStock: "总库存",
+    stockValue: "库存价值",
+    expectedProfit: "预计总利润",
+    editingSku: "编辑 SKU",
+    newSku: "新增 SKU",
+    identityEyebrow: "基础信息",
+    identityTitle: "商品基础信息",
+    identityDescription: "定义 SKU 的核心识别信息。",
+    revenueEyebrow: "销售信息",
+    revenueTitle: "销售信息",
+    revenueDescription: "用于判断商品销售效率。",
+    costEyebrow: "成本信息",
+    costTitle: "成本信息",
+    costDescription: "所有成本都会进入利润模型。",
+    saving: "保存中...",
+    profitEyebrow: "利润分析",
+    profitTitle: "实时利润雷达",
+    unitNetProfit: "单件净利润",
+    margin: "利润率",
+    roi: "ROI",
+    salePrice: "售价",
+    netProfit: "净利润",
+    excellent: "优秀",
+    normal: "正常",
+    risk: "风险",
+    watch: "注意",
+    excellentHint: "利润结构健康，可以作为重点推广 SKU 的候选。",
+    normalHint: "利润处于可接受区间，建议继续观察广告成本和库存周转。",
+    riskHint: "利润偏低，建议复核售价、采购成本、物流和广告费用。",
+    portfolioEyebrow: "经营组合",
+    portfolioTitle: "SKU 经营组合",
+    portfolioDescription: "按系列、颜色和尺寸管理 SKU，快速识别利润状态、库存压力和价格表现。",
+    stock: "库存"
+  },
+  ko: {
+    heroEyebrow: "상품 관리 센터",
+    heroTitle: "상품 관리 센터",
+    heroSubtitle: "SKU, 원가, 이익과 재고를 관리하고 운영 관점에서 각 상품의 투자 가치를 판단합니다.",
+    totalSku: "총 SKU",
+    saleableSku: "판매 중 SKU",
+    averageMargin: "평균 이익률",
+    totalStock: "총 재고",
+    stockValue: "재고 가치",
+    expectedProfit: "예상 총이익",
+    editingSku: "SKU 수정",
+    newSku: "SKU 추가",
+    identityEyebrow: "기본 정보",
+    identityTitle: "상품 기본 정보",
+    identityDescription: "SKU의 핵심 식별 정보를 정의합니다.",
+    revenueEyebrow: "판매 정보",
+    revenueTitle: "판매 정보",
+    revenueDescription: "상품의 판매 효율을 판단하는 데 사용됩니다.",
+    costEyebrow: "원가 정보",
+    costTitle: "원가 정보",
+    costDescription: "모든 원가는 이익 모델에 반영됩니다.",
+    saving: "저장 중...",
+    profitEyebrow: "이익 분석",
+    profitTitle: "실시간 이익 레이더",
+    unitNetProfit: "개당 순이익",
+    margin: "이익률",
+    roi: "ROI",
+    salePrice: "판매가",
+    netProfit: "순이익",
+    excellent: "우수",
+    normal: "정상",
+    risk: "위험",
+    watch: "주의",
+    excellentHint: "이익 구조가 건강해 주요 프로모션 SKU 후보로 볼 수 있습니다.",
+    normalHint: "이익이 허용 범위에 있으며 광고비와 재고 회전을 계속 관찰하는 것이 좋습니다.",
+    riskHint: "이익이 낮습니다. 판매가, 매입 원가, 물류비와 광고비를 다시 확인하세요.",
+    portfolioEyebrow: "운영 포트폴리오",
+    portfolioTitle: "SKU 운영 포트폴리오",
+    portfolioDescription: "시리즈, 색상, 사이즈별로 SKU를 관리하고 이익 상태, 재고 부담과 가격 성과를 빠르게 파악합니다.",
+    stock: "재고"
+  }
+} as const;
+
+type ProductPageText = (typeof pageCopy)[keyof typeof pageCopy];
+
 export default function ProductsPage() {
   return (
     <AppShell>
@@ -55,7 +142,8 @@ export default function ProductsPage() {
 }
 
 function ProductsContent() {
-  const { t, formatCurrency, formatNumber } = useLanguage();
+  const { language, t, formatCurrency, formatNumber } = useLanguage();
+  const text = pageCopy[language];
   const [products, setProducts] = useState<ProductWithStock[]>([]);
   const [stockMetrics, setStockMetrics] = useState<Map<string, InventoryMetrics>>(new Map());
   const [form, setForm] = useState(emptyForm);
@@ -237,7 +325,7 @@ function ProductsContent() {
   const previewUnitProfit = unitProfit(profitPreviewProduct);
   const previewMargin = profitMargin(profitPreviewProduct, previewUnitProfit);
   const previewRoi = roiPercent(profitPreviewProduct, previewUnitProfit);
-  const previewGrade = profitGrade(previewMargin);
+  const previewGrade = profitGrade(previewMargin, text);
   const kpis = buildProductKpis(products, stockMetrics);
 
   return (
@@ -248,18 +336,18 @@ function ProductsContent() {
           <div>
             <div className="inline-flex items-center gap-2 rounded-full border border-[#d4c28e]/55 bg-white/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-[#8a6834]">
               <Sparkles className="h-3.5 w-3.5" />
-              Product Management Center
+              {text.heroEyebrow}
             </div>
-            <h1 className="mt-4 text-4xl font-semibold tracking-tight text-ink md:text-5xl">商品管理中心</h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted md:text-base">管理 SKU、成本、利润与库存，用经营视角判断每一个商品是否值得继续投入。</p>
+            <h1 className="mt-4 text-4xl font-semibold tracking-tight text-ink md:text-5xl">{text.heroTitle}</h1>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted md:text-base">{text.heroSubtitle}</p>
           </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:w-[680px]">
-            <KpiTile icon={Layers3} label="总 SKU" value={formatNumber(kpis.totalSku)} />
-            <KpiTile icon={PackageCheck} label="在售 SKU" value={formatNumber(kpis.saleableSku)} />
-            <KpiTile icon={TrendingUp} label="平均利润率" value={`${kpis.averageMargin.toFixed(1)}%`} tone={marginTone(kpis.averageMargin)} />
-            <KpiTile icon={Boxes} label="总库存" value={formatNumber(kpis.totalStock)} />
-            <KpiTile icon={Coins} label="库存价值" value={formatCurrency(kpis.stockValue)} />
-            <KpiTile icon={BadgeDollarSign} label="预计总利润" value={formatCurrency(kpis.expectedProfit)} tone={kpis.expectedProfit >= 0 ? "good" : "risk"} />
+            <KpiTile icon={Layers3} label={text.totalSku} value={formatNumber(kpis.totalSku)} />
+            <KpiTile icon={PackageCheck} label={text.saleableSku} value={formatNumber(kpis.saleableSku)} />
+            <KpiTile icon={TrendingUp} label={text.averageMargin} value={`${kpis.averageMargin.toFixed(1)}%`} tone={marginTone(kpis.averageMargin)} />
+            <KpiTile icon={Boxes} label={text.totalStock} value={formatNumber(kpis.totalStock)} />
+            <KpiTile icon={Coins} label={text.stockValue} value={formatCurrency(kpis.stockValue)} />
+            <KpiTile icon={BadgeDollarSign} label={text.expectedProfit} value={formatCurrency(kpis.expectedProfit)} tone={kpis.expectedProfit >= 0 ? "good" : "risk"} />
           </div>
         </div>
       </section>
@@ -268,7 +356,7 @@ function ProductsContent() {
         <section className="rounded-[26px] border border-line bg-card/95 p-5 shadow-card">
           <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted">{editingId ? "Editing SKU" : "New SKU"}</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted">{editingId ? text.editingSku : text.newSku}</p>
               <h2 className="mt-1 text-2xl font-semibold text-ink">{editingId ? t("product.update") : t("product.add")}</h2>
             </div>
             {editingId ? (
@@ -280,7 +368,7 @@ function ProductsContent() {
           </div>
 
           <div className="grid gap-4 lg:grid-cols-3">
-            <FormPanel eyebrow="Identity" title="商品基础信息" description="定义 SKU 的核心识别信息。">
+            <FormPanel eyebrow={text.identityEyebrow} title={text.identityTitle} description={text.identityDescription}>
               <Field label={t("common.productName")}>
                 <input className="premium-input" placeholder={t("common.productName")} value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} required />
               </Field>
@@ -308,7 +396,7 @@ function ProductsContent() {
               </Field>
             </FormPanel>
 
-            <FormPanel eyebrow="Revenue" title="销售信息" description="用于判断商品销售效率。">
+            <FormPanel eyebrow={text.revenueEyebrow} title={text.revenueTitle} description={text.revenueDescription}>
               <Field label={t("common.salePrice")}>
                 <input className="premium-input text-right tabular-nums" placeholder="0" type="number" min="0" value={form.sale_price} onChange={(event) => setForm({ ...form, sale_price: event.target.value })} />
               </Field>
@@ -329,7 +417,7 @@ function ProductsContent() {
               </Field>
             </FormPanel>
 
-            <FormPanel eyebrow="Cost" title="成本信息" description="所有成本都会进入利润模型。">
+            <FormPanel eyebrow={text.costEyebrow} title={text.costTitle} description={text.costDescription}>
               <Field label={t("common.purchasePrice")}>
                 <input className="premium-input text-right tabular-nums" placeholder="0" type="number" min="0" value={form.purchase_price} onChange={(event) => setForm({ ...form, purchase_price: event.target.value })} />
               </Field>
@@ -352,7 +440,7 @@ function ProductsContent() {
             <div className="flex items-end">
               <button className="inline-flex h-12 min-w-[180px] items-center justify-center gap-2 rounded-2xl bg-gradient-to-br from-[#17483f] to-[#0f342f] px-6 text-sm font-bold text-white shadow-[0_18px_34px_rgba(23,72,63,0.24)] transition hover:-translate-y-0.5 hover:shadow-[0_22px_42px_rgba(23,72,63,0.30)] disabled:opacity-70" disabled={saving}>
                 <Save className="h-4 w-4" />
-                {saving ? "Saving..." : t("common.save")}
+                {saving ? text.saving : t("common.save")}
               </button>
             </div>
           </div>
@@ -366,16 +454,17 @@ function ProductsContent() {
           roi={previewRoi}
           grade={previewGrade}
           salePrice={Number(form.sale_price || 0)}
+          text={text}
         />
       </form>
 
       <section className="space-y-4">
         <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted">Portfolio</p>
-            <h2 className="text-3xl font-semibold tracking-tight text-ink">SKU 经营组合</h2>
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted">{text.portfolioEyebrow}</p>
+            <h2 className="text-3xl font-semibold tracking-tight text-ink">{text.portfolioTitle}</h2>
           </div>
-          <p className="max-w-xl text-sm text-muted">按系列、颜色和尺寸管理 SKU，快速识别利润状态、库存压力和价格表现。</p>
+          <p className="max-w-xl text-sm text-muted">{text.portfolioDescription}</p>
         </div>
         {productGroups.map((group) => (
           <ProductCategoryGroup
@@ -386,6 +475,7 @@ function ProductsContent() {
             onToggle={() => setOpenCategoryKey(group.key === activeCategoryKey ? null : group.key)}
             onExpandProduct={(productId) => setExpandedProductId(expandedProductId === productId ? null : productId)}
             t={t}
+            text={text}
             formatCurrency={formatCurrency}
             stockMetrics={stockMetrics}
             onEdit={startEdit}
@@ -431,7 +521,8 @@ function ProfitPanel({
   margin,
   roi,
   grade,
-  salePrice
+  salePrice,
+  text
 }: {
   formatCurrency: ReturnType<typeof useLanguage>["formatCurrency"];
   unitProfitValue: number;
@@ -439,28 +530,29 @@ function ProfitPanel({
   roi: number;
   grade: ReturnType<typeof profitGrade>;
   salePrice: number;
+  text: ProductPageText;
 }) {
   return (
     <aside className="rounded-[28px] border border-[#d8d0b8] bg-[#162f2b] p-5 text-white shadow-[0_26px_70px_rgba(15,52,47,0.26)]">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#d6c28b]">Profit Intelligence</p>
-          <h2 className="mt-2 text-2xl font-semibold">实时利润雷达</h2>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#d6c28b]">{text.profitEyebrow}</p>
+          <h2 className="mt-2 text-2xl font-semibold">{text.profitTitle}</h2>
         </div>
         <span className={`rounded-full px-3 py-1 text-xs font-bold ${grade.badgeClass}`}>{grade.label}</span>
       </div>
       <div className="mt-6 rounded-3xl border border-white/10 bg-white/8 p-4">
-        <div className="text-sm text-white/60">单件净利润</div>
+        <div className="text-sm text-white/60">{text.unitNetProfit}</div>
         <div className={`mt-2 text-4xl font-semibold tabular-nums ${unitProfitValue >= 0 ? "text-white" : "text-red-200"}`}>{formatCurrency(unitProfitValue)}</div>
         <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
           <div className={`h-full rounded-full ${grade.barClass}`} style={{ width: `${Math.max(8, Math.min(100, margin))}%` }} />
         </div>
       </div>
       <div className="mt-4 grid grid-cols-2 gap-3">
-        <ProfitMetric label="利润率" value={`${margin.toFixed(1)}%`} />
+        <ProfitMetric label={text.margin} value={`${margin.toFixed(1)}%`} />
         <ProfitMetric label="ROI" value={`${roi.toFixed(1)}%`} />
-        <ProfitMetric label="售价" value={formatCurrency(salePrice)} />
-        <ProfitMetric label="净利润" value={formatCurrency(unitProfitValue)} />
+        <ProfitMetric label={text.salePrice} value={formatCurrency(salePrice)} />
+        <ProfitMetric label={text.netProfit} value={formatCurrency(unitProfitValue)} />
       </div>
       <div className="mt-4 rounded-2xl border border-white/10 bg-white/8 px-4 py-3 text-sm leading-6 text-white/70">
         {grade.hint}
@@ -485,6 +577,7 @@ function ProductCategoryGroup({
   onToggle,
   onExpandProduct,
   t,
+  text,
   formatCurrency,
   stockMetrics,
   onEdit,
@@ -496,6 +589,7 @@ function ProductCategoryGroup({
   onToggle: () => void;
   onExpandProduct: (productId: string) => void;
   t: ReturnType<typeof useLanguage>["t"];
+  text: ProductPageText;
   formatCurrency: ReturnType<typeof useLanguage>["formatCurrency"];
   stockMetrics: Map<string, InventoryMetrics>;
   onEdit: (product: ProductWithStock) => void;
@@ -525,7 +619,7 @@ function ProductCategoryGroup({
         </div>
         <div className="flex flex-wrap gap-2">
           <span className="erp-chip px-3 py-1.5 text-xs font-semibold">{skuCount} SKU</span>
-          <span className="erp-chip px-3 py-1.5 text-xs font-semibold">库存 {totalStock.toLocaleString()}</span>
+          <span className="erp-chip px-3 py-1.5 text-xs font-semibold">{text.stock} {totalStock.toLocaleString()}</span>
         </div>
       </button>
 
@@ -538,6 +632,7 @@ function ProductCategoryGroup({
               expandedProductId={expandedProductId}
               onExpandProduct={onExpandProduct}
               t={t}
+              text={text}
               formatCurrency={formatCurrency}
               stockMetrics={stockMetrics}
               onEdit={onEdit}
@@ -555,6 +650,7 @@ function ProductColorGroup({
   expandedProductId,
   onExpandProduct,
   t,
+  text,
   formatCurrency,
   stockMetrics,
   onEdit,
@@ -564,6 +660,7 @@ function ProductColorGroup({
   expandedProductId: string | null;
   onExpandProduct: (productId: string) => void;
   t: ReturnType<typeof useLanguage>["t"];
+  text: ProductPageText;
   formatCurrency: ReturnType<typeof useLanguage>["formatCurrency"];
   stockMetrics: Map<string, InventoryMetrics>;
   onEdit: (product: ProductWithStock) => void;
@@ -586,6 +683,7 @@ function ProductColorGroup({
             expanded={expandedProductId === product.id}
             onExpand={() => onExpandProduct(product.id)}
             t={t}
+            text={text}
             formatCurrency={formatCurrency}
             stock={getComputedCurrentStock(product, stockMetrics)}
             onEdit={onEdit}
@@ -602,6 +700,7 @@ function ProductSkuCard({
   expanded,
   onExpand,
   t,
+  text,
   formatCurrency,
   stock,
   onEdit,
@@ -611,13 +710,14 @@ function ProductSkuCard({
   expanded: boolean;
   onExpand: () => void;
   t: ReturnType<typeof useLanguage>["t"];
+  text: ProductPageText;
   formatCurrency: ReturnType<typeof useLanguage>["formatCurrency"];
   stock: number;
   onEdit: (product: ProductWithStock) => void;
   onDelete: (product: ProductWithStock) => void;
 }) {
   const margin = profitMargin(product, unitProfit(product));
-  const status = skuStatus(stock, margin);
+  const status = skuStatus(stock, margin, text);
 
   return (
     <article
@@ -763,35 +863,35 @@ function buildProductKpis(products: ProductWithStock[], stockMetrics: Map<string
   };
 }
 
-function profitGrade(margin: number) {
+function profitGrade(margin: number, text: ProductPageText) {
   if (margin >= 35) {
     return {
-      label: "优秀",
-      hint: "利润结构健康，可以作为重点推广 SKU 的候选。",
+      label: text.excellent,
+      hint: text.excellentHint,
       badgeClass: "bg-emerald-100 text-emerald-800",
       barClass: "bg-emerald-400"
     };
   }
   if (margin >= 20) {
     return {
-      label: "正常",
-      hint: "利润处于可接受区间，建议继续观察广告成本和库存周转。",
+      label: text.normal,
+      hint: text.normalHint,
       badgeClass: "bg-yellow-100 text-yellow-900",
       barClass: "bg-yellow-400"
     };
   }
   return {
-    label: "风险",
-    hint: "利润偏低，建议复核售价、采购成本、物流和广告费用。",
+    label: text.risk,
+    hint: text.riskHint,
     badgeClass: "bg-red-100 text-red-800",
     barClass: "bg-red-400"
   };
 }
 
-function skuStatus(stock: number, margin: number) {
-  if (margin < 20 || stock < 0) return { label: "风险", className: "bg-red-50 text-red-700 border border-red-200" };
-  if (stock <= 10 || margin < 35) return { label: "注意", className: "bg-yellow-50 text-yellow-800 border border-yellow-200" };
-  return { label: "正常", className: "bg-emerald-50 text-emerald-700 border border-emerald-200" };
+function skuStatus(stock: number, margin: number, text: ProductPageText) {
+  if (margin < 20 || stock < 0) return { label: text.risk, className: "bg-red-50 text-red-700 border border-red-200" };
+  if (stock <= 10 || margin < 35) return { label: text.watch, className: "bg-yellow-50 text-yellow-800 border border-yellow-200" };
+  return { label: text.normal, className: "bg-emerald-50 text-emerald-700 border border-emerald-200" };
 }
 
 function marginTone(margin: number): "good" | "watch" | "risk" {
