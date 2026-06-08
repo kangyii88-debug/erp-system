@@ -42,6 +42,7 @@ import { useLanguage } from "@/components/LanguageProvider";
 import { supabase } from "@/lib/supabase";
 import { money, totalProfit } from "@/lib/profit";
 import { activeProducts } from "@/lib/products";
+import { buildInventoryMetricsByProduct } from "@/lib/stock";
 import {
   buildReplenishmentRows,
   REPLENISHMENT_CYCLE_DAYS,
@@ -158,40 +159,41 @@ function DashboardContent() {
 
     const [
       { data: products },
-      { data: sales90 },
-      { data: sales30 },
-      { data: salesYear },
-      { data: salesPreviousYear },
-      { data: allSales },
       { data: purchases },
       { data: movementRows }
     ] = await Promise.all([
       supabase.from("products").select("*, inventory_balances(current_stock)").order("created_at", { ascending: false }),
-      supabase.from("sales_daily").select("*").gte("sale_date", salesStart).lte("sale_date", salesEnd),
-      supabase.from("sales_daily").select("*").gte("sale_date", replenishStart).lte("sale_date", salesEnd),
-      supabase.from("sales_daily").select("*").gte("sale_date", yearStart).lte("sale_date", yearEnd),
-      supabase.from("sales_daily").select("*").gte("sale_date", previousYearStart).lte("sale_date", previousYearEnd),
-      supabase.from("sales_daily").select("*"),
       supabase.from("purchase_orders").select("*, products(name, sku)"),
       supabase.from("stock_movements").select("product_id, type, quantity, happened_at, memo")
     ]);
 
     const visibleProducts = activeProducts((products ?? []) as ProductWithStock[]);
     const visibleProductIds = new Set(visibleProducts.map((product) => product.id));
-    const filterActiveSales = (rows: SaleDaily[] = []) => rows.filter((sale) => visibleProductIds.has(sale.product_id));
     const visibleMovements = ((movementRows ?? []) as MovementRow[]).filter((movement) => visibleProductIds.has(movement.product_id));
+    const metricsByProduct = buildInventoryMetricsByProduct(visibleMovements);
+    const movementSales = visibleMovements
+      .filter((movement) => movement.type === "sale" || movement.type === "outbound")
+      .map((movement) => ({
+        product_id: movement.product_id,
+        sale_date: toDateKey(new Date(movement.happened_at)),
+        quantity: Math.max(0, Number(movement.quantity ?? 0))
+      }))
+      .filter((sale) => sale.quantity > 0);
+    const filterSalesByDate = (rows: SaleDaily[], start: string, end: string) => rows.filter((sale) => isBetween(sale.sale_date, start, end));
 
     setRows(
       buildReplenishmentRows(
         visibleProducts,
-        filterActiveSales((sales30 ?? []) as SaleDaily[]),
-        (purchases ?? []) as PurchaseOrder[]
+        filterSalesByDate(movementSales, replenishStart, salesEnd),
+        (purchases ?? []) as PurchaseOrder[],
+        undefined,
+        metricsByProduct
       )
     );
-    setSalesRows(filterActiveSales((sales90 ?? []) as SaleDaily[]));
-    setSalesYearRows(filterActiveSales((salesYear ?? []) as SaleDaily[]));
-    setSalesPreviousYearRows(filterActiveSales((salesPreviousYear ?? []) as SaleDaily[]));
-    setSalesAllRows(filterActiveSales((allSales ?? []) as SaleDaily[]));
+    setSalesRows(filterSalesByDate(movementSales, salesStart, salesEnd));
+    setSalesYearRows(filterSalesByDate(movementSales, yearStart, yearEnd));
+    setSalesPreviousYearRows(filterSalesByDate(movementSales, previousYearStart, previousYearEnd));
+    setSalesAllRows(movementSales);
     setMovements(visibleMovements);
     setLoading(false);
   }

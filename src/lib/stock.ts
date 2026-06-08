@@ -49,9 +49,8 @@ export function calculateInventoryMetrics(movements: InventoryMovementLike[] = [
     if (type === "adjustment") metrics.inventoryAdjustment += rawQuantity;
   }
 
-  metrics.effectiveSales = Math.max(0, metrics.salesRawTotal - metrics.lossDefectMissing);
-  metrics.availableInventory =
-    metrics.purchaseInbound - metrics.effectiveSales - metrics.lossDefectMissing + metrics.inventoryAdjustment;
+  metrics.effectiveSales = metrics.salesRawTotal;
+  metrics.availableInventory = metrics.purchaseInbound - metrics.salesRawTotal - metrics.lossDefectMissing + metrics.inventoryAdjustment;
 
   return metrics;
 }

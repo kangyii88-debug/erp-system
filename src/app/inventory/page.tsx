@@ -18,7 +18,7 @@ import { ProductSelect } from "@/components/ProductSelect";
 import { useLanguage } from "@/components/LanguageProvider";
 import { activeProducts } from "@/lib/products";
 import { supabase } from "@/lib/supabase";
-import { getCurrentStock } from "@/lib/stock";
+import { buildInventoryMetricsByProduct, getComputedCurrentStock, getCurrentStock, type InventoryMetrics } from "@/lib/stock";
 import type { Language, ProductWithStock, StockMovement } from "@/lib/types";
 
 type InventoryActionType = "purchase" | "sale" | "return_resell" | "damaged" | "lost" | "adjustment";
@@ -423,8 +423,9 @@ function InventoryContent() {
     await load();
   }
 
-  const movementRows = useMemo(() => attachAfterStock(movements, products), [movements, products]);
-  const metrics = useMemo(() => calculateMetrics(products, movements), [products, movements]);
+  const metricsByProduct = useMemo(() => buildInventoryMetricsByProduct(movements), [movements]);
+  const movementRows = useMemo(() => attachAfterStock(movements, products, metricsByProduct), [movements, products, metricsByProduct]);
+  const metrics = useMemo(() => calculateMetrics(products, movements, metricsByProduct), [products, movements, metricsByProduct]);
   const inventoryGroups = useMemo(() => groupProductsByColor(products, ui), [products, ui]);
   const filteredRows = useMemo(() => applyFilters(movementRows, filters), [movementRows, filters]);
   const pageCount = Math.max(1, Math.ceil(filteredRows.length / PAGE_SIZE));
@@ -509,7 +510,7 @@ function InventoryContent() {
         <SectionTitle eyebrow={ui.currentEyebrow} title={ui.currentTitle} description={ui.currentDescription} />
         <div className="mt-4 space-y-5">
           {loading ? <InventorySkeleton /> : null}
-          {!loading && inventoryGroups.map((group) => <ColorStockGroup key={group.key} group={group} ui={ui} />)}
+          {!loading && inventoryGroups.map((group) => <ColorStockGroup key={group.key} group={group} ui={ui} metricsByProduct={metricsByProduct} />)}
           {!loading && inventoryGroups.length === 0 ? <EmptyState title={ui.empty} description={ui.emptyStock} /> : null}
         </div>
       </section>
@@ -773,8 +774,16 @@ function SectionTitle({ eyebrow, title, description }: { eyebrow: string; title:
   );
 }
 
-function ColorStockGroup({ group, ui }: { group: ReturnType<typeof groupProductsByColor>[number]; ui: (typeof copy)[Language] }) {
-  const total = group.products.reduce((sum, product) => sum + getCurrentStock(product), 0);
+function ColorStockGroup({
+  group,
+  ui,
+  metricsByProduct
+}: {
+  group: ReturnType<typeof groupProductsByColor>[number];
+  ui: (typeof copy)[Language];
+  metricsByProduct: Map<string, InventoryMetrics>;
+}) {
+  const total = group.products.reduce((sum, product) => sum + getComputedCurrentStock(product, metricsByProduct), 0);
 
   return (
     <div className="erp-card p-4">
@@ -794,15 +803,23 @@ function ColorStockGroup({ group, ui }: { group: ReturnType<typeof groupProducts
       </div>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5">
         {group.products.map((product) => (
-          <StockProductCard key={product.id} product={product} ui={ui} />
+          <StockProductCard key={product.id} product={product} ui={ui} metricsByProduct={metricsByProduct} />
         ))}
       </div>
     </div>
   );
 }
 
-function StockProductCard({ product, ui }: { product: ProductWithStock; ui: (typeof copy)[Language] }) {
-  const stock = getCurrentStock(product);
+function StockProductCard({
+  product,
+  ui,
+  metricsByProduct
+}: {
+  product: ProductWithStock;
+  ui: (typeof copy)[Language];
+  metricsByProduct: Map<string, InventoryMetrics>;
+}) {
+  const stock = getComputedCurrentStock(product, metricsByProduct);
   const status = stock < 10 ? ui.risk : stock <= 20 ? ui.watch : ui.normal;
   const statusClass =
     stock < 0
@@ -985,7 +1002,7 @@ function SkeletonRow() {
   );
 }
 
-function calculateMetrics(products: ProductWithStock[], movements: StockMovement[]) {
+function calculateMetrics(products: ProductWithStock[], movements: StockMovement[], metricsByProduct: Map<string, InventoryMetrics>) {
   const inbound = movements.filter((movement) => actionTypeOf(movement) === "purchase").reduce((sum, movement) => sum + safeQuantity(movement.quantity), 0);
   const salesOut = movements.filter((movement) => actionTypeOf(movement) === "sale").reduce((sum, movement) => sum + safeQuantity(movement.quantity), 0);
   const returnInbound = movements.filter((movement) => actionTypeOf(movement) === "return_resell").reduce((sum, movement) => sum + safeQuantity(movement.quantity), 0);
@@ -993,9 +1010,9 @@ function calculateMetrics(products: ProductWithStock[], movements: StockMovement
   const adjustment = movements.filter((movement) => movement.type === "adjustment").reduce((sum, movement) => sum + safeQuantity(movement.quantity), 0);
 
   return {
-    saleable: products.reduce((sum, product) => sum + getCurrentStock(product), 0),
-    inventoryValue: products.reduce((sum, product) => sum + getCurrentStock(product) * safeMoney(product.purchase_price), 0),
-    riskSkuCount: products.filter((product) => getCurrentStock(product) < 10).length,
+    saleable: products.reduce((sum, product) => sum + getComputedCurrentStock(product, metricsByProduct), 0),
+    inventoryValue: products.reduce((sum, product) => sum + getComputedCurrentStock(product, metricsByProduct) * safeMoney(product.purchase_price), 0),
+    riskSkuCount: products.filter((product) => getComputedCurrentStock(product, metricsByProduct) < 10).length,
     skuTotal: products.length,
     inbound,
     salesOut,
@@ -1006,8 +1023,8 @@ function calculateMetrics(products: ProductWithStock[], movements: StockMovement
   };
 }
 
-function attachAfterStock(movements: StockMovement[], products: ProductWithStock[]) {
-  const rolling = new Map(products.map((product) => [product.id, getCurrentStock(product)]));
+function attachAfterStock(movements: StockMovement[], products: ProductWithStock[], metricsByProduct: Map<string, InventoryMetrics>) {
+  const rolling = new Map(products.map((product) => [product.id, getComputedCurrentStock(product, metricsByProduct)]));
 
   return [...movements]
     .sort((a, b) => new Date(b.happened_at).getTime() - new Date(a.happened_at).getTime())
