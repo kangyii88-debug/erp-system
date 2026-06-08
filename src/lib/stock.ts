@@ -74,8 +74,8 @@ export function buildInventoryMetricsByProduct(movements: InventoryMovementLike[
 }
 
 export function getComputedCurrentStock(product: ProductWithStock, metricsByProduct?: Map<string, InventoryMetrics>) {
-  const metrics = metricsByProduct?.get(product.id);
-  return metrics ? metrics.availableInventory : getCurrentStock(product);
+  if (metricsByProduct) return metricsByProduct.get(product.id)?.availableInventory ?? 0;
+  return getCurrentStock(product);
 }
 
 export function applyLossAdjustmentToSales(sales: SaleDaily[], movements: InventoryMovementLike[] = []) {
