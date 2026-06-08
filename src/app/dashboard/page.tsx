@@ -41,6 +41,7 @@ import { Table, Td, Th } from "@/components/Table";
 import { useLanguage } from "@/components/LanguageProvider";
 import { supabase } from "@/lib/supabase";
 import { money, totalProfit } from "@/lib/profit";
+import { activeProducts } from "@/lib/products";
 import {
   buildReplenishmentRows,
   REPLENISHMENT_CYCLE_DAYS,
@@ -175,18 +176,23 @@ function DashboardContent() {
       supabase.from("stock_movements").select("product_id, type, quantity, happened_at, memo")
     ]);
 
+    const visibleProducts = activeProducts((products ?? []) as ProductWithStock[]);
+    const visibleProductIds = new Set(visibleProducts.map((product) => product.id));
+    const filterActiveSales = (rows: SaleDaily[] = []) => rows.filter((sale) => visibleProductIds.has(sale.product_id));
+    const visibleMovements = ((movementRows ?? []) as MovementRow[]).filter((movement) => visibleProductIds.has(movement.product_id));
+
     setRows(
       buildReplenishmentRows(
-        (products ?? []) as ProductWithStock[],
-        (sales30 ?? []) as SaleDaily[],
+        visibleProducts,
+        filterActiveSales((sales30 ?? []) as SaleDaily[]),
         (purchases ?? []) as PurchaseOrder[]
       )
     );
-    setSalesRows((sales90 ?? []) as SaleDaily[]);
-    setSalesYearRows((salesYear ?? []) as SaleDaily[]);
-    setSalesPreviousYearRows((salesPreviousYear ?? []) as SaleDaily[]);
-    setSalesAllRows((allSales ?? []) as SaleDaily[]);
-    setMovements((movementRows ?? []) as MovementRow[]);
+    setSalesRows(filterActiveSales((sales90 ?? []) as SaleDaily[]));
+    setSalesYearRows(filterActiveSales((salesYear ?? []) as SaleDaily[]));
+    setSalesPreviousYearRows(filterActiveSales((salesPreviousYear ?? []) as SaleDaily[]));
+    setSalesAllRows(filterActiveSales((allSales ?? []) as SaleDaily[]));
+    setMovements(visibleMovements);
     setLoading(false);
   }
 
