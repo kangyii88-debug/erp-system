@@ -102,6 +102,22 @@ create table if not exists coupang_inbound_records (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists expense_records (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  expense_date date not null,
+  category text not null,
+  expense_name text not null,
+  amount numeric(12, 2) not null default 0 check (amount >= 0),
+  vendor text,
+  payment_method text,
+  owner text,
+  remark text,
+  attachment_url text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 create or replace function set_updated_at()
 returns trigger language plpgsql as $$
 begin
@@ -117,6 +133,9 @@ create trigger purchase_orders_updated_at before update on purchase_orders
 for each row execute function set_updated_at();
 
 create trigger coupang_inbound_records_updated_at before update on coupang_inbound_records
+for each row execute function set_updated_at();
+
+create trigger expense_records_updated_at before update on expense_records
 for each row execute function set_updated_at();
 
 create or replace function ensure_inventory_balance()
@@ -171,6 +190,7 @@ alter table suppliers enable row level security;
 alter table purchase_orders enable row level security;
 alter table sales_daily enable row level security;
 alter table coupang_inbound_records enable row level security;
+alter table expense_records enable row level security;
 
 create policy "products owner access" on products
 for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
@@ -195,4 +215,7 @@ create policy "sales owner access" on sales_daily
 for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 create policy "coupang inbound owner access" on coupang_inbound_records
+for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+create policy "expenses owner access" on expense_records
 for all using (auth.uid() = user_id) with check (auth.uid() = user_id);

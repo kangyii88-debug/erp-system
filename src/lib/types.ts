@@ -86,3 +86,19 @@ export type CoupangInboundRecord = {
   updated_at?: string | null;
   products?: Pick<Product, "name" | "sku" | "color" | "size"> | null;
 };
+
+export type ExpenseRecord = {
+  id: string;
+  user_id: string;
+  expense_date: string;
+  category: string;
+  expense_name: string;
+  amount: number;
+  vendor: string | null;
+  payment_method: string | null;
+  owner: string | null;
+  remark: string | null;
+  attachment_url: string | null;
+  created_at: string;
+  updated_at?: string | null;
+};

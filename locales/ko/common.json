@@ -152,6 +152,7 @@
   "nav.logout": "로그아웃",
   "nav.products": "상품 관리",
   "nav.purchases": "구매 관리",
+  "nav.expenses": "재무 지출 보고서",
   "nav.coupangInbound": "Coupang 입고 기록",
   "nav.sales": "판매 관리",
   "period.30d": "최근 30일",

@@ -152,6 +152,7 @@
   "nav.logout": "退出",
   "nav.products": "商品管理",
   "nav.purchases": "采购管理",
+  "nav.expenses": "财务支出报表",
   "nav.coupangInbound": "Coupang 入仓记录",
   "nav.sales": "销售管理",
   "period.30d": "近 30 天",
