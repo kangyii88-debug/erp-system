@@ -5,6 +5,8 @@ import {
   AlertTriangle,
   ArrowDownCircle,
   Boxes,
+  ChevronDown,
+  ChevronRight,
   ClipboardList,
   DollarSign,
   Layers,
@@ -39,6 +41,7 @@ type MovementRow = StockMovement & {
 
 const PAGE_SIZE = 12;
 const COLOR_ORDER = ["WH", "BL", "GR", "BE", "OTHER"] as const;
+const DEFAULT_OPEN_CATEGORY = "__DEFAULT_OPEN_CATEGORY__";
 const LOSS_BAD_PREFIXES = ["损耗/不良", "손상/불량", "损耗", "불량"];
 const MISSING_PREFIXES = ["丢失", "분실"];
 const RETURN_PREFIXES = ["退货入库在售", "반품 입고 판매"];
@@ -231,6 +234,7 @@ function InventoryContent() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [highlightId, setHighlightId] = useState<string | null>(null);
+  const [openCategoryKey, setOpenCategoryKey] = useState<string | null>(DEFAULT_OPEN_CATEGORY);
 
   useEffect(() => {
     load();
@@ -466,6 +470,12 @@ function InventoryContent() {
   const movementRows = useMemo(() => attachAfterStock(movements, products, metricsByProduct), [movements, products, metricsByProduct]);
   const metrics = useMemo(() => calculateMetrics(products, movements, metricsByProduct), [products, movements, metricsByProduct]);
   const inventoryGroups = useMemo(() => groupProductsByCategory(products, ui), [products, ui]);
+  const activeCategoryKey =
+    openCategoryKey === DEFAULT_OPEN_CATEGORY
+      ? inventoryGroups[0]?.key ?? null
+      : openCategoryKey && inventoryGroups.some((group) => group.key === openCategoryKey)
+        ? openCategoryKey
+        : null;
   const filteredRows = useMemo(() => applyFilters(movementRows, filters), [movementRows, filters]);
   const pageCount = Math.max(1, Math.ceil(filteredRows.length / PAGE_SIZE));
   const currentPage = Math.min(page, pageCount);
@@ -549,7 +559,17 @@ function InventoryContent() {
         <SectionTitle eyebrow={ui.currentEyebrow} title={ui.currentTitle} description={ui.currentDescription} />
         <div className="mt-4 space-y-5">
           {loading ? <InventorySkeleton /> : null}
-          {!loading && inventoryGroups.map((group) => <CategoryStockGroup key={group.key} group={group} ui={ui} metricsByProduct={metricsByProduct} onSaveActualStock={saveActualStock} />)}
+          {!loading && inventoryGroups.map((group) => (
+            <CategoryStockGroup
+              key={group.key}
+              group={group}
+              ui={ui}
+              metricsByProduct={metricsByProduct}
+              expanded={group.key === activeCategoryKey}
+              onToggle={() => setOpenCategoryKey(group.key === activeCategoryKey ? null : group.key)}
+              onSaveActualStock={saveActualStock}
+            />
+          ))}
           {!loading && inventoryGroups.length === 0 ? <EmptyState title={ui.empty} description={ui.emptyStock} /> : null}
         </div>
       </section>
@@ -817,11 +837,15 @@ function CategoryStockGroup({
   group,
   ui,
   metricsByProduct,
+  expanded,
+  onToggle,
   onSaveActualStock
 }: {
   group: ReturnType<typeof groupProductsByCategory>[number];
   ui: (typeof copy)[Language];
   metricsByProduct: Map<string, InventoryMetrics>;
+  expanded: boolean;
+  onToggle: () => void;
   onSaveActualStock: (product: ProductWithStock, currentStockValue: number, actualStockValue: number) => Promise<string | null>;
 }) {
   const total = group.colorGroups.reduce(
@@ -831,11 +855,20 @@ function CategoryStockGroup({
   const skuCount = group.colorGroups.reduce((sum, colorGroup) => sum + colorGroup.products.length, 0);
 
   return (
-    <div className="rounded-3xl border border-line bg-card/90 p-4 shadow-card">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-line pb-4">
-        <div>
-          <div className="text-xs font-semibold uppercase tracking-[0.2em] text-muted">{ui.category}</div>
-          <h3 className="mt-1 text-2xl font-semibold text-ink">{group.label}</h3>
+    <div className={`rounded-3xl border border-line bg-card/90 shadow-card transition ${expanded ? "p-4" : "p-0"}`}>
+      <button
+        className={`flex w-full flex-wrap items-center justify-between gap-3 text-left transition hover:bg-[#f7f4ec] ${expanded ? "rounded-2xl border-b border-line pb-4" : "rounded-3xl p-4"}`}
+        type="button"
+        onClick={onToggle}
+      >
+        <div className="flex items-center gap-3">
+          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-panel text-brand">
+            {expanded ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
+          </span>
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-[0.2em] text-muted">{ui.category}</div>
+            <h3 className="mt-1 text-2xl font-semibold text-ink">{group.label}</h3>
+          </div>
         </div>
         <div className="flex gap-2 text-xs font-semibold text-muted">
           <span className="erp-chip px-3 py-1.5">
@@ -845,12 +878,14 @@ function CategoryStockGroup({
             {ui.skuCount} {skuCount}
           </span>
         </div>
-      </div>
-      <div className="space-y-4">
-        {group.colorGroups.map((colorGroup) => (
-          <ColorStockGroup key={`${group.key}-${colorGroup.key}`} group={colorGroup} ui={ui} metricsByProduct={metricsByProduct} onSaveActualStock={onSaveActualStock} />
-        ))}
-      </div>
+      </button>
+      {expanded ? (
+        <div className="mt-4 space-y-4">
+          {group.colorGroups.map((colorGroup) => (
+            <ColorStockGroup key={`${group.key}-${colorGroup.key}`} group={colorGroup} ui={ui} metricsByProduct={metricsByProduct} onSaveActualStock={onSaveActualStock} />
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }
