@@ -102,3 +102,28 @@ export type ExpenseRecord = {
   created_at: string;
   updated_at?: string | null;
 };
+
+export type CoupangSettlement = {
+  id: string;
+  user_id: string;
+  settlement_month: string;
+  sales_amount: number;
+  cancel_amount: number;
+  actual_sales_amount: number;
+  sales_fee: number;
+  seller_coupon: number;
+  milk_run_fee: number;
+  ad_fee: number;
+  settlement_deduction: number;
+  fulfillment_fee: number;
+  inventory_loss_compensation: number;
+  final_payment_amount: number;
+  cancel_rate: number;
+  fee_rate: number;
+  ad_rate: number;
+  payment_rate: number;
+  remark: string | null;
+  attachment_url: string | null;
+  created_at: string;
+  updated_at?: string | null;
+};

@@ -118,6 +118,32 @@ create table if not exists expense_records (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists coupang_settlements (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  settlement_month date not null,
+  sales_amount numeric(14, 2) not null default 0,
+  cancel_amount numeric(14, 2) not null default 0,
+  actual_sales_amount numeric(14, 2) not null default 0,
+  sales_fee numeric(14, 2) not null default 0,
+  seller_coupon numeric(14, 2) not null default 0,
+  milk_run_fee numeric(14, 2) not null default 0,
+  ad_fee numeric(14, 2) not null default 0,
+  settlement_deduction numeric(14, 2) not null default 0,
+  fulfillment_fee numeric(14, 2) not null default 0,
+  inventory_loss_compensation numeric(14, 2) not null default 0,
+  final_payment_amount numeric(14, 2) not null default 0,
+  cancel_rate numeric(8, 4) not null default 0,
+  fee_rate numeric(8, 4) not null default 0,
+  ad_rate numeric(8, 4) not null default 0,
+  payment_rate numeric(8, 4) not null default 0,
+  remark text,
+  attachment_url text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (user_id, settlement_month)
+);
+
 create or replace function set_updated_at()
 returns trigger language plpgsql as $$
 begin
@@ -136,6 +162,9 @@ create trigger coupang_inbound_records_updated_at before update on coupang_inbou
 for each row execute function set_updated_at();
 
 create trigger expense_records_updated_at before update on expense_records
+for each row execute function set_updated_at();
+
+create trigger coupang_settlements_updated_at before update on coupang_settlements
 for each row execute function set_updated_at();
 
 create or replace function ensure_inventory_balance()
@@ -191,6 +220,7 @@ alter table purchase_orders enable row level security;
 alter table sales_daily enable row level security;
 alter table coupang_inbound_records enable row level security;
 alter table expense_records enable row level security;
+alter table coupang_settlements enable row level security;
 
 create policy "products owner access" on products
 for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
@@ -218,4 +248,7 @@ create policy "coupang inbound owner access" on coupang_inbound_records
 for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 create policy "expenses owner access" on expense_records
+for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+create policy "coupang settlements owner access" on coupang_settlements
 for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
