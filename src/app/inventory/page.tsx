@@ -1365,6 +1365,8 @@ function categoryKey(product: ProductWithStock) {
 }
 
 function categoryLabel(key: string) {
+  if (key === "4LK") return "百褶帘系列";
+  if (key === "BLD") return "蜂巢帘系列";
   return key === "OTHER" ? "OTHER" : key;
 }
 

@@ -82,7 +82,13 @@ function categoryKey(product: ProductWithStock) {
 
 function categoryColorGroupLabel(key: string, t: ReturnType<typeof useLanguage>["t"]) {
   const [category, color] = key.split("-");
-  return `${category || "OTHER"} / ${colorGroupLabel(color || "OTHER", t)}`;
+  return `${categoryLabel(category || "OTHER")} / ${colorGroupLabel(color || "OTHER", t)}`;
+}
+
+function categoryLabel(key: string) {
+  if (key === "4LK") return "百褶帘系列";
+  if (key === "BLD") return "蜂巢帘系列";
+  return key === "OTHER" ? "OTHER" : key;
 }
 
 function colorGroupLabel(key: string, t: ReturnType<typeof useLanguage>["t"]) {
