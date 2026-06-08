@@ -1414,12 +1414,7 @@ function ReplenishmentActionCenter({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [openCategoryKey, setOpenCategoryKey] = useState<string | null>("FIRST");
   const groupedRows = groupDecisionRowsByCategory(visibleRows, t);
-  const activeCategoryKey =
-    openCategoryKey === "FIRST"
-      ? groupedRows[0]?.key ?? null
-      : openCategoryKey && groupedRows.some((group) => group.key === openCategoryKey)
-        ? openCategoryKey
-        : groupedRows[0]?.key ?? null;
+  const activeCategoryKey = resolveDecisionCategoryKey(openCategoryKey, groupedRows);
 
   const selectedRows = visibleRows.filter((row) => selectedIds.has(row.product.id));
   const tabs: Array<{ key: ActionTab; label: string; count: number }> = [
@@ -1582,12 +1577,7 @@ function StockRiskRanking({
   const immediate = within3;
   const [openCategoryKey, setOpenCategoryKey] = useState<string | null>("FIRST");
   const groupedRows = groupDecisionRowsByCategory(visibleRows, t);
-  const activeCategoryKey =
-    openCategoryKey === "FIRST"
-      ? groupedRows[0]?.key ?? null
-      : openCategoryKey && groupedRows.some((group) => group.key === openCategoryKey)
-        ? openCategoryKey
-        : groupedRows[0]?.key ?? null;
+  const activeCategoryKey = resolveDecisionCategoryKey(openCategoryKey, groupedRows);
 
   return (
     <DecisionPanel
@@ -1688,12 +1678,7 @@ function SkuLifecycleCenter({
   const slow = rows.filter((row) => row.lifecycleStatus === "slow").length;
   const [openCategoryKey, setOpenCategoryKey] = useState<string | null>("FIRST");
   const groupedRows = groupDecisionRowsByCategory(visibleRows, t);
-  const activeCategoryKey =
-    openCategoryKey === "FIRST"
-      ? groupedRows[0]?.key ?? null
-      : openCategoryKey && groupedRows.some((group) => group.key === openCategoryKey)
-        ? openCategoryKey
-        : groupedRows[0]?.key ?? null;
+  const activeCategoryKey = resolveDecisionCategoryKey(openCategoryKey, groupedRows);
 
   return (
     <DecisionPanel
@@ -2056,6 +2041,15 @@ function groupDecisionRowsByCategory<T extends { product: ProductWithStock; curr
   });
 
   return Array.from(map.values()).sort((a, b) => categorySortOrder(a.key) - categorySortOrder(b.key) || a.label.localeCompare(b.label));
+}
+
+function resolveDecisionCategoryKey<T extends { product: ProductWithStock; currentStock: number }>(
+  openKey: string | null,
+  groups: DecisionCategoryGroup<T>[]
+) {
+  if (openKey === null) return null;
+  if (openKey === "FIRST") return groups[0]?.key ?? null;
+  return groups.some((group) => group.key === openKey) ? openKey : groups[0]?.key ?? null;
 }
 
 function categoryKey(product: Pick<ProductWithStock, "sku"> | null | undefined) {
