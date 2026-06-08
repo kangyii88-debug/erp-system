@@ -110,7 +110,9 @@ const copy = {
     colorBeige: "米色",
     colorOther: "其他",
     category: "品类",
-    categoryTotal: "品类库存"
+    categoryTotal: "品类库存",
+    category4lk: "百褶帘系列",
+    categoryBld: "蜂巢帘系列"
   },
   ko: {
     pageTitle: "재고 관리",
@@ -173,7 +175,9 @@ const copy = {
     colorBeige: "베이지",
     colorOther: "기타",
     category: "품목",
-    categoryTotal: "품목 재고"
+    categoryTotal: "품목 재고",
+    category4lk: "주름 커튼 시리즈",
+    categoryBld: "허니콤 블라인드 시리즈"
   }
 } satisfies Record<Language, Record<string, string>>;
 
@@ -1328,7 +1332,7 @@ function groupProductsByCategory(products: ProductWithStock[], ui: (typeof copy)
 
   return Array.from(categoryMap.entries()).map(([key, categoryProducts]) => ({
     key,
-    label: categoryLabel(key),
+    label: categoryLabel(key, ui),
     colorGroups: groupProductsByColor(categoryProducts, ui)
   }));
 }
@@ -1364,9 +1368,9 @@ function categoryKey(product: ProductWithStock) {
   return product.sku.split("-")[0]?.trim().toUpperCase() || "OTHER";
 }
 
-function categoryLabel(key: string) {
-  if (key === "4LK") return "百褶帘系列";
-  if (key === "BLD") return "蜂巢帘系列";
+function categoryLabel(key: string, ui: (typeof copy)[Language]) {
+  if (key === "4LK") return ui.category4lk;
+  if (key === "BLD") return ui.categoryBld;
   return key === "OTHER" ? "OTHER" : key;
 }
 

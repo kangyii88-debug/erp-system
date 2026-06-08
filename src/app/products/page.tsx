@@ -445,7 +445,7 @@ function colorRank(product: ProductWithStock) {
 
 function colorLabel(key: string, products: ProductWithStock[], t: ReturnType<typeof useLanguage>["t"]) {
   const [category, color] = splitGroupKey(key);
-  return `${categoryLabel(category)} / ${products[0]?.color || colorName(color, t)}`;
+  return `${categoryLabel(category, t)} / ${products[0]?.color || colorName(color, t)}`;
 }
 
 function colorName(key: string, t: ReturnType<typeof useLanguage>["t"]) {
@@ -460,9 +460,9 @@ function categoryKey(product: ProductWithStock) {
   return product.sku.split("-")[0]?.trim().toUpperCase() || "OTHER";
 }
 
-function categoryLabel(key: string) {
-  if (key === "4LK") return "百褶帘系列";
-  if (key === "BLD") return "蜂巢帘系列";
+function categoryLabel(key: string, t: ReturnType<typeof useLanguage>["t"]) {
+  if (key === "4LK") return t("category.4lk");
+  if (key === "BLD") return t("category.bld");
   return key === "OTHER" ? "OTHER" : key;
 }
 

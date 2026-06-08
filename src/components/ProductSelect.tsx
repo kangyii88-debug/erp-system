@@ -82,12 +82,12 @@ function categoryKey(product: ProductWithStock) {
 
 function categoryColorGroupLabel(key: string, t: ReturnType<typeof useLanguage>["t"]) {
   const [category, color] = key.split("-");
-  return `${categoryLabel(category || "OTHER")} / ${colorGroupLabel(color || "OTHER", t)}`;
+  return `${categoryLabel(category || "OTHER", t)} / ${colorGroupLabel(color || "OTHER", t)}`;
 }
 
-function categoryLabel(key: string) {
-  if (key === "4LK") return "百褶帘系列";
-  if (key === "BLD") return "蜂巢帘系列";
+function categoryLabel(key: string, t: ReturnType<typeof useLanguage>["t"]) {
+  if (key === "4LK") return t("category.4lk");
+  if (key === "BLD") return t("category.bld");
   return key === "OTHER" ? "OTHER" : key;
 }
 
