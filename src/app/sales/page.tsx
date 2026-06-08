@@ -192,7 +192,7 @@ export default function SalesPage() {
 }
 
 function SalesContent() {
-  const { language, formatDate, formatNumber } = useLanguage();
+  const { language, t, formatDate, formatNumber } = useLanguage();
   const text = copy[language];
   const [products, setProducts] = useState<ProductWithStock[]>([]);
   const [stockMetrics, setStockMetrics] = useState<Map<string, InventoryMetrics>>(new Map());
@@ -257,18 +257,20 @@ function SalesContent() {
   const filteredProductGroups = useMemo(() => {
     const groups = new Map<string, ProductWithStock[]>();
     filteredProductOptions.forEach((product) => {
-      const color = localizedColor(product, language);
-      const group = groups.get(color) ?? [];
+      const groupKey = `${categoryKey(product)}-${colorKey(product)}`;
+      const group = groups.get(groupKey) ?? [];
       group.push(product);
-      groups.set(color, group);
+      groups.set(groupKey, group);
     });
 
-    return Array.from(groups.entries()).sort(([colorA, productsA], [colorB, productsB]) => {
+    return Array.from(groups.entries()).sort(([groupA, productsA], [groupB, productsB]) => {
+      const categoryDiff = categoryKey(productsA[0]).localeCompare(categoryKey(productsB[0]), undefined, { numeric: true });
+      if (categoryDiff !== 0) return categoryDiff;
       const colorDiff = colorSortIndex(productsA[0]) - colorSortIndex(productsB[0]);
       if (colorDiff !== 0) return colorDiff;
-      return colorA.localeCompare(colorB);
+      return groupA.localeCompare(groupB);
     });
-  }, [filteredProductOptions, language]);
+  }, [filteredProductOptions]);
 
   const filterOptions = useMemo(() => {
     const colors = uniqueSorted(usableProducts.map((product) => localizedColor(product, language)));
@@ -585,11 +587,11 @@ function SalesContent() {
                 onChange={(event) => setForm((current) => ({ ...current, product_id: event.target.value }))}
               >
                 <option value="">{text.noProduct}</option>
-                {filteredProductGroups.map(([color, group]) => (
-                  <optgroup key={color} label={`${color} (${group.length})`}>
+                {filteredProductGroups.map(([groupKey, group]) => (
+                  <optgroup key={groupKey} label={`${productGroupLabel(group[0], language, t)} (${group.length})`}>
                     {group.map((product) => (
                       <option key={product.id} value={product.id}>
-                        {productOptionLabel(product, language)}
+                        {productOptionLabel(product)}
                       </option>
                     ))}
                   </optgroup>
@@ -1141,12 +1143,30 @@ function quickLabel(quick: QuickFilter, text: (typeof copy)["zh"]) {
   return text.all;
 }
 
-function productOptionLabel(product: ProductWithStock, _language: "zh" | "ko") {
-  return `${normalizeSize(product.size)} | ${product.name}`;
+function productOptionLabel(product: ProductWithStock) {
+  return `${normalizeSize(product.size)} · ${product.sku} · ${product.name}`;
+}
+
+function productGroupLabel(product: ProductWithStock, language: "zh" | "ko", t: ReturnType<typeof useLanguage>["t"]) {
+  return `${categoryLabel(categoryKey(product), t)} / ${localizedColor(product, language)}`;
+}
+
+function categoryKey(product: Pick<Product, "sku"> | null | undefined) {
+  return product?.sku?.split("-")[0]?.trim().toUpperCase() || "OTHER";
+}
+
+function categoryLabel(key: string, t: ReturnType<typeof useLanguage>["t"]) {
+  if (key === "4LK") return t("category.4lk");
+  if (key === "BLD") return t("category.bld");
+  return key === "OTHER" ? "OTHER" : key;
+}
+
+function colorKey(product: Pick<Product, "sku"> | null | undefined) {
+  return product?.sku?.match(/-(WH|BL|GR|BE)$/i)?.[1]?.toUpperCase() ?? "OTHER";
 }
 
 function localizedColor(product: Pick<Product, "sku" | "color"> | null | undefined, language: "zh" | "ko") {
-  const suffix = product?.sku?.match(/-(WH|BL|GR|BE)$/i)?.[1]?.toUpperCase();
+  const suffix = colorKey(product);
   const labels = {
     zh: { WH: "白色", BL: "黑色", GR: "灰色", BE: "米色" },
     ko: { WH: "화이트", BL: "블랙", GR: "그레이", BE: "베이지" }
