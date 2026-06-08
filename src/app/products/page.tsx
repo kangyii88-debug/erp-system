@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, ReactNode, useEffect, useState } from "react";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/Card";
 import { PageHeader } from "@/components/PageHeader";
@@ -30,6 +31,8 @@ const emptyForm = {
   memo: ""
 };
 
+const DEFAULT_OPEN_CATEGORY = "__DEFAULT_OPEN_CATEGORY__";
+
 export default function ProductsPage() {
   return (
     <AppShell>
@@ -45,6 +48,7 @@ function ProductsContent() {
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
+  const [openCategoryKey, setOpenCategoryKey] = useState<string | null>(DEFAULT_OPEN_CATEGORY);
 
   useEffect(() => {
     loadProducts();
@@ -197,6 +201,12 @@ function ProductsContent() {
   }
 
   const productGroups = groupProducts(products, t);
+  const activeCategoryKey =
+    openCategoryKey === DEFAULT_OPEN_CATEGORY
+      ? productGroups[0]?.key ?? null
+      : openCategoryKey && productGroups.some((group) => group.key === openCategoryKey)
+        ? openCategoryKey
+        : null;
   const profitPreviewProduct = {
     purchase_price: Number(form.purchase_price || 0),
     sale_price: Number(form.sale_price || 0),
@@ -303,79 +313,168 @@ function ProductsContent() {
 
       <section className="space-y-5">
         {productGroups.map((group) => (
-          <div key={group.key}>
-            <div className="mb-2 flex items-center justify-between gap-3">
-              <div>
-                <div className="text-sm font-medium text-ink/55">{t("common.category")} / {t("common.color")}</div>
-                <h2 className="text-xl font-semibold text-ink">{group.label}</h2>
-              </div>
-              <div className="rounded bg-white px-3 py-1 text-sm font-medium text-ink/60">{group.products.length} SKU</div>
-            </div>
-
-            <Table>
-              <thead>
-                <tr>
-                  <Th>{t("common.sku")}</Th>
-                  <Th>{t("common.productName")}</Th>
-                  <Th>{t("common.size")}</Th>
-                  <Th>{t("common.purchasePrice")}</Th>
-                  <Th>{t("common.feeRate")}</Th>
-                  <Th>{t("common.internationalShipping")}</Th>
-                  <Th>{t("common.inboundShipping")}</Th>
-                  <Th>{t("common.adCost")}</Th>
-                  <Th>{t("common.salePrice")}</Th>
-                  <Th>{t("common.unitProfit")}</Th>
-                  <Th>{t("common.profitMargin")}</Th>
-                  <Th>{t("common.currentStock")}</Th>
-                  <Th>{t("common.platform")}</Th>
-                  <Th>{t("common.memo")}</Th>
-                  <Th>{t("common.actions")}</Th>
-                </tr>
-              </thead>
-              <tbody>
-                {group.products.map((product) => {
-                  const singleProfit = unitProfit(product);
-                  return (
-                    <tr key={product.id}>
-                      <Td>{product.sku}</Td>
-                      <Td>{product.name}</Td>
-                      <Td>{normalizedSize(product.size)}</Td>
-                      <Td>{formatCurrency(product.purchase_price)}</Td>
-                      <Td>{Number(product.platform_fee_rate ?? 11.6).toFixed(1)}%</Td>
-                      <Td>{formatCurrency(product.international_shipping_cost ?? 0)}</Td>
-                      <Td>{formatCurrency(product.coupang_inbound_shipping_cost ?? 0)}</Td>
-                      <Td>{formatCurrency(product.ad_cost ?? 0)}</Td>
-                      <Td>{formatCurrency(product.sale_price)}</Td>
-                      <Td>{formatCurrency(singleProfit)}</Td>
-                      <Td>{profitMargin(product, singleProfit).toFixed(1)}%</Td>
-                      <Td>
-                        <span className="text-base font-semibold text-ink">{getComputedCurrentStock(product, stockMetrics)}</span>
-                      </Td>
-                      <Td>{product.platform}</Td>
-                      <Td>{stripDeletedProductMemo(product.memo)}</Td>
-                      <Td>
-                        <div className="flex items-center gap-2">
-                          <button className="rounded border border-line bg-white px-3 py-1.5 text-sm font-medium" type="button" onClick={() => startEdit(product)}>
-                            {t("common.edit")}
-                          </button>
-                          <button
-                            className="rounded border border-red-200 bg-red-50 px-3 py-1.5 text-sm font-medium text-red-700 transition hover:border-red-300 hover:bg-red-100"
-                            type="button"
-                            onClick={() => deleteProduct(product)}
-                          >
-                            {t("common.delete")}
-                          </button>
-                        </div>
-                      </Td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </Table>
-          </div>
+          <ProductCategoryGroup
+            key={group.key}
+            group={group}
+            expanded={group.key === activeCategoryKey}
+            onToggle={() => setOpenCategoryKey(group.key === activeCategoryKey ? null : group.key)}
+            t={t}
+            formatCurrency={formatCurrency}
+            stockMetrics={stockMetrics}
+            onEdit={startEdit}
+            onDelete={deleteProduct}
+          />
         ))}
       </section>
     </>
+  );
+}
+
+function ProductCategoryGroup({
+  group,
+  expanded,
+  onToggle,
+  t,
+  formatCurrency,
+  stockMetrics,
+  onEdit,
+  onDelete
+}: {
+  group: ReturnType<typeof groupProducts>[number];
+  expanded: boolean;
+  onToggle: () => void;
+  t: ReturnType<typeof useLanguage>["t"];
+  formatCurrency: ReturnType<typeof useLanguage>["formatCurrency"];
+  stockMetrics: Map<string, InventoryMetrics>;
+  onEdit: (product: ProductWithStock) => void;
+  onDelete: (product: ProductWithStock) => void;
+}) {
+  const skuCount = group.colorGroups.reduce((sum, colorGroup) => sum + colorGroup.products.length, 0);
+
+  return (
+    <div className={`rounded-3xl border border-line bg-card/95 shadow-card transition ${expanded ? "p-4" : "p-0"}`}>
+      <button
+        className={`flex w-full flex-wrap items-center justify-between gap-3 text-left transition hover:bg-[#f7f4ec] ${expanded ? "rounded-2xl border-b border-line pb-4" : "rounded-3xl p-4"}`}
+        type="button"
+        onClick={onToggle}
+      >
+        <div className="flex items-center gap-3">
+          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-panel text-brand">
+            {expanded ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
+          </span>
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-[0.2em] text-ink/55">{t("common.category")}</div>
+            <h2 className="mt-1 text-2xl font-semibold text-ink">{group.label}</h2>
+          </div>
+        </div>
+        <div className="rounded bg-white px-3 py-1.5 text-sm font-medium text-ink/60">{skuCount} SKU</div>
+      </button>
+
+      {expanded ? (
+        <div className="mt-4 space-y-5">
+          {group.colorGroups.map((colorGroup) => (
+            <ProductColorGroup
+              key={`${group.key}-${colorGroup.key}`}
+              group={colorGroup}
+              t={t}
+              formatCurrency={formatCurrency}
+              stockMetrics={stockMetrics}
+              onEdit={onEdit}
+              onDelete={onDelete}
+            />
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function ProductColorGroup({
+  group,
+  t,
+  formatCurrency,
+  stockMetrics,
+  onEdit,
+  onDelete
+}: {
+  group: ReturnType<typeof groupProductsByColor>[number];
+  t: ReturnType<typeof useLanguage>["t"];
+  formatCurrency: ReturnType<typeof useLanguage>["formatCurrency"];
+  stockMetrics: Map<string, InventoryMetrics>;
+  onEdit: (product: ProductWithStock) => void;
+  onDelete: (product: ProductWithStock) => void;
+}) {
+  return (
+    <div>
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <div>
+          <div className="text-sm font-medium text-ink/55">{t("common.color")}</div>
+          <h3 className="text-lg font-semibold text-ink">{group.label}</h3>
+        </div>
+        <div className="rounded bg-white px-3 py-1 text-sm font-medium text-ink/60">{group.products.length} SKU</div>
+      </div>
+
+      <Table>
+        <thead>
+          <tr>
+            <Th>{t("common.sku")}</Th>
+            <Th>{t("common.productName")}</Th>
+            <Th>{t("common.size")}</Th>
+            <Th>{t("common.purchasePrice")}</Th>
+            <Th>{t("common.feeRate")}</Th>
+            <Th>{t("common.internationalShipping")}</Th>
+            <Th>{t("common.inboundShipping")}</Th>
+            <Th>{t("common.adCost")}</Th>
+            <Th>{t("common.salePrice")}</Th>
+            <Th>{t("common.unitProfit")}</Th>
+            <Th>{t("common.profitMargin")}</Th>
+            <Th>{t("common.currentStock")}</Th>
+            <Th>{t("common.platform")}</Th>
+            <Th>{t("common.memo")}</Th>
+            <Th>{t("common.actions")}</Th>
+          </tr>
+        </thead>
+        <tbody>
+          {group.products.map((product) => {
+            const singleProfit = unitProfit(product);
+            return (
+              <tr key={product.id}>
+                <Td>{product.sku}</Td>
+                <Td>{product.name}</Td>
+                <Td>{normalizedSize(product.size)}</Td>
+                <Td>{formatCurrency(product.purchase_price)}</Td>
+                <Td>{Number(product.platform_fee_rate ?? 11.6).toFixed(1)}%</Td>
+                <Td>{formatCurrency(product.international_shipping_cost ?? 0)}</Td>
+                <Td>{formatCurrency(product.coupang_inbound_shipping_cost ?? 0)}</Td>
+                <Td>{formatCurrency(product.ad_cost ?? 0)}</Td>
+                <Td>{formatCurrency(product.sale_price)}</Td>
+                <Td>{formatCurrency(singleProfit)}</Td>
+                <Td>{profitMargin(product, singleProfit).toFixed(1)}%</Td>
+                <Td>
+                  <span className="text-base font-semibold text-ink">{getComputedCurrentStock(product, stockMetrics)}</span>
+                </Td>
+                <Td>{product.platform}</Td>
+                <Td>{stripDeletedProductMemo(product.memo)}</Td>
+                <Td>
+                  <div className="flex items-center gap-2">
+                    <button className="rounded border border-line bg-white px-3 py-1.5 text-sm font-medium" type="button" onClick={() => onEdit(product)}>
+                      {t("common.edit")}
+                    </button>
+                    <button
+                      className="rounded border border-red-200 bg-red-50 px-3 py-1.5 text-sm font-medium text-red-700 transition hover:border-red-300 hover:bg-red-100"
+                      type="button"
+                      onClick={() => onDelete(product)}
+                    >
+                      {t("common.delete")}
+                    </button>
+                  </div>
+                </Td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </Table>
+    </div>
   );
 }
 
@@ -393,6 +492,21 @@ function groupProducts(products: ProductWithStock[], t: ReturnType<typeof useLan
   const groups = new Map<string, ProductWithStock[]>();
 
   for (const product of sortedProducts) {
+    const key = categoryKey(product);
+    groups.set(key, [...(groups.get(key) ?? []), product]);
+  }
+
+  return Array.from(groups.entries()).map(([key, groupProducts]) => ({
+    key,
+    label: categoryLabel(key, t),
+    colorGroups: groupProductsByColor(groupProducts, t)
+  }));
+}
+
+function groupProductsByColor(products: ProductWithStock[], t: ReturnType<typeof useLanguage>["t"]) {
+  const groups = new Map<string, ProductWithStock[]>();
+
+  for (const product of [...products].sort(compareProducts)) {
     const key = colorKey(product);
     groups.set(key, [...(groups.get(key) ?? []), product]);
   }
@@ -431,7 +545,7 @@ function skuSuffix(product: ProductWithStock) {
 }
 
 function colorKey(product: ProductWithStock) {
-  return `${categoryKey(product)}-${skuSuffix(product) || "OTHER"}`;
+  return skuSuffix(product) || "OTHER";
 }
 
 function colorRank(product: ProductWithStock) {
@@ -444,8 +558,7 @@ function colorRank(product: ProductWithStock) {
 }
 
 function colorLabel(key: string, products: ProductWithStock[], t: ReturnType<typeof useLanguage>["t"]) {
-  const [category, color] = splitGroupKey(key);
-  return `${categoryLabel(category, t)} / ${products[0]?.color || colorName(color, t)}`;
+  return products[0]?.color || colorName(key, t);
 }
 
 function colorName(key: string, t: ReturnType<typeof useLanguage>["t"]) {
@@ -464,11 +577,6 @@ function categoryLabel(key: string, t: ReturnType<typeof useLanguage>["t"]) {
   if (key === "4LK") return t("category.4lk");
   if (key === "BLD") return t("category.bld");
   return key === "OTHER" ? "OTHER" : key;
-}
-
-function splitGroupKey(key: string) {
-  const [category, color] = key.split("-");
-  return [category || "OTHER", color || "OTHER"] as const;
 }
 
 function isDuplicateSkuError(message: string) {
