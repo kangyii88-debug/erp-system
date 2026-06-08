@@ -121,6 +121,7 @@ create table if not exists expense_records (
 create table if not exists coupang_settlements (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
+  sales_month date,
   settlement_month date not null,
   sales_amount numeric(14, 2) not null default 0,
   cancel_amount numeric(14, 2) not null default 0,

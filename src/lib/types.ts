@@ -106,6 +106,7 @@ export type ExpenseRecord = {
 export type CoupangSettlement = {
   id: string;
   user_id: string;
+  sales_month?: string | null;
   settlement_month: string;
   sales_amount: number;
   cancel_amount: number;

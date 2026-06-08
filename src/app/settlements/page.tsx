@@ -45,6 +45,7 @@ import { supabase } from "@/lib/supabase";
 import type { CoupangSettlement, Language } from "@/lib/types";
 
 type SettlementForm = {
+  sales_month: string;
   settlement_month: string;
   sales_amount: string;
   cancel_amount: string;
@@ -124,6 +125,7 @@ function SettlementCenter() {
     const calc = calculateSettlement(form);
     const payload = {
       user_id: auth.user.id,
+      sales_month: monthToDate(form.sales_month),
       settlement_month: monthToDate(form.settlement_month),
       sales_amount: calc.salesAmount,
       cancel_amount: calc.cancelAmount,
@@ -171,6 +173,7 @@ function SettlementCenter() {
     setEditingId(record.id);
     setAttachmentFile(null);
     setForm({
+      sales_month: monthInputValue(record.sales_month ?? record.settlement_month),
       settlement_month: monthInputValue(record.settlement_month),
       sales_amount: String(record.sales_amount ?? 0),
       cancel_amount: String(record.cancel_amount ?? 0),
@@ -312,7 +315,8 @@ function SettlementCenter() {
             <table className="min-w-[1480px] w-full border-collapse text-sm">
               <thead className="sticky top-0 z-20 bg-[#f3f5ee]/95 backdrop-blur-xl">
                 <tr>
-                  <SettlementTh>{copy.month}</SettlementTh>
+                  <SettlementTh>{copy.salesMonth}</SettlementTh>
+                  <SettlementTh>{copy.settlementMonth}</SettlementTh>
                   <SettlementTh align="right">{copy.salesAmount}</SettlementTh>
                   <SettlementTh align="right">{copy.cancelAmount}</SettlementTh>
                   <SettlementTh align="right">{copy.actualSales}</SettlementTh>
@@ -331,6 +335,7 @@ function SettlementCenter() {
               <tbody>
                 {pageRecords.map((record) => (
                   <tr key={record.id} className="group transition hover:bg-[#eef3ed]/65">
+                    <SettlementTd>{monthInputValue(record.sales_month ?? record.settlement_month)}</SettlementTd>
                     <SettlementTd>{monthInputValue(record.settlement_month)}</SettlementTd>
                     <SettlementTd align="right">{formatCurrency(record.sales_amount)}</SettlementTd>
                     <SettlementTd align="right">{formatCurrency(record.cancel_amount)}</SettlementTd>
@@ -358,7 +363,7 @@ function SettlementCenter() {
                   </tr>
                 ))}
                 {!pageRecords.length ? (
-                  <tr><td colSpan={14} className="px-4 py-10 text-center text-sm font-semibold text-muted">{copy.empty}</td></tr>
+                  <tr><td colSpan={15} className="px-4 py-10 text-center text-sm font-semibold text-muted">{copy.empty}</td></tr>
                 ) : null}
               </tbody>
             </table>
@@ -444,7 +449,8 @@ function SettlementEntry({
         {editing ? <button className="rounded-xl border border-line bg-white/80 px-3 py-2 text-xs font-semibold text-muted" onClick={onCancel}>{copy.cancel}</button> : null}
       </div>
       <form onSubmit={onSubmit} className="grid gap-3 md:grid-cols-2">
-        <Field label={copy.month}><input type="month" value={form.settlement_month} onChange={(event) => onFormChange({ ...form, settlement_month: event.target.value })} required /></Field>
+        <Field label={copy.salesMonth}><input type="month" value={form.sales_month} onChange={(event) => onFormChange({ ...form, sales_month: event.target.value })} required /></Field>
+        <Field label={copy.settlementMonth}><input type="month" value={form.settlement_month} onChange={(event) => onFormChange({ ...form, settlement_month: event.target.value })} required /></Field>
         {fields.map(([key, label]) => (
           <Field key={key} label={label}>
             <input className="text-right tabular-nums" type="number" min={key === "seller_coupon" ? undefined : "0"} value={form[key]} onChange={(event) => onFormChange({ ...form, [key]: event.target.value })} />
@@ -592,6 +598,7 @@ type WaterfallRow = { label: string; value: number; color: string };
 
 function emptyForm(): SettlementForm {
   return {
+    sales_month: previousMonthKey(),
     settlement_month: currentMonthKey(),
     sales_amount: "",
     cancel_amount: "",
@@ -653,6 +660,7 @@ function calculatedRecordFromForm(form: SettlementForm): CoupangSettlement {
   return {
     id: "preview",
     user_id: "",
+    sales_month: monthToDate(form.sales_month),
     settlement_month: calc.settlementMonth,
     sales_amount: calc.salesAmount,
     cancel_amount: calc.cancelAmount,
@@ -736,7 +744,7 @@ function filterAndSort(records: CoupangSettlement[], search: string, monthFilter
   const query = search.trim().toLowerCase();
   return [...records]
     .filter((record) => monthFilter === "all" || monthInputValue(record.settlement_month) === monthFilter)
-    .filter((record) => !query || `${record.settlement_month} ${record.remark ?? ""}`.toLowerCase().includes(query))
+    .filter((record) => !query || `${record.sales_month ?? ""} ${record.settlement_month} ${record.remark ?? ""}`.toLowerCase().includes(query))
     .sort((a, b) => {
       if (sortKey === "sales") return Number(b.sales_amount) - Number(a.sales_amount);
       if (sortKey === "payment") return Number(b.final_payment_amount) - Number(a.final_payment_amount);
@@ -747,7 +755,7 @@ function filterAndSort(records: CoupangSettlement[], search: string, monthFilter
 }
 
 function exportSettlementCsv(records: CoupangSettlement[], extension: "csv" | "xls" = "csv") {
-  const headers = ["month", "sales_amount", "cancel_amount", "actual_sales_amount", "sales_fee", "seller_coupon", "ad_fee", "milk_run_fee", "inventory_loss_compensation", "final_payment_amount", "cancel_rate", "ad_rate", "payment_rate", "remark"];
+  const headers = ["sales_month", "settlement_month", "sales_amount", "cancel_amount", "actual_sales_amount", "sales_fee", "seller_coupon", "ad_fee", "milk_run_fee", "inventory_loss_compensation", "final_payment_amount", "cancel_rate", "ad_rate", "payment_rate", "remark"];
   const rows = records.map((record) => headers.map((key) => String((record as unknown as Record<string, unknown>)[key] ?? "")).join(","));
   const blob = new Blob([[headers.join(","), ...rows].join("\n")], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
@@ -792,6 +800,12 @@ function currentMonthKey() {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
 }
 
+function previousMonthKey() {
+  const date = new Date();
+  date.setMonth(date.getMonth() - 1);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
 function monthToDate(value: string) {
   return `${value || currentMonthKey()}-01`;
 }
@@ -819,6 +833,8 @@ function settlementCopy(language: Language) {
       logistics: "물류",
       addBack: "보상 반영",
       month: "정산 월",
+      salesMonth: "판매 귀속 월",
+      settlementMonth: "정산 월",
       salesAmount: "판매액",
       cancelAmount: "취소액",
       actualSales: "소계 / 실제 판매액",
@@ -847,7 +863,7 @@ function settlementCopy(language: Language) {
       waterfallTitle: "정산 워터폴",
       insights: "Business Insights",
       detailTitle: "정산 상세 내역",
-      searchPlaceholder: "정산 월 / 메모 검색",
+      searchPlaceholder: "판매 월 / 정산 월 / 메모 검색",
       allMonths: "전체 월",
       sortMonth: "월순",
       sortSales: "판매액순",
@@ -889,6 +905,8 @@ function settlementCopy(language: Language) {
     logistics: "物流项",
     addBack: "补偿加回",
     month: "结算月份",
+    salesMonth: "销售归属月份",
+    settlementMonth: "清算月份",
     salesAmount: "판매액 / 销售额",
     cancelAmount: "취소액 / 取消金额",
     actualSales: "소계 / 实际销售额",
@@ -917,7 +935,7 @@ function settlementCopy(language: Language) {
     waterfallTitle: "Settlement Waterfall / 结算漏斗图",
     insights: "经营洞察",
     detailTitle: "结算明细中心",
-    searchPlaceholder: "搜索月份 / 备注",
+    searchPlaceholder: "搜索销售月份 / 清算月份 / 备注",
     allMonths: "全部月份",
     sortMonth: "按月份排序",
     sortSales: "按销售额排序",
