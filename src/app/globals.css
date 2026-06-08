@@ -162,4 +162,19 @@ table {
     background: rgba(255, 253, 248, 0.82);
     color: var(--color-text-muted);
   }
+
+  .premium-input {
+    width: 100%;
+    border: 1px solid rgba(197, 201, 189, 0.92);
+    background:
+      linear-gradient(var(--color-card), var(--color-card)) padding-box,
+      linear-gradient(135deg, rgba(23, 72, 63, 0.28), rgba(188, 167, 122, 0.24)) border-box;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 8px 20px rgba(23, 33, 29, 0.04);
+  }
+
+  .premium-input:focus {
+    border-color: transparent;
+    transform: scale(1.01);
+    box-shadow: 0 0 0 4px rgba(23, 72, 63, 0.11), 0 14px 30px rgba(23, 33, 29, 0.08);
+  }
 }
