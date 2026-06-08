@@ -16,6 +16,7 @@ import {
 import { AppShell } from "@/components/AppShell";
 import { ProductSelect } from "@/components/ProductSelect";
 import { useLanguage } from "@/components/LanguageProvider";
+import { activeProducts } from "@/lib/products";
 import { supabase } from "@/lib/supabase";
 import { getCurrentStock } from "@/lib/stock";
 import type { Language, ProductWithStock, StockMovement } from "@/lib/types";
@@ -245,8 +246,11 @@ function InventoryContent() {
         .limit(500)
     ]);
 
-    setProducts((productRows ?? []) as ProductWithStock[]);
-    setMovements((movementRows ?? []) as StockMovement[]);
+    const visibleProducts = activeProducts((productRows ?? []) as ProductWithStock[]);
+    const visibleProductIds = new Set(visibleProducts.map((product) => product.id));
+
+    setProducts(visibleProducts);
+    setMovements(((movementRows ?? []) as StockMovement[]).filter((movement) => visibleProductIds.has(movement.product_id)));
     setMessage(productError?.message ?? movementError?.message ?? "");
     setLoading(false);
   }

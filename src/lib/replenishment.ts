@@ -1,5 +1,5 @@
 import type { ProductWithStock, PurchaseOrder, SaleDaily } from "./types";
-import { getCurrentStock } from "./stock";
+import { getComputedCurrentStock, type InventoryMetrics } from "./stock";
 
 export const REPLENISHMENT_CYCLE_DAYS = 30;
 export const SALES_ANALYSIS_DAYS = 30;
@@ -36,7 +36,8 @@ export function buildReplenishmentRows(
   products: ProductWithStock[],
   sales: SaleDaily[],
   purchases: PurchaseOrder[],
-  pendingOrdersByProduct = new Map<string, number>()
+  pendingOrdersByProduct = new Map<string, number>(),
+  inventoryMetricsByProduct = new Map<string, InventoryMetrics>()
 ): ReplenishmentRow[] {
   const salesByProduct = new Map<string, { quantity: number; activeDays: Set<string> }>();
   const openPurchases = new Map<string, number>();
@@ -56,7 +57,7 @@ export function buildReplenishmentRows(
 
   return products.map((product) => {
     const salesStats = salesByProduct.get(product.id);
-    const currentStock = getCurrentStock(product);
+    const currentStock = getComputedCurrentStock(product, inventoryMetricsByProduct);
     const salesInWindow = salesStats?.quantity ?? 0;
     const activeSalesDays = salesStats?.activeDays.size ?? 0;
     const dailyAverage = activeSalesDays > 0 ? roundOneDecimal(salesInWindow / activeSalesDays) : 0;
