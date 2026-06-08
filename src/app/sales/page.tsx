@@ -20,7 +20,7 @@ import { AppShell } from "@/components/AppShell";
 import { useLanguage } from "@/components/LanguageProvider";
 import { activeProducts } from "@/lib/products";
 import { supabase } from "@/lib/supabase";
-import { getCurrentStock } from "@/lib/stock";
+import { buildInventoryMetricsByProduct, getComputedCurrentStock, getCurrentStock, type InventoryMetrics } from "@/lib/stock";
 import type { Product, ProductWithStock, StockMovement } from "@/lib/types";
 
 type SalesMovement = Omit<StockMovement, "products"> & {
@@ -194,6 +194,7 @@ function SalesContent() {
   const { language, formatDate, formatNumber } = useLanguage();
   const text = copy[language];
   const [products, setProducts] = useState<ProductWithStock[]>([]);
+  const [stockMetrics, setStockMetrics] = useState<Map<string, InventoryMetrics>>(new Map());
   const [sales, setSales] = useState<SalesMovement[]>([]);
   const [form, setForm] = useState({ product_id: "", sale_date: todayKst(), quantity: "1", memo: "" });
   const [productQuery, setProductQuery] = useState("");
@@ -221,22 +222,28 @@ function SalesContent() {
 
   async function load() {
     setLoading(true);
-    const [{ data: productRows, error: productError }, { data: saleRows, error: saleError }] = await Promise.all([
+    const [{ data: productRows, error: productError }, { data: saleRows, error: saleError }, { data: movementRows, error: movementError }] = await Promise.all([
       supabase.from("products").select("*, inventory_balances(current_stock)").order("sku"),
       supabase
         .from("stock_movements")
         .select("*, products(name, sku, color, size, sale_price)")
         .eq("type", "sale")
         .order("happened_at", { ascending: false })
-        .limit(2000)
+        .limit(2000),
+      supabase.from("stock_movements").select("product_id, type, quantity, happened_at, memo")
     ]);
 
-    if (productError || saleError) {
-      setMessage({ type: "error", text: productError?.message ?? saleError?.message ?? "" });
+    if (productError || saleError || movementError) {
+      setMessage({ type: "error", text: productError?.message ?? saleError?.message ?? movementError?.message ?? "" });
     }
 
-    setProducts((productRows ?? []) as ProductWithStock[]);
-    setSales((saleRows ?? []) as SalesMovement[]);
+    const productData = (productRows ?? []) as ProductWithStock[];
+    const visibleProducts = activeProducts(productData);
+    const visibleProductIds = new Set(visibleProducts.map((product) => product.id));
+
+    setProducts(productData);
+    setSales(((saleRows ?? []) as SalesMovement[]).filter((sale) => visibleProductIds.has(sale.product_id)));
+    setStockMetrics(buildInventoryMetricsByProduct((movementRows ?? []).filter((movement) => visibleProductIds.has(movement.product_id))));
     setLoading(false);
   }
 
@@ -322,7 +329,7 @@ function SalesContent() {
     }
 
     const original = editingId ? sales.find((sale) => sale.id === editingId) : null;
-    const currentStock = safeStock(productMap.get(form.product_id));
+    const currentStock = safeStock(productMap.get(form.product_id), stockMetrics);
     const availableForCheck = original?.product_id === form.product_id ? currentStock + original.quantity : currentStock;
     if (quantity > availableForCheck && !window.confirm(text.confirmOverStock)) return;
 
@@ -380,15 +387,15 @@ function SalesContent() {
   async function adjustStockForSaleChange(original: SalesMovement, payload: Pick<SalesPayload, "product_id" | "quantity">) {
     if (original.product_id === payload.product_id) {
       const product = productMap.get(payload.product_id);
-      return upsertStock(payload.product_id, Math.max(0, safeStock(product) + original.quantity - payload.quantity));
+      return upsertStock(payload.product_id, Math.max(0, safeStock(product, stockMetrics) + original.quantity - payload.quantity));
     }
 
     const oldProduct = productMap.get(original.product_id);
     const newProduct = productMap.get(payload.product_id);
-    const oldError = await upsertStock(original.product_id, Math.max(0, safeStock(oldProduct) + original.quantity));
+    const oldError = await upsertStock(original.product_id, Math.max(0, safeStock(oldProduct, stockMetrics) + original.quantity));
     if (oldError) return oldError;
 
-    return upsertStock(payload.product_id, Math.max(0, safeStock(newProduct) - payload.quantity));
+    return upsertStock(payload.product_id, Math.max(0, safeStock(newProduct, stockMetrics) - payload.quantity));
   }
 
   async function upsertStock(productId: string, value: number) {
@@ -437,7 +444,7 @@ function SalesContent() {
 
     setSaving(true);
     const product = productMap.get(sale.product_id);
-    const stockError = await upsertStock(sale.product_id, Math.max(0, safeStock(product) + sale.quantity));
+    const stockError = await upsertStock(sale.product_id, Math.max(0, safeStock(product, stockMetrics) + sale.quantity));
     if (stockError) {
       setMessage({ type: "error", text: stockError.message });
       setSaving(false);
@@ -618,7 +625,7 @@ function SalesContent() {
             </div>
           </div>
 
-          <ProductPreview product={selectedProduct} text={text} language={language} />
+          <ProductPreview product={selectedProduct} text={text} language={language} stockMetrics={stockMetrics} />
         </form>
 
         {message ? (
@@ -922,11 +929,13 @@ function SummaryCard({ label, value, tone = "neutral" }: { label: string; value:
 function ProductPreview({
   product,
   text,
-  language
+  language,
+  stockMetrics
 }: {
   product: ProductWithStock | undefined;
   text: (typeof copy)["zh"];
   language: "zh" | "ko";
+  stockMetrics: Map<string, InventoryMetrics>;
 }) {
   if (!product) {
     return (
@@ -936,7 +945,7 @@ function ProductPreview({
     );
   }
 
-  const stock = getCurrentStock(product);
+  const stock = getComputedCurrentStock(product, stockMetrics);
   return (
     <div className="rounded-2xl border border-line bg-white/70 px-4 py-3">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -1093,8 +1102,8 @@ function groupSalesByDate(sales: SalesMovement[]) {
   }));
 }
 
-function safeStock(product: ProductWithStock | undefined) {
-  return product ? getCurrentStock(product) : 0;
+function safeStock(product: ProductWithStock | undefined, stockMetrics: Map<string, InventoryMetrics>) {
+  return product ? getComputedCurrentStock(product, stockMetrics) : 0;
 }
 
 function todayKst() {

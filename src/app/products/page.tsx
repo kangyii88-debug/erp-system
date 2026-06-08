@@ -8,7 +8,7 @@ import { Table, Td, Th } from "@/components/Table";
 import { useLanguage } from "@/components/LanguageProvider";
 import { supabase } from "@/lib/supabase";
 import { profitMargin, unitProfit } from "@/lib/profit";
-import { getCurrentStock } from "@/lib/stock";
+import { buildInventoryMetricsByProduct, getComputedCurrentStock, type InventoryMetrics } from "@/lib/stock";
 import { activeProducts, markProductDeletedMemo, stripDeletedProductMemo } from "@/lib/products";
 import type { ProductWithStock } from "@/lib/types";
 
@@ -40,6 +40,7 @@ export default function ProductsPage() {
 function ProductsContent() {
   const { t, formatCurrency } = useLanguage();
   const [products, setProducts] = useState<ProductWithStock[]>([]);
+  const [stockMetrics, setStockMetrics] = useState<Map<string, InventoryMetrics>>(new Map());
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
@@ -49,11 +50,19 @@ function ProductsContent() {
   }, []);
 
   async function loadProducts() {
-    const { data } = await supabase
-      .from("products")
-      .select("*, inventory_balances(current_stock)")
-      .order("created_at", { ascending: false });
-    setProducts(activeProducts((data ?? []) as ProductWithStock[]));
+    const [{ data: productRows }, { data: movementRows }] = await Promise.all([
+      supabase
+        .from("products")
+        .select("*, inventory_balances(current_stock)")
+        .order("created_at", { ascending: false }),
+      supabase.from("stock_movements").select("product_id, type, quantity, happened_at, memo")
+    ]);
+    const visibleProducts = activeProducts((productRows ?? []) as ProductWithStock[]);
+    const visibleProductIds = new Set(visibleProducts.map((product) => product.id));
+    const visibleMovements = (movementRows ?? []).filter((movement) => visibleProductIds.has(movement.product_id));
+
+    setProducts(visibleProducts);
+    setStockMetrics(buildInventoryMetricsByProduct(visibleMovements));
   }
 
   async function submit(event: FormEvent) {
@@ -131,7 +140,7 @@ function ProductsContent() {
       international_shipping_cost: String(product.international_shipping_cost ?? 0),
       coupang_inbound_shipping_cost: String(product.coupang_inbound_shipping_cost ?? 0),
       ad_cost: String(product.ad_cost ?? 0),
-      initial_stock: String(getCurrentStock(product)),
+      initial_stock: String(getComputedCurrentStock(product, stockMetrics)),
       low_stock_threshold: String(product.low_stock_threshold ?? 10),
       memo: stripDeletedProductMemo(product.memo)
     });
@@ -318,7 +327,7 @@ function ProductsContent() {
                       <Td>{formatCurrency(singleProfit)}</Td>
                       <Td>{profitMargin(product, singleProfit).toFixed(1)}%</Td>
                       <Td>
-                        <span className="text-base font-semibold text-ink">{getCurrentStock(product)}</span>
+                        <span className="text-base font-semibold text-ink">{getComputedCurrentStock(product, stockMetrics)}</span>
                       </Td>
                       <Td>{product.platform}</Td>
                       <Td>{stripDeletedProductMemo(product.memo)}</Td>

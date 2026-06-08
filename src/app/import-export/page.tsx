@@ -6,7 +6,8 @@ import { Card } from "@/components/Card";
 import { PageHeader } from "@/components/PageHeader";
 import { useLanguage } from "@/components/LanguageProvider";
 import { downloadCsv, parseCsv } from "@/lib/csv";
-import { getCurrentStock } from "@/lib/stock";
+import { activeProducts } from "@/lib/products";
+import { buildInventoryMetricsByProduct, getComputedCurrentStock } from "@/lib/stock";
 import { supabase } from "@/lib/supabase";
 import type { ProductWithStock } from "@/lib/types";
 
@@ -45,15 +46,22 @@ function ImportExportContent() {
   }
 
   async function exportInventory() {
-    const { data } = await supabase.from("products").select("*, inventory_balances(current_stock)").order("sku");
+    const [{ data: productRows }, { data: movementRows }] = await Promise.all([
+      supabase.from("products").select("*, inventory_balances(current_stock)").order("sku"),
+      supabase.from("stock_movements").select("product_id, type, quantity, happened_at, memo")
+    ]);
+    const products = activeProducts((productRows ?? []) as ProductWithStock[]);
+    const productIds = new Set(products.map((product) => product.id));
+    const metricsByProduct = buildInventoryMetricsByProduct((movementRows ?? []).filter((movement) => productIds.has(movement.product_id)));
+
     downloadCsv(
       "inventory.csv",
-      ((data ?? []) as ProductWithStock[]).map((product) => ({
+      products.map((product) => ({
         sku: product.sku,
         name: product.name,
         color: product.color,
         size: product.size,
-        current_stock: getCurrentStock(product),
+        current_stock: getComputedCurrentStock(product, metricsByProduct),
         low_stock_threshold: product.low_stock_threshold,
         platform: product.platform
       }))
