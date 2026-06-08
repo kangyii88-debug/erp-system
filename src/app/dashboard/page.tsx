@@ -42,7 +42,8 @@ import { useLanguage } from "@/components/LanguageProvider";
 import { supabase } from "@/lib/supabase";
 import { money, totalProfit } from "@/lib/profit";
 import { activeProducts } from "@/lib/products";
-import { buildInventoryMetricsByProduct } from "@/lib/stock";
+import { buildInventoryMetricsByProduct, calculateCurrentStockFromMovements, classifyInventoryMovement } from "@/lib/stock";
+import { fetchAllStockMovements } from "@/lib/stock-movements";
 import {
   buildReplenishmentRows,
   REPLENISHMENT_CYCLE_DAYS,
@@ -164,7 +165,7 @@ function DashboardContent() {
     ] = await Promise.all([
       supabase.from("products").select("*, inventory_balances(current_stock)").order("created_at", { ascending: false }),
       supabase.from("purchase_orders").select("*, products(name, sku)"),
-      supabase.from("stock_movements").select("product_id, type, quantity, happened_at, memo")
+      fetchAllStockMovements<MovementRow>("product_id, type, quantity, happened_at, memo")
     ]);
 
     const visibleProducts = activeProducts((products ?? []) as ProductWithStock[]);
@@ -172,7 +173,7 @@ function DashboardContent() {
     const visibleMovements = ((movementRows ?? []) as MovementRow[]).filter((movement) => visibleProductIds.has(movement.product_id));
     const metricsByProduct = buildInventoryMetricsByProduct(visibleMovements);
     const movementSales = visibleMovements
-      .filter((movement) => (movement.type === "sale" || movement.type === "outbound") && !isReturnInboundMovement(movement) && !isLossMovement(movement))
+      .filter((movement) => classifyInventoryMovement(movement) === "sale")
       .map((movement) => ({
         product_id: movement.product_id,
         sale_date: toDateKey(new Date(movement.happened_at)),
@@ -2787,32 +2788,11 @@ function validSales(salesRows: SaleDaily[]) {
 }
 
 function isReturnInboundMovement(movement: MovementRow) {
-  const memo = String(movement.memo ?? "");
-  return (
-    movement.type === "return_resell" ||
-    movement.type === "return_inbound" ||
-    memo.startsWith("\u9000\u8d27\u5165\u5e93\u5728\u552e") ||
-    memo.startsWith("\ubc18\ud488 \uc785\uace0 \ud310\ub9e4\uac00\ub2a5") ||
-    memo.startsWith("\ubc18\ud488 \uc785\uace0 \ud310\ub9e4")
-  );
+  return classifyInventoryMovement(movement) === "return_resell";
 }
 
 function isLossMovement(movement: MovementRow) {
-  const memo = String(movement.memo ?? "");
-  return (
-    movement.type === "damaged" ||
-    movement.type === "lost" ||
-    movement.type === "loss" ||
-    memo.startsWith("\u635f\u8017\u4e22\u5931") ||
-    memo.startsWith("\u635f\u8017/\u4e0d\u826f") ||
-    memo.startsWith("\u635f\u8017") ||
-    memo.startsWith("\u4e0d\u826f") ||
-    memo.startsWith("\u4e22\u5931") ||
-    memo.startsWith("\uc190\uc0c1/\ubd88\ub7c9") ||
-    memo.startsWith("\uc190\uc0c1/\ubd84\uc2e4") ||
-    memo.startsWith("\ubd88\ub7c9") ||
-    memo.startsWith("\ubd84\uc2e4")
-  );
+  return classifyInventoryMovement(movement) === "loss";
 }
 
 function countTypedMovements(movements: MovementRow[], target: "return_inbound" | "loss") {
@@ -2820,18 +2800,6 @@ function countTypedMovements(movements: MovementRow[], target: "return_inbound" 
     const isReturnInbound = target === "return_inbound" && isReturnInboundMovement(movement);
     const isLoss = target === "loss" && isLossMovement(movement);
     return isReturnInbound || isLoss ? sum + Math.max(0, Number(movement.quantity ?? 0)) : sum;
-  }, 0);
-}
-
-function calculateCurrentStockFromMovements(movements: MovementRow[]) {
-  return movements.reduce((sum, movement) => {
-    const quantity = Math.max(0, Number(movement.quantity ?? 0));
-    if (isReturnInboundMovement(movement)) return sum;
-    if (isLossMovement(movement)) return sum - quantity;
-    if (movement.type === "purchase" || movement.type === "inbound") return sum + quantity;
-    if (movement.type === "sale" || movement.type === "outbound") return sum - quantity;
-    if (movement.type === "adjustment") return sum + Number(movement.quantity ?? 0);
-    return sum;
   }, 0);
 }
 

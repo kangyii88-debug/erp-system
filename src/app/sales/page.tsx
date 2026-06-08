@@ -20,7 +20,8 @@ import { AppShell } from "@/components/AppShell";
 import { useLanguage } from "@/components/LanguageProvider";
 import { activeProducts } from "@/lib/products";
 import { supabase } from "@/lib/supabase";
-import { buildInventoryMetricsByProduct, getComputedCurrentStock, getCurrentStock, type InventoryMetrics } from "@/lib/stock";
+import { buildInventoryMetricsByProduct, classifyInventoryMovement, getComputedCurrentStock, getCurrentStock, type InventoryMetrics } from "@/lib/stock";
+import { fetchAllStockMovements } from "@/lib/stock-movements";
 import type { Product, ProductWithStock, StockMovement } from "@/lib/types";
 
 type SalesMovement = Omit<StockMovement, "products"> & {
@@ -222,19 +223,13 @@ function SalesContent() {
 
   async function load() {
     setLoading(true);
-    const [{ data: productRows, error: productError }, { data: saleRows, error: saleError }, { data: movementRows, error: movementError }] = await Promise.all([
+    const [{ data: productRows, error: productError }, { data: movementRows, error: movementError }] = await Promise.all([
       supabase.from("products").select("*, inventory_balances(current_stock)").order("sku"),
-      supabase
-        .from("stock_movements")
-        .select("*, products(name, sku, color, size, sale_price)")
-        .eq("type", "sale")
-        .order("happened_at", { ascending: false })
-        .limit(2000),
-      supabase.from("stock_movements").select("product_id, type, quantity, happened_at, memo")
+      fetchAllStockMovements<SalesMovement>("*, products(name, sku, color, size, sale_price)")
     ]);
 
-    if (productError || saleError || movementError) {
-      setMessage({ type: "error", text: productError?.message ?? saleError?.message ?? movementError?.message ?? "" });
+    if (productError || movementError) {
+      setMessage({ type: "error", text: productError?.message ?? movementError?.message ?? "" });
     }
 
     const productData = (productRows ?? []) as ProductWithStock[];
@@ -242,7 +237,7 @@ function SalesContent() {
     const visibleProductIds = new Set(visibleProducts.map((product) => product.id));
 
     setProducts(productData);
-    setSales(((saleRows ?? []) as SalesMovement[]).filter((sale) => visibleProductIds.has(sale.product_id)));
+    setSales(((movementRows ?? []) as SalesMovement[]).filter((sale) => visibleProductIds.has(sale.product_id) && classifyInventoryMovement(sale) === "sale"));
     setStockMetrics(buildInventoryMetricsByProduct((movementRows ?? []).filter((movement) => visibleProductIds.has(movement.product_id))));
     setLoading(false);
   }

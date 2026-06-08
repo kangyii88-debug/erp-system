@@ -18,7 +18,8 @@ import { ProductSelect } from "@/components/ProductSelect";
 import { useLanguage } from "@/components/LanguageProvider";
 import { activeProducts } from "@/lib/products";
 import { supabase } from "@/lib/supabase";
-import { getComputedCurrentStock, getCurrentStock, type InventoryMetrics } from "@/lib/stock";
+import { buildInventoryMetricsByProduct, classifyInventoryMovement, getComputedCurrentStock, getCurrentStock, type InventoryMetrics } from "@/lib/stock";
+import { fetchAllStockMovements } from "@/lib/stock-movements";
 import type { Language, ProductWithStock, StockMovement } from "@/lib/types";
 
 type InventoryActionType = "purchase" | "sale" | "return_resell" | "damaged" | "lost" | "adjustment";
@@ -239,11 +240,7 @@ function InventoryContent() {
     setLoading(true);
     const [{ data: productRows, error: productError }, { data: movementRows, error: movementError }] = await Promise.all([
       supabase.from("products").select("*, inventory_balances(current_stock)").order("sku"),
-      supabase
-        .from("stock_movements")
-        .select("*, products(name, sku, color)")
-        .order("happened_at", { ascending: false })
-        .limit(500)
+      fetchAllStockMovements<StockMovement>("*, products(name, sku, color)")
     ]);
 
     const visibleProducts = activeProducts((productRows ?? []) as ProductWithStock[]);
@@ -461,7 +458,7 @@ function InventoryContent() {
     return null;
   }
 
-  const metricsByProduct = useMemo(() => buildInventoryMetricsByProductFromMovements(movements), [movements]);
+  const metricsByProduct = useMemo(() => buildInventoryMetricsByProduct(movements), [movements]);
   const movementRows = useMemo(() => attachAfterStock(movements, products, metricsByProduct), [movements, products, metricsByProduct]);
   const metrics = useMemo(() => calculateMetrics(products, movements, metricsByProduct), [products, movements, metricsByProduct]);
   const inventoryGroups = useMemo(() => groupProductsByColor(products, ui), [products, ui]);
@@ -1121,38 +1118,6 @@ function calculateMetrics(products: ProductWithStock[], movements: StockMovement
   };
 }
 
-function buildInventoryMetricsByProductFromMovements(movements: StockMovement[]) {
-  const metricsByProduct = new Map<string, InventoryMetrics>();
-
-  for (const movement of movements) {
-    if (!movement.product_id) continue;
-    const metrics = metricsByProduct.get(movement.product_id) ?? {
-      purchaseInbound: 0,
-      salesRawTotal: 0,
-      lossDefectMissing: 0,
-      effectiveSales: 0,
-      returnInboundSaleable: 0,
-      inventoryAdjustment: 0,
-      availableInventory: 0
-    };
-    const actionType = actionTypeOf(movement);
-    const quantity = Math.abs(safeQuantity(movement.quantity));
-    const rawQuantity = safeQuantity(movement.quantity);
-
-    if (actionType === "purchase") metrics.purchaseInbound += quantity;
-    if (actionType === "sale") metrics.salesRawTotal += quantity;
-    if (actionType === "return_resell") metrics.returnInboundSaleable += quantity;
-    if (actionType === "damaged" || actionType === "lost") metrics.lossDefectMissing += quantity;
-    if (actionType === "adjustment") metrics.inventoryAdjustment += rawQuantity;
-
-    metrics.effectiveSales = metrics.salesRawTotal;
-    metrics.availableInventory = metrics.purchaseInbound - metrics.salesRawTotal - metrics.lossDefectMissing + metrics.inventoryAdjustment;
-    metricsByProduct.set(movement.product_id, metrics);
-  }
-
-  return metricsByProduct;
-}
-
 function attachAfterStock(movements: StockMovement[], products: ProductWithStock[], metricsByProduct: Map<string, InventoryMetrics>) {
   const rolling = new Map(products.map((product) => [product.id, getComputedCurrentStock(product, metricsByProduct)]));
 
@@ -1218,50 +1183,13 @@ function signedMovementQuantity(movement: StockMovement) {
 }
 
 function actionTypeOf(movement: StockMovement): MovementFilterType {
-  if (isInventoryReturnInboundMovement(movement)) return "return_resell";
-  if (isInventoryMissingMovement(movement)) return "lost";
-  if (isInventoryLossMovement(movement)) return "damaged";
-  if (movement.type === "purchase") return "purchase";
-  if (movement.type === "inbound") return "purchase";
-  if (movement.type === "outbound") return "sale";
-  if (movement.type === "return_inbound") return "return_resell";
-  if (movement.type === "loss") return "damaged";
+  const type = classifyInventoryMovement(movement);
+  if (type === "return_resell") return "return_resell";
+  if (type === "loss") return movement.type === "lost" ? "lost" : "damaged";
+  if (type === "purchase") return "purchase";
+  if (type === "sale") return "sale";
+  if (type === "adjustment") return "adjustment";
   return movement.type;
-}
-
-function isInventoryReturnInboundMovement(movement: StockMovement) {
-  const memo = String(movement.memo ?? "");
-  return (
-    movement.type === "return_resell" ||
-    movement.type === "return_inbound" ||
-    (movement.type === "inbound" && hasPrefix(movement.memo, RETURN_PREFIXES)) ||
-    memo.startsWith("\u9000\u8d27\u5165\u5e93\u5728\u552e") ||
-    memo.startsWith("\ubc18\ud488 \uc785\uace0 \ud310\ub9e4\uac00\ub2a5") ||
-    memo.startsWith("\ubc18\ud488 \uc785\uace0 \ud310\ub9e4")
-  );
-}
-
-function isInventoryLossMovement(movement: StockMovement) {
-  const memo = String(movement.memo ?? "");
-  return (
-    movement.type === "damaged" ||
-    movement.type === "lost" ||
-    movement.type === "loss" ||
-    memo.startsWith("\u635f\u8017\u4e22\u5931") ||
-    memo.startsWith("\u635f\u8017/\u4e0d\u826f") ||
-    memo.startsWith("\u635f\u8017") ||
-    memo.startsWith("\u4e0d\u826f") ||
-    memo.startsWith("\u4e22\u5931") ||
-    memo.startsWith("\uc190\uc0c1/\ubd88\ub7c9") ||
-    memo.startsWith("\uc190\uc0c1/\ubd84\uc2e4") ||
-    memo.startsWith("\ubd88\ub7c9") ||
-    memo.startsWith("\ubd84\uc2e4")
-  );
-}
-
-function isInventoryMissingMovement(movement: StockMovement) {
-  const memo = String(movement.memo ?? "");
-  return movement.type === "lost" || hasPrefix(movement.memo, MISSING_PREFIXES) || memo.startsWith("\u4e22\u5931") || memo.startsWith("\ubd84\uc2e4");
 }
 
 function editableActionType(movement: StockMovement): InventoryActionType {

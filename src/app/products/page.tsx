@@ -8,7 +8,8 @@ import { Table, Td, Th } from "@/components/Table";
 import { useLanguage } from "@/components/LanguageProvider";
 import { supabase } from "@/lib/supabase";
 import { profitMargin, unitProfit } from "@/lib/profit";
-import { buildInventoryMetricsByProduct, getComputedCurrentStock, type InventoryMetrics } from "@/lib/stock";
+import { buildInventoryMetricsByProduct, getComputedCurrentStock, type InventoryMetrics, type InventoryMovementLike } from "@/lib/stock";
+import { fetchAllStockMovements } from "@/lib/stock-movements";
 import { activeProducts, markProductDeletedMemo, stripDeletedProductMemo } from "@/lib/products";
 import type { ProductWithStock } from "@/lib/types";
 
@@ -55,11 +56,11 @@ function ProductsContent() {
         .from("products")
         .select("*, inventory_balances(current_stock)")
         .order("created_at", { ascending: false }),
-      supabase.from("stock_movements").select("product_id, type, quantity, happened_at, memo")
+      fetchAllStockMovements<InventoryMovementLike>("product_id, type, quantity, happened_at, memo")
     ]);
     const visibleProducts = activeProducts((productRows ?? []) as ProductWithStock[]);
     const visibleProductIds = new Set(visibleProducts.map((product) => product.id));
-    const visibleMovements = (movementRows ?? []).filter((movement) => visibleProductIds.has(movement.product_id));
+    const visibleMovements = (movementRows ?? []).filter((movement) => movement.product_id && visibleProductIds.has(movement.product_id));
 
     setProducts(visibleProducts);
     setStockMetrics(buildInventoryMetricsByProduct(visibleMovements));

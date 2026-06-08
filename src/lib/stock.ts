@@ -1,5 +1,7 @@
 import type { ProductWithStock, SaleDaily } from "./types";
 
+export type InventoryMovementType = "purchase" | "sale" | "return_resell" | "loss" | "adjustment" | "other";
+
 export type InventoryMovementLike = {
   product_id?: string | null;
   type?: string | null;
@@ -34,11 +36,35 @@ export function getCurrentStock(product: ProductWithStock) {
   return balance?.current_stock ?? 0;
 }
 
+export function classifyInventoryMovement(movement: InventoryMovementLike): InventoryMovementType {
+  const type = String(movement.type ?? "");
+  const memo = String(movement.memo ?? "");
+
+  if (type === "return_resell" || type === "return_inbound" || isReturnResellMemo(memo)) return "return_resell";
+  if (type === "damaged" || type === "lost" || type === "loss" || isLossMemo(memo)) return "loss";
+  if (type === "adjustment") return "adjustment";
+  if (type === "purchase" || type === "inbound") return "purchase";
+  if (type === "sale" || type === "outbound") return "sale";
+  return "other";
+}
+
+export function signedInventoryQuantity(movement: InventoryMovementLike) {
+  const type = classifyInventoryMovement(movement);
+  const rawQuantity = safeNumber(movement.quantity);
+  const quantity = Math.abs(rawQuantity);
+
+  if (type === "purchase") return quantity;
+  if (type === "sale") return -quantity;
+  if (type === "loss") return -quantity;
+  if (type === "adjustment") return rawQuantity;
+  return 0;
+}
+
 export function calculateInventoryMetrics(movements: InventoryMovementLike[] = []): InventoryMetrics {
   const metrics = { ...EMPTY_METRICS };
 
   for (const movement of movements) {
-    const type = normalizeMovementType(movement);
+    const type = classifyInventoryMovement(movement);
     const rawQuantity = safeNumber(movement.quantity);
     const quantity = Math.abs(rawQuantity);
 
@@ -78,6 +104,10 @@ export function getComputedCurrentStock(product: ProductWithStock, metricsByProd
   return getCurrentStock(product);
 }
 
+export function calculateCurrentStockFromMovements(movements: InventoryMovementLike[] = []) {
+  return movements.reduce((sum, movement) => sum + signedInventoryQuantity(movement), 0);
+}
+
 export function applyLossAdjustmentToSales(sales: SaleDaily[], movements: InventoryMovementLike[] = []) {
   const validSales = sales
     .map((sale) => ({ ...sale, quantity: Math.max(0, safeNumber(sale.quantity)) }))
@@ -91,7 +121,7 @@ export function applyLossAdjustmentToSales(sales: SaleDaily[], movements: Invent
   const lossByProduct = new Map<string, number>();
 
   for (const movement of movements) {
-    if (!movement.product_id || normalizeMovementType(movement) !== "loss") continue;
+    if (!movement.product_id || classifyInventoryMovement(movement) !== "loss") continue;
     const movementDate = toDateKey(movement.happened_at);
     if (movementDate && (movementDate < start || movementDate > end)) continue;
     lossByProduct.set(movement.product_id, (lossByProduct.get(movement.product_id) ?? 0) + Math.abs(safeNumber(movement.quantity)));
@@ -119,29 +149,21 @@ export function logInventoryCalculationMismatch(source: string, values: Record<s
   }
 }
 
-function normalizeMovementType(movement: InventoryMovementLike): "purchase" | "sale" | "return_resell" | "loss" | "adjustment" | "other" {
-  const type = String(movement.type ?? "");
-  const memo = String(movement.memo ?? "");
+export function safeNumber(value: unknown) {
+  const number = Number(value ?? 0);
+  return Number.isFinite(number) ? number : 0;
+}
 
-  if (includesAny(memo, ["退货入库在售", "退货", "반품 입고 판매가능", "반품 입고 판매", "반품"])) return "return_resell";
-  if (includesAny(memo, ["损耗丢失", "损耗/不良", "损耗", "不良", "丢失", "손상/불량", "손상/분실", "불량", "분실"])) return "loss";
-  if (type === "purchase" || type === "inbound") return "purchase";
-  if (type === "sale" || type === "outbound") return "sale";
-  if (type === "adjustment") return "adjustment";
-  if (type === "return_resell" || type === "return_inbound") return "return_resell";
-  if (type === "damaged" || type === "lost" || type === "loss") return "loss";
-  if (includesAny(memo, ["退货", "반품", "重新入库", "재입고"])) return "return_resell";
-  if (includesAny(memo, ["损耗", "不良", "丢失", "손상", "불량", "분실"])) return "loss";
-  return "other";
+export function isReturnResellMemo(memo: string) {
+  return includesAny(memo, ["退货入库在售", "退货入库", "退货", "반품 입고 판매가능", "반품 입고 판매", "반품"]);
+}
+
+export function isLossMemo(memo: string) {
+  return includesAny(memo, ["损耗丢失", "损耗/不良", "损耗", "不良", "丢失", "손상/불량", "손상/분실", "손상", "불량", "분실"]);
 }
 
 function includesAny(value: string, keywords: string[]) {
   return keywords.some((keyword) => value.includes(keyword));
-}
-
-function safeNumber(value: unknown) {
-  const number = Number(value ?? 0);
-  return Number.isFinite(number) ? number : 0;
 }
 
 function toDateKey(value?: string | null) {
