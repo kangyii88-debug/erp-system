@@ -19,26 +19,10 @@ import {
   Search,
   ShieldCheck,
   Trash2,
-  TrendingDown,
-  TrendingUp,
   Wallet,
   XCircle,
   type LucideIcon
 } from "lucide-react";
-import {
-  Area,
-  AreaChart,
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  ComposedChart,
-  Line,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis
-} from "recharts";
 import { AppShell } from "@/components/AppShell";
 import { useLanguage } from "@/components/LanguageProvider";
 import { supabase } from "@/lib/supabase";
@@ -99,6 +83,7 @@ function SettlementCenter() {
       return;
     }
     setRecords((data ?? []) as CoupangSettlement[]);
+    setMessage("");
   }
 
   async function submit(event: FormEvent) {
@@ -158,6 +143,7 @@ function SettlementCenter() {
 
     resetForm();
     await load();
+    setMessage(copy.saved);
   }
 
   async function uploadAttachment(userId: string, file: File) {
@@ -213,9 +199,8 @@ function SettlementCenter() {
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageRecords = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   const months = uniqueMonths(records);
-  const trendData = buildTrendData(records);
-  const waterfallData = buildWaterfallData(currentMetrics, copy);
   const formPreview = calculateSettlement(form);
+  const displayMessage = friendlySettlementMessage(message, copy);
 
   useEffect(() => {
     setPage(1);
@@ -268,16 +253,12 @@ function SettlementCenter() {
           onCancel={resetForm}
           onSubmit={submit}
           formatCurrency={formatCurrency}
+          message={displayMessage}
         />
         <BusinessInsights insights={buildInsights(currentMetrics, previousRecord(records, currentMetrics.settlement_month), copy, formatCurrency)} copy={copy} />
       </section>
 
-      <section className="mb-5 grid gap-4 xl:grid-cols-[1.1fr_1fr]">
-        <TrendPanel data={trendData} copy={copy} formatCurrency={formatCurrency} />
-        <WaterfallPanel data={waterfallData} copy={copy} formatCurrency={formatCurrency} />
-      </section>
-
-      {message ? <div className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{message}</div> : null}
+      <MonthlySettlementLedger records={filtered} copy={copy} formatCurrency={formatCurrency} onEdit={startEdit} onDelete={deleteRecord} />
 
       <section className="premium-dashboard-panel rounded-[28px] p-5 md:p-6">
         <div className="mb-5 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
@@ -414,7 +395,8 @@ function SettlementEntry({
   onFileChange,
   onCancel,
   onSubmit,
-  formatCurrency
+  formatCurrency,
+  message
 }: {
   form: SettlementForm;
   copy: SettlementCopy;
@@ -427,6 +409,7 @@ function SettlementEntry({
   onCancel: () => void;
   onSubmit: (event: FormEvent) => void;
   formatCurrency: (value: number) => string;
+  message: string;
 }) {
   const fields: Array<[keyof SettlementForm, string]> = [
     ["sales_amount", copy.salesAmount],
@@ -477,7 +460,12 @@ function SettlementEntry({
         <div className="md:col-span-2 rounded-2xl border border-brand/10 bg-brand/5 px-4 py-3 text-xs font-semibold leading-6 text-brand">
           {copy.formulaHint}
         </div>
-        <button className="md:col-span-2 rounded-xl bg-gradient-to-br from-brand to-brand-strong px-4 py-3 text-sm font-semibold text-white shadow-soft transition hover:-translate-y-0.5 hover:shadow-lift">
+        {message ? (
+          <div className={`md:col-span-2 rounded-2xl border px-4 py-3 text-sm font-semibold leading-6 ${message === copy.saved ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-red-200 bg-red-50 text-red-700"}`}>
+            {message}
+          </div>
+        ) : null}
+        <button disabled={saving} className="md:col-span-2 rounded-xl bg-gradient-to-br from-brand to-brand-strong px-4 py-3 text-sm font-semibold text-white shadow-soft transition hover:-translate-y-0.5 hover:shadow-lift disabled:cursor-not-allowed disabled:opacity-65">
           <span className="inline-flex items-center justify-center gap-2">
             <Save className="h-4 w-4" />
             {saving ? copy.saving : editing ? copy.update : copy.save}
@@ -497,60 +485,6 @@ function MiniCalc({ label, value }: { label: string; value: string }) {
   );
 }
 
-function TrendPanel({ data, copy, formatCurrency }: { data: SettlementTrendRow[]; copy: SettlementCopy; formatCurrency: (value: number) => string }) {
-  return (
-    <div className="premium-dashboard-panel rounded-[28px] p-5">
-      <div className="premium-section-eyebrow">Trend Analysis</div>
-      <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink">{copy.trendTitle}</h2>
-      <div className="mt-5 h-80">
-        <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart data={data} margin={{ top: 10, right: 18, left: 0, bottom: 0 }}>
-            <defs>
-              <linearGradient id="settlementSales" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#17483f" stopOpacity={0.24} />
-                <stop offset="95%" stopColor="#17483f" stopOpacity={0.02} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid stroke="#d7d9cf" strokeDasharray="4 7" vertical={false} />
-            <XAxis dataKey="month" tickLine={false} axisLine={false} tick={{ fill: "#66706a", fontSize: 12 }} />
-            <YAxis yAxisId="left" tickLine={false} axisLine={false} tick={{ fill: "#66706a", fontSize: 12 }} width={58} />
-            <YAxis yAxisId="right" orientation="right" tickLine={false} axisLine={false} tick={{ fill: "#66706a", fontSize: 12 }} width={40} />
-            <Tooltip formatter={(value, name) => String(name).includes("Rate") ? formatPercent(Number(value)) : formatCurrency(Number(value))} />
-            <Area yAxisId="left" type="monotone" dataKey="sales" name={copy.salesAmount} stroke="#17483f" strokeWidth={3} fill="url(#settlementSales)" />
-            <Line yAxisId="left" type="monotone" dataKey="payment" name={copy.finalPayment} stroke="#406A7A" strokeWidth={3} dot={false} />
-            <Line yAxisId="left" type="monotone" dataKey="adFee" name={copy.adFee} stroke="#9a3f3f" strokeWidth={2} dot={false} />
-            <Line yAxisId="right" type="monotone" dataKey="cancelRate" name="cancelRate" stroke="#BCA77A" strokeWidth={2} dot={false} />
-            <Line yAxisId="right" type="monotone" dataKey="feeRate" name="feeRate" stroke="#6D756F" strokeWidth={2} dot={false} />
-            <Line yAxisId="right" type="monotone" dataKey="paymentRate" name="paymentRate" stroke="#23614f" strokeWidth={2} dot={false} />
-          </ComposedChart>
-        </ResponsiveContainer>
-      </div>
-    </div>
-  );
-}
-
-function WaterfallPanel({ data, copy, formatCurrency }: { data: WaterfallRow[]; copy: SettlementCopy; formatCurrency: (value: number) => string }) {
-  return (
-    <div className="premium-dashboard-panel rounded-[28px] p-5">
-      <div className="premium-section-eyebrow">Settlement Waterfall</div>
-      <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink">{copy.waterfallTitle}</h2>
-      <div className="mt-5 h-80">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} margin={{ top: 10, right: 18, left: 0, bottom: 0 }}>
-            <CartesianGrid stroke="#d7d9cf" strokeDasharray="4 7" vertical={false} />
-            <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fill: "#66706a", fontSize: 11 }} />
-            <YAxis tickLine={false} axisLine={false} tick={{ fill: "#66706a", fontSize: 12 }} width={60} />
-            <Tooltip formatter={(value) => formatCurrency(Number(value))} />
-            <Bar dataKey="value" radius={[10, 10, 0, 0]}>
-              {data.map((item) => <Cell key={item.label} fill={item.color} />)}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
-    </div>
-  );
-}
-
 function BusinessInsights({ insights, copy }: { insights: string[]; copy: SettlementCopy }) {
   return (
     <div className="premium-dashboard-panel rounded-[28px] p-5">
@@ -565,6 +499,76 @@ function BusinessInsights({ insights, copy }: { insights: string[]; copy: Settle
         ))}
       </div>
     </div>
+  );
+}
+
+function MonthlySettlementLedger({
+  records,
+  copy,
+  formatCurrency,
+  onEdit,
+  onDelete
+}: {
+  records: CoupangSettlement[];
+  copy: SettlementCopy;
+  formatCurrency: (value: number) => string;
+  onEdit: (record: CoupangSettlement) => void;
+  onDelete: (id: string) => void;
+}) {
+  const groups = groupBySettlementMonth(records);
+  return (
+    <section className="premium-dashboard-panel mb-5 rounded-[28px] p-5 md:p-6">
+      <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+        <div>
+          <div className="premium-section-eyebrow">Monthly Settlement Ledger</div>
+          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink">{copy.monthlyLedgerTitle}</h2>
+        </div>
+        <span className="rounded-full border border-white/70 bg-white/75 px-3 py-1.5 text-xs font-bold text-muted shadow-sm">{copy.monthlyLedgerCount(records.length)}</span>
+      </div>
+      {groups.length ? (
+        <div className="grid gap-4">
+          {groups.map((group) => (
+            <div key={group.month} className="rounded-3xl border border-white/70 bg-white/72 p-4 shadow-[0_16px_42px_rgba(31,44,38,0.06)]">
+              <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <div className="text-xs font-bold uppercase tracking-[0.16em] text-muted">{copy.settlementMonth}</div>
+                  <div className="mt-1 text-xl font-semibold text-ink">{formatMonthLabel(group.month)}</div>
+                </div>
+                <div className="grid gap-2 text-right sm:grid-cols-3">
+                  <MiniCalc label={copy.salesAmount} value={formatCurrency(group.sales)} />
+                  <MiniCalc label={copy.finalPayment} value={formatCurrency(group.payment)} />
+                  <MiniCalc label={copy.monthlyRecords} value={String(group.records.length)} />
+                </div>
+              </div>
+              <div className="grid gap-3">
+                {group.records.map((record) => (
+                  <div key={record.id} className="grid gap-3 rounded-2xl border border-line bg-[#fbfbf7]/80 p-4 md:grid-cols-[1fr_1fr_1fr_auto] md:items-center">
+                    <div>
+                      <div className="text-xs font-bold text-muted">{copy.salesMonth}</div>
+                      <div className="mt-1 font-semibold text-ink">{formatMonthLabel(monthInputValue(record.sales_month ?? record.settlement_month))}</div>
+                    </div>
+                    <div className="text-left md:text-right">
+                      <div className="text-xs font-bold text-muted">{copy.actualSales}</div>
+                      <div className="mt-1 font-semibold tabular-nums text-ink">{formatCurrency(record.actual_sales_amount)}</div>
+                    </div>
+                    <div className="text-left md:text-right">
+                      <div className="text-xs font-bold text-muted">{copy.finalPayment}</div>
+                      <div className="mt-1 font-semibold tabular-nums text-brand">{formatCurrency(record.final_payment_amount)}</div>
+                    </div>
+                    <div className="flex gap-2 md:justify-end">
+                      <IconButton label={copy.edit} icon={Edit3} onClick={() => onEdit(record)} />
+                      <IconButton label={copy.delete} icon={Trash2} danger onClick={() => onDelete(record.id)} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-2xl border border-dashed border-line bg-white/55 px-4 py-8 text-center text-sm font-semibold text-muted">{copy.empty}</div>
+      )}
+    </section>
   );
 }
 
@@ -593,8 +597,6 @@ function SettlementTd({ children, align = "left", strong = false }: { children: 
 }
 
 type SettlementCopy = ReturnType<typeof settlementCopy>;
-type SettlementTrendRow = { month: string; sales: number; payment: number; adFee: number; cancelRate: number; feeRate: number; paymentRate: number };
-type WaterfallRow = { label: string; value: number; color: string };
 
 function emptyForm(): SettlementForm {
   return {
@@ -698,35 +700,6 @@ function previousRecord(records: CoupangSettlement[], month: string) {
   return index >= 0 ? sorted[index + 1] ?? null : null;
 }
 
-function buildTrendData(records: CoupangSettlement[]): SettlementTrendRow[] {
-  const map = new Map(records.map((record) => [monthInputValue(record.settlement_month), record]));
-  return last12Months().map((month) => {
-    const record = map.get(month.key);
-    return {
-      month: month.label,
-      sales: Number(record?.sales_amount ?? 0),
-      payment: Number(record?.final_payment_amount ?? 0),
-      adFee: Number(record?.ad_fee ?? 0),
-      cancelRate: Number(record?.cancel_rate ?? 0),
-      feeRate: Number(record?.fee_rate ?? 0),
-      paymentRate: Number(record?.payment_rate ?? 0)
-    };
-  });
-}
-
-function buildWaterfallData(record: CoupangSettlement, copy: SettlementCopy): WaterfallRow[] {
-  return [
-    { label: copy.salesAmount, value: Number(record.sales_amount ?? 0), color: "#17483f" },
-    { label: copy.cancelAmount, value: -Number(record.cancel_amount ?? 0), color: "#9a3f3f" },
-    { label: copy.salesFee, value: -Number(record.sales_fee ?? 0), color: "#8a6834" },
-    { label: copy.sellerCoupon, value: -Number(record.seller_coupon ?? 0), color: "#6D756F" },
-    { label: copy.adFee, value: -Number(record.ad_fee ?? 0), color: "#B45B4D" },
-    { label: copy.milkRunFee, value: -Number(record.milk_run_fee ?? 0), color: "#BCA77A" },
-    { label: copy.compensation, value: Number(record.inventory_loss_compensation ?? 0), color: "#23614f" },
-    { label: copy.finalPayment, value: Number(record.final_payment_amount ?? 0), color: "#406A7A" }
-  ];
-}
-
 function buildInsights(current: CoupangSettlement, previous: CoupangSettlement | null, copy: SettlementCopy, formatCurrency: (value: number) => string) {
   const insights: string[] = [];
   if (current.cancel_rate > 0.18) insights.push(copy.cancelInsight(formatPercent(current.cancel_rate)));
@@ -766,16 +739,29 @@ function exportSettlementCsv(records: CoupangSettlement[], extension: "csv" | "x
   URL.revokeObjectURL(url);
 }
 
+function groupBySettlementMonth(records: CoupangSettlement[]) {
+  const groups = new Map<string, CoupangSettlement[]>();
+  records.forEach((record) => {
+    const month = monthInputValue(record.settlement_month);
+    groups.set(month, [...(groups.get(month) ?? []), record]);
+  });
+  return Array.from(groups.entries())
+    .map(([month, monthRecords]) => ({
+      month,
+      records: monthRecords,
+      sales: monthRecords.reduce((sum, record) => sum + Number(record.sales_amount ?? 0), 0),
+      payment: monthRecords.reduce((sum, record) => sum + Number(record.final_payment_amount ?? 0), 0)
+    }))
+    .sort((a, b) => b.month.localeCompare(a.month));
+}
+
 function uniqueMonths(records: CoupangSettlement[]) {
   return Array.from(new Set(records.map((record) => monthInputValue(record.settlement_month)))).sort((a, b) => b.localeCompare(a));
 }
 
-function last12Months() {
-  const now = new Date();
-  return Array.from({ length: 12 }, (_, index) => {
-    const date = new Date(now.getFullYear(), now.getMonth() - 11 + index, 1);
-    return { key: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`, label: `${date.getMonth() + 1}` };
-  });
+function formatMonthLabel(month: string) {
+  const [year, rawMonth] = month.split("-");
+  return `${year}-${rawMonth}`;
 }
 
 function amount(value: string | number | null | undefined) {
@@ -819,6 +805,17 @@ function emptyToNull(value: string) {
   return trimmed ? trimmed : null;
 }
 
+function friendlySettlementMessage(message: string, copy: SettlementCopy) {
+  if (!message) return "";
+  if (message.includes("Could not find the table") || message.includes("schema cache") || message.includes("coupang_settlements")) {
+    return copy.databaseSetupRequired;
+  }
+  if (message.includes("sales_month")) {
+    return copy.salesMonthMigrationRequired;
+  }
+  return message;
+}
+
 function settlementCopy(language: Language) {
   if (language === "ko") {
     return {
@@ -859,9 +856,9 @@ function settlementCopy(language: Language) {
       remark: "메모",
       entryTitle: "정산 입력 센터",
       editTitle: "정산 기록 수정",
-      trendTitle: "정산 추세 분석",
-      waterfallTitle: "정산 워터폴",
       insights: "Business Insights",
+      monthlyLedgerTitle: "월별 정산 기록",
+      monthlyRecords: "기록 수",
       detailTitle: "정산 상세 내역",
       searchPlaceholder: "판매 월 / 정산 월 / 메모 검색",
       allMonths: "전체 월",
@@ -877,10 +874,14 @@ function settlementCopy(language: Language) {
       save: "저장",
       update: "업데이트",
       saving: "저장 중",
+      saved: "저장되었습니다. 아래 월별 정산 기록에 반영되었습니다.",
       empty: "정산 데이터가 없습니다.",
+      databaseSetupRequired: "Supabase에 coupang_settlements 테이블이 아직 없습니다. supabase/migrations/create-coupang-settlements.sql을 먼저 실행해야 저장됩니다.",
+      salesMonthMigrationRequired: "Supabase의 coupang_settlements 테이블에 sales_month 컬럼이 없습니다. supabase/migrations/add-sales-month-to-coupang-settlements.sql을 실행하세요.",
       uploadHint: "정산 캡처 / Excel / PDF 업로드",
       attachmentSaved: "기존 첨부 있음",
       deleteConfirm: "이 정산 기록을 삭제하시겠습니까? 삭제 후 복구할 수 없습니다.",
+      monthlyLedgerCount: (count: number) => `${count}건`,
       pageInfo: (page: number, total: number, count: number) => `${page}/${total} · ${count}건`,
       cancelInsight: (rateText: string) => `이번 달 취소율 ${rateText}로 높습니다. 상품 상세와 재고 상태를 확인하세요.`,
       cancelNormal: (rateText: string) => `이번 달 취소율 ${rateText}로 관리 가능한 수준입니다.`,
@@ -931,9 +932,9 @@ function settlementCopy(language: Language) {
     remark: "备注",
     entryTitle: "结算录入中心",
     editTitle: "编辑结算记录",
-    trendTitle: "结算趋势分析",
-    waterfallTitle: "Settlement Waterfall / 结算漏斗图",
     insights: "经营洞察",
+    monthlyLedgerTitle: "按月份记录",
+    monthlyRecords: "记录数",
     detailTitle: "结算明细中心",
     searchPlaceholder: "搜索销售月份 / 清算月份 / 备注",
     allMonths: "全部月份",
@@ -949,10 +950,14 @@ function settlementCopy(language: Language) {
     save: "保存",
     update: "更新",
     saving: "保存中",
+    saved: "保存成功，已记录到下方月份记录。",
     empty: "暂无结算数据",
+    databaseSetupRequired: "线上 Supabase 还没有 coupang_settlements 表。请先执行 supabase/migrations/create-coupang-settlements.sql，执行后才能保存。",
+    salesMonthMigrationRequired: "线上 Supabase 的 coupang_settlements 表还没有 sales_month 字段。请执行 supabase/migrations/add-sales-month-to-coupang-settlements.sql。",
     uploadHint: "上传结算截图 / Excel / PDF",
     attachmentSaved: "已有附件",
     deleteConfirm: "确认删除这条结算记录吗？删除后无法恢复。",
+    monthlyLedgerCount: (count: number) => `共 ${count} 条`,
     pageInfo: (page: number, total: number, count: number) => `第 ${page}/${total} 页 · 共 ${count} 条`,
     cancelInsight: (rateText: string) => `本月取消率 ${rateText}，偏高，建议检查商品详情页和库存状态。`,
     cancelNormal: (rateText: string) => `本月取消率 ${rateText}，处于可控范围。`,
