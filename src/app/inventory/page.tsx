@@ -1008,9 +1008,10 @@ function calculateMetrics(products: ProductWithStock[], movements: StockMovement
   const returnInbound = movements.filter((movement) => actionTypeOf(movement) === "return_resell").reduce((sum, movement) => sum + safeQuantity(movement.quantity), 0);
   const loss = movements.filter((movement) => actionTypeOf(movement) === "damaged" || actionTypeOf(movement) === "lost").reduce((sum, movement) => sum + safeQuantity(movement.quantity), 0);
   const adjustment = movements.filter((movement) => movement.type === "adjustment").reduce((sum, movement) => sum + safeQuantity(movement.quantity), 0);
+  const flowResult = inbound - salesOut - loss + adjustment;
 
   return {
-    saleable: products.reduce((sum, product) => sum + getComputedCurrentStock(product, metricsByProduct), 0),
+    saleable: flowResult,
     inventoryValue: products.reduce((sum, product) => sum + getComputedCurrentStock(product, metricsByProduct) * safeMoney(product.purchase_price), 0),
     riskSkuCount: products.filter((product) => getComputedCurrentStock(product, metricsByProduct) < 10).length,
     skuTotal: products.length,
@@ -1019,7 +1020,7 @@ function calculateMetrics(products: ProductWithStock[], movements: StockMovement
     returnInbound,
     loss,
     adjustment,
-    flowResult: inbound - salesOut - loss + adjustment
+    flowResult
   };
 }
 

@@ -206,7 +206,7 @@ function DashboardContent() {
   const salesWindowRows = salesRows.filter((sale) => isBetween(sale.sale_date, daysAgoKey(anchorDate, 29), range.end));
   const trendDays = viewMode === "30d" ? 30 : viewMode === "month" ? daysInRange(range) : viewMode === "custom" ? daysInRange(range) : viewMode === "7d" ? 7 : 7;
 
-  const totalStock = rows.reduce((sum, row) => sum + row.currentStock, 0);
+  const totalStock = calculateCurrentStockFromMovements(movements);
   const skuCount = rows.length;
   const rangeMetrics = buildSalesMetrics(rangeSales, productMap);
   const comparisonMetrics = buildSalesMetrics(comparisonSales, productMap);
@@ -2820,6 +2820,18 @@ function countTypedMovements(movements: MovementRow[], target: "return_inbound" 
     const isReturnInbound = target === "return_inbound" && isReturnInboundMovement(movement);
     const isLoss = target === "loss" && isLossMovement(movement);
     return isReturnInbound || isLoss ? sum + Math.max(0, Number(movement.quantity ?? 0)) : sum;
+  }, 0);
+}
+
+function calculateCurrentStockFromMovements(movements: MovementRow[]) {
+  return movements.reduce((sum, movement) => {
+    const quantity = Math.max(0, Number(movement.quantity ?? 0));
+    if (isReturnInboundMovement(movement)) return sum;
+    if (isLossMovement(movement)) return sum - quantity;
+    if (movement.type === "purchase" || movement.type === "inbound") return sum + quantity;
+    if (movement.type === "sale" || movement.type === "outbound") return sum - quantity;
+    if (movement.type === "adjustment") return sum + Number(movement.quantity ?? 0);
+    return sum;
   }, 0);
 }
 
