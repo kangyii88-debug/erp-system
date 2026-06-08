@@ -423,6 +423,44 @@ function InventoryContent() {
     await load();
   }
 
+  async function saveActualStock(product: ProductWithStock, currentStockValue: number, actualStockValue: number) {
+    const { data: auth } = await supabase.auth.getUser();
+    if (!auth.user) return "Login is required.";
+
+    if (!Number.isFinite(actualStockValue)) return ui.invalidForm;
+
+    const actualStock = Math.trunc(actualStockValue);
+    const delta = actualStock - Math.trunc(currentStockValue);
+    if (delta === 0) {
+      setMessage("");
+      return null;
+    }
+
+    const memo = language === "ko" ? `실재고 조정: ${actualStock}` : `实际库存校准: ${actualStock}`;
+    const { data, error } = await supabase
+      .from("stock_movements")
+      .insert({
+        user_id: auth.user.id,
+        product_id: product.id,
+        type: "adjustment",
+        quantity: delta,
+        memo
+      })
+      .select("id")
+      .single();
+
+    if (error) return error.message;
+
+    const stockError = await upsertStock(product.id, actualStock);
+    if (stockError) return stockError.message;
+
+    setHighlightId(data?.id ?? null);
+    window.setTimeout(() => setHighlightId(null), 1800);
+    setMessage("");
+    await load();
+    return null;
+  }
+
   const metricsByProduct = useMemo(() => buildInventoryMetricsByProductFromMovements(movements), [movements]);
   const movementRows = useMemo(() => attachAfterStock(movements, products, metricsByProduct), [movements, products, metricsByProduct]);
   const metrics = useMemo(() => calculateMetrics(products, movements, metricsByProduct), [products, movements, metricsByProduct]);
@@ -510,7 +548,7 @@ function InventoryContent() {
         <SectionTitle eyebrow={ui.currentEyebrow} title={ui.currentTitle} description={ui.currentDescription} />
         <div className="mt-4 space-y-5">
           {loading ? <InventorySkeleton /> : null}
-          {!loading && inventoryGroups.map((group) => <ColorStockGroup key={group.key} group={group} ui={ui} metricsByProduct={metricsByProduct} />)}
+          {!loading && inventoryGroups.map((group) => <ColorStockGroup key={group.key} group={group} ui={ui} metricsByProduct={metricsByProduct} onSaveActualStock={saveActualStock} />)}
           {!loading && inventoryGroups.length === 0 ? <EmptyState title={ui.empty} description={ui.emptyStock} /> : null}
         </div>
       </section>
@@ -777,11 +815,13 @@ function SectionTitle({ eyebrow, title, description }: { eyebrow: string; title:
 function ColorStockGroup({
   group,
   ui,
-  metricsByProduct
+  metricsByProduct,
+  onSaveActualStock
 }: {
   group: ReturnType<typeof groupProductsByColor>[number];
   ui: (typeof copy)[Language];
   metricsByProduct: Map<string, InventoryMetrics>;
+  onSaveActualStock: (product: ProductWithStock, currentStockValue: number, actualStockValue: number) => Promise<string | null>;
 }) {
   const total = group.products.reduce((sum, product) => sum + getComputedCurrentStock(product, metricsByProduct), 0);
 
@@ -803,7 +843,7 @@ function ColorStockGroup({
       </div>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5">
         {group.products.map((product) => (
-          <StockProductCard key={product.id} product={product} ui={ui} metricsByProduct={metricsByProduct} />
+          <StockProductCard key={product.id} product={product} ui={ui} metricsByProduct={metricsByProduct} onSaveActualStock={onSaveActualStock} />
         ))}
       </div>
     </div>
@@ -813,13 +853,19 @@ function ColorStockGroup({
 function StockProductCard({
   product,
   ui,
-  metricsByProduct
+  metricsByProduct,
+  onSaveActualStock
 }: {
   product: ProductWithStock;
   ui: (typeof copy)[Language];
   metricsByProduct: Map<string, InventoryMetrics>;
+  onSaveActualStock: (product: ProductWithStock, currentStockValue: number, actualStockValue: number) => Promise<string | null>;
 }) {
   const stock = getComputedCurrentStock(product, metricsByProduct);
+  const [editing, setEditing] = useState(false);
+  const [draftStock, setDraftStock] = useState(String(stock));
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
   const status = stock < 10 ? ui.risk : stock <= 20 ? ui.watch : ui.normal;
   const statusClass =
     stock < 0
@@ -829,6 +875,29 @@ function StockProductCard({
         : stock <= 20
           ? "border-yellow-200 bg-yellow-50/70"
           : "border-emerald-200 bg-emerald-50/45";
+
+  async function save() {
+    const nextStock = Number(draftStock);
+    if (!Number.isFinite(nextStock)) {
+      setError("Invalid number");
+      return;
+    }
+    setSaving(true);
+    setError("");
+    const message = await onSaveActualStock(product, stock, nextStock);
+    setSaving(false);
+    if (message) {
+      setError(message);
+      return;
+    }
+    setEditing(false);
+  }
+
+  function startEditing() {
+    setDraftStock(String(stock));
+    setError("");
+    setEditing(true);
+  }
 
   return (
     <div className={`rounded-2xl border p-4 transition duration-300 hover:-translate-y-1 hover:border-[#17483f]/30 hover:shadow-card ${statusClass}`}>
@@ -840,10 +909,38 @@ function StockProductCard({
         <span className="rounded-full bg-card/80 px-2.5 py-1 text-xs font-semibold text-muted">{normalizeSize(product.size)}</span>
       </div>
       <div className="mt-4 flex items-end justify-between">
-        <div className={`text-3xl font-semibold tabular-nums ${stock < 0 ? "text-red-700" : "text-ink"}`}>{formatNumber(stock)}</div>
+        {editing ? (
+          <div className="flex max-w-[170px] flex-col gap-2">
+            <input
+              className="h-10 rounded-xl border border-line bg-white px-3 text-2xl font-semibold tabular-nums text-ink"
+              type="number"
+              step="1"
+              value={draftStock}
+              onChange={(event) => setDraftStock(event.target.value)}
+            />
+            <div className="flex gap-2">
+              <button className="rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60" type="button" disabled={saving} onClick={save}>
+                {saving ? "..." : "保存"}
+              </button>
+              <button className="rounded-lg border border-line bg-white px-3 py-1.5 text-xs font-semibold text-muted" type="button" disabled={saving} onClick={() => setEditing(false)}>
+                取消
+              </button>
+            </div>
+            {error ? <div className="text-xs font-medium text-red-700">{error}</div> : null}
+          </div>
+        ) : (
+          <button className={`text-left text-3xl font-semibold tabular-nums ${stock < 0 ? "text-red-700" : "text-ink"}`} type="button" onClick={startEditing}>
+            {formatNumber(stock)}
+          </button>
+        )}
         <div className="text-right">
           <div className="text-xs text-muted">{ui.stock}</div>
           <div className="text-xs font-semibold text-muted">{status}</div>
+          {!editing ? (
+            <button className="mt-2 rounded-lg border border-line bg-white/80 px-2.5 py-1 text-xs font-semibold text-muted transition hover:border-brand/30 hover:text-brand" type="button" onClick={startEditing}>
+              编辑
+            </button>
+          ) : null}
         </div>
       </div>
     </div>
