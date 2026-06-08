@@ -612,7 +612,7 @@ function calculateSettlement(form: SettlementForm) {
   const salesAmount = amount(form.sales_amount);
   const cancelAmount = amount(form.cancel_amount);
   const salesFee = amount(form.sales_fee);
-  const sellerCoupon = signedAmount(form.seller_coupon);
+  const sellerCoupon = coupangCouponAmount(form.seller_coupon);
   const milkRunFee = amount(form.milk_run_fee);
   const adFee = amount(form.ad_fee);
   const settlementDeduction = amount(form.settlement_deduction);
@@ -620,7 +620,7 @@ function calculateSettlement(form: SettlementForm) {
   const inventoryLossCompensation = amount(form.inventory_loss_compensation);
   // Coupang statement flow:
   // 판매액 - 취소액 = 소계, then 소계 - 판매수수료(B) - 상계금액(C) = 판매기준 매출액.
-  // Coupang shows seller coupons as negative C values, so -(-10,000) adds back 10,000.
+  // Users can enter 10,000 naturally; Coupang shows it as -10,000 in 상계금액(C).
   const actualSalesAmount = salesAmount - cancelAmount;
   const salesBaseAmount = actualSalesAmount - salesFee - sellerCoupon;
   const additionalDeduction = milkRunFee + adFee + settlementDeduction;
@@ -774,8 +774,9 @@ function amount(value: string | number | null | undefined) {
   return Math.max(0, Number(value ?? 0) || 0);
 }
 
-function signedAmount(value: string | number | null | undefined) {
-  return Number(value ?? 0) || 0;
+function coupangCouponAmount(value: string | number | null | undefined) {
+  const numeric = Number(value ?? 0) || 0;
+  return numeric === 0 ? 0 : -Math.abs(numeric);
 }
 
 function rate(numerator: number, denominator: number) {
@@ -823,7 +824,7 @@ function settlementCopy(language: Language) {
       actualSales: "소계 / 실제 판매액",
       salesBase: "판매기준 매출액",
       salesFee: "판매수수료 (B)",
-      sellerCoupon: "판매자할인쿠폰",
+      sellerCoupon: "판매자할인쿠폰 / 상계금액(C)",
       milkRunFee: "밀크런 이용액 (C)",
       adFee: "광고비",
       settlementDeduction: "기타 정산 차감 (E)",
@@ -837,7 +838,7 @@ function settlementCopy(language: Language) {
       paymentRate: "지급률",
       additionalDeduction: "소계 (C+D+E)",
       autoFinalPayment: "자동 계산 최종지급액",
-      formulaHint: "계산식: 판매액 - 취소액 = 소계, 소계 - 판매수수료(B) - 판매자할인쿠폰 = 판매기준 매출액, 판매기준 매출액 - 소계(C+D+E) - Fulfillment 비용(J) + 재고 손실 보상(K) = 최종지급액.",
+      formulaHint: "계산식: 판매액 - 취소액 = 소계, 소계 - 판매수수료(B) - 상계금액(C) = 판매기준 매출액. 판매자할인쿠폰은 10,000을 입력하면 Coupang 정산서 기준 -10,000으로 계산됩니다.",
       attachment: "첨부",
       remark: "메모",
       entryTitle: "정산 입력 센터",
@@ -893,7 +894,7 @@ function settlementCopy(language: Language) {
     actualSales: "소계 / 实际销售额",
     salesBase: "판매기준 매출액 / 销售基准金额",
     salesFee: "판매수수료 (B) / 平台手续费",
-    sellerCoupon: "판매자할인쿠폰 / 卖家优惠券",
+    sellerCoupon: "판매자할인쿠폰 / 卖家优惠券 / 상계금액(C)",
     milkRunFee: "밀크런 이용액 (C) / Milk Run费用",
     adFee: "광고비 (D) / 广告费",
     settlementDeduction: "정산 차감 (E) / 其它结算扣减",
@@ -907,7 +908,7 @@ function settlementCopy(language: Language) {
     paymentRate: "到账率",
     additionalDeduction: "소계 (C+D+E) / 追加扣减小计",
     autoFinalPayment: "自动计算最终到账",
-    formulaHint: "公式：판매액 - 취소액 = 소계；소계 - 판매수수료(B) - 판매자할인쿠폰 = 판매기준 매출액；판매기준 매출액 - 소계(C+D+E) - Fulfillment费用(J) + 재고 손실 보상(K) = 최종지급액。",
+    formulaHint: "公式：판매액 - 취소액 = 소계；소계 - 판매수수료(B) - 상계금액(C) = 판매기준 매출액。卖家优惠券填 10000 时，系统会按 Coupang 结算单的 -10,000 计算。",
     attachment: "附件",
     remark: "备注",
     entryTitle: "结算录入中心",
