@@ -306,7 +306,7 @@ function ProductsContent() {
           <div key={group.key}>
             <div className="mb-2 flex items-center justify-between gap-3">
               <div>
-                <div className="text-sm font-medium text-ink/55">{t("common.color")}</div>
+                <div className="text-sm font-medium text-ink/55">{t("common.category")} / {t("common.color")}</div>
                 <h2 className="text-xl font-semibold text-ink">{group.label}</h2>
               </div>
               <div className="rounded bg-white px-3 py-1 text-sm font-medium text-ink/60">{group.products.length} SKU</div>
@@ -397,12 +397,17 @@ function groupProducts(products: ProductWithStock[], t: ReturnType<typeof useLan
     groups.set(key, [...(groups.get(key) ?? []), product]);
   }
 
-  return colorOrder
-    .map((key) => ({ key, label: colorLabel(key, groups.get(key) ?? [], t), products: groups.get(key) ?? [] }))
-    .filter((group) => group.products.length > 0);
+  return Array.from(groups.entries()).map(([key, groupProducts]) => ({
+    key,
+    label: colorLabel(key, groupProducts, t),
+    products: groupProducts
+  }));
 }
 
 function compareProducts(a: ProductWithStock, b: ProductWithStock) {
+  const categoryDiff = categoryKey(a).localeCompare(categoryKey(b), undefined, { numeric: true });
+  if (categoryDiff !== 0) return categoryDiff;
+
   const colorDiff = colorRank(a) - colorRank(b);
   if (colorDiff !== 0) return colorDiff;
 
@@ -412,8 +417,6 @@ function compareProducts(a: ProductWithStock, b: ProductWithStock) {
 
   return a.sku.localeCompare(b.sku, undefined, { numeric: true });
 }
-
-const colorOrder = ["WH", "BL", "GR", "BE", "OTHER"];
 
 function baseSku(sku: string) {
   return sku.replace(/-(WH|BL|GR|BE)$/i, "");
@@ -428,7 +431,7 @@ function skuSuffix(product: ProductWithStock) {
 }
 
 function colorKey(product: ProductWithStock) {
-  return skuSuffix(product) || "OTHER";
+  return `${categoryKey(product)}-${skuSuffix(product) || "OTHER"}`;
 }
 
 function colorRank(product: ProductWithStock) {
@@ -441,7 +444,8 @@ function colorRank(product: ProductWithStock) {
 }
 
 function colorLabel(key: string, products: ProductWithStock[], t: ReturnType<typeof useLanguage>["t"]) {
-  return products[0]?.color || colorName(key, t);
+  const [category, color] = splitGroupKey(key);
+  return `${categoryLabel(category)} / ${products[0]?.color || colorName(color, t)}`;
 }
 
 function colorName(key: string, t: ReturnType<typeof useLanguage>["t"]) {
@@ -450,6 +454,19 @@ function colorName(key: string, t: ReturnType<typeof useLanguage>["t"]) {
   if (key === "GR") return t("color.gray");
   if (key === "BE") return t("color.beige");
   return t("color.other");
+}
+
+function categoryKey(product: ProductWithStock) {
+  return product.sku.split("-")[0]?.trim().toUpperCase() || "OTHER";
+}
+
+function categoryLabel(key: string) {
+  return key === "OTHER" ? "OTHER" : key;
+}
+
+function splitGroupKey(key: string) {
+  const [category, color] = key.split("-");
+  return [category || "OTHER", color || "OTHER"] as const;
 }
 
 function isDuplicateSkuError(message: string) {

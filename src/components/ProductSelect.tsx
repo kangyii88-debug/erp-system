@@ -39,16 +39,21 @@ function groupProductsByColor(products: ProductWithStock[], t: ReturnType<typeof
   const groups = new Map<string, ProductWithStock[]>();
 
   for (const product of sortedProducts) {
-    const key = colorKey(product);
+    const key = `${categoryKey(product)}-${colorKey(product)}`;
     groups.set(key, [...(groups.get(key) ?? []), product]);
   }
 
-  return colorOrder
-    .map((key) => ({ key, label: colorGroupLabel(key, t), products: groups.get(key) ?? [] }))
-    .filter((group) => group.products.length > 0);
+  return Array.from(groups.entries()).map(([key, groupProducts]) => ({
+    key,
+    label: categoryColorGroupLabel(key, t),
+    products: groupProducts
+  }));
 }
 
 function compareProducts(a: ProductWithStock, b: ProductWithStock) {
+  const categoryDiff = categoryKey(a).localeCompare(categoryKey(b), undefined, { numeric: true });
+  if (categoryDiff !== 0) return categoryDiff;
+
   const colorDiff = colorOrder.indexOf(colorKey(a)) - colorOrder.indexOf(colorKey(b));
   if (colorDiff !== 0) return colorDiff;
 
@@ -69,6 +74,15 @@ function normalizedSize(size: string | null) {
 
 function colorKey(product: ProductWithStock) {
   return product.sku.match(/-(WH|BL|GR|BE)$/i)?.[1]?.toUpperCase() ?? "OTHER";
+}
+
+function categoryKey(product: ProductWithStock) {
+  return product.sku.split("-")[0]?.trim().toUpperCase() || "OTHER";
+}
+
+function categoryColorGroupLabel(key: string, t: ReturnType<typeof useLanguage>["t"]) {
+  const [category, color] = key.split("-");
+  return `${category || "OTHER"} / ${colorGroupLabel(color || "OTHER", t)}`;
 }
 
 function colorGroupLabel(key: string, t: ReturnType<typeof useLanguage>["t"]) {

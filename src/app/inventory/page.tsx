@@ -76,7 +76,7 @@ const copy = {
     adjustment: "库存调整",
     currentEyebrow: "Current Stock",
     currentTitle: "当前可售库存",
-    currentDescription: "按颜色分组查看每个 SKU 当前可售数量和风险状态。",
+    currentDescription: "按品类和颜色分组查看每个 SKU 当前可售数量和风险状态。",
     totalStock: "合计库存",
     skuCount: "SKU 数量",
     stock: "库存",
@@ -105,7 +105,9 @@ const copy = {
     colorBlack: "黑色",
     colorGray: "灰色",
     colorBeige: "米色",
-    colorOther: "其他"
+    colorOther: "其他",
+    category: "品类",
+    categoryTotal: "品类库存"
   },
   ko: {
     pageTitle: "재고 관리",
@@ -137,7 +139,7 @@ const copy = {
     adjustment: "재고 조정",
     currentEyebrow: "Current Stock",
     currentTitle: "현재 판매 가능 재고",
-    currentDescription: "색상별로 SKU의 판매 가능 수량과 위험 상태를 확인합니다.",
+    currentDescription: "품목과 색상별로 SKU의 판매 가능 수량과 위험 상태를 확인합니다.",
     totalStock: "총 재고",
     skuCount: "SKU 수",
     stock: "재고",
@@ -166,7 +168,9 @@ const copy = {
     colorBlack: "블랙",
     colorGray: "그레이",
     colorBeige: "베이지",
-    colorOther: "기타"
+    colorOther: "기타",
+    category: "품목",
+    categoryTotal: "품목 재고"
   }
 } satisfies Record<Language, Record<string, string>>;
 
@@ -461,7 +465,7 @@ function InventoryContent() {
   const metricsByProduct = useMemo(() => buildInventoryMetricsByProduct(movements), [movements]);
   const movementRows = useMemo(() => attachAfterStock(movements, products, metricsByProduct), [movements, products, metricsByProduct]);
   const metrics = useMemo(() => calculateMetrics(products, movements, metricsByProduct), [products, movements, metricsByProduct]);
-  const inventoryGroups = useMemo(() => groupProductsByColor(products, ui), [products, ui]);
+  const inventoryGroups = useMemo(() => groupProductsByCategory(products, ui), [products, ui]);
   const filteredRows = useMemo(() => applyFilters(movementRows, filters), [movementRows, filters]);
   const pageCount = Math.max(1, Math.ceil(filteredRows.length / PAGE_SIZE));
   const currentPage = Math.min(page, pageCount);
@@ -545,7 +549,7 @@ function InventoryContent() {
         <SectionTitle eyebrow={ui.currentEyebrow} title={ui.currentTitle} description={ui.currentDescription} />
         <div className="mt-4 space-y-5">
           {loading ? <InventorySkeleton /> : null}
-          {!loading && inventoryGroups.map((group) => <ColorStockGroup key={group.key} group={group} ui={ui} metricsByProduct={metricsByProduct} onSaveActualStock={saveActualStock} />)}
+          {!loading && inventoryGroups.map((group) => <CategoryStockGroup key={group.key} group={group} ui={ui} metricsByProduct={metricsByProduct} onSaveActualStock={saveActualStock} />)}
           {!loading && inventoryGroups.length === 0 ? <EmptyState title={ui.empty} description={ui.emptyStock} /> : null}
         </div>
       </section>
@@ -805,6 +809,48 @@ function SectionTitle({ eyebrow, title, description }: { eyebrow: string; title:
       <div className="text-xs font-semibold uppercase tracking-[0.2em] text-muted">{eyebrow}</div>
       <h2 className="mt-1 text-2xl font-semibold tracking-tight text-ink">{title}</h2>
       <p className="mt-1 text-sm text-muted">{description}</p>
+    </div>
+  );
+}
+
+function CategoryStockGroup({
+  group,
+  ui,
+  metricsByProduct,
+  onSaveActualStock
+}: {
+  group: ReturnType<typeof groupProductsByCategory>[number];
+  ui: (typeof copy)[Language];
+  metricsByProduct: Map<string, InventoryMetrics>;
+  onSaveActualStock: (product: ProductWithStock, currentStockValue: number, actualStockValue: number) => Promise<string | null>;
+}) {
+  const total = group.colorGroups.reduce(
+    (sum, colorGroup) => sum + colorGroup.products.reduce((colorSum, product) => colorSum + getComputedCurrentStock(product, metricsByProduct), 0),
+    0
+  );
+  const skuCount = group.colorGroups.reduce((sum, colorGroup) => sum + colorGroup.products.length, 0);
+
+  return (
+    <div className="rounded-3xl border border-line bg-card/90 p-4 shadow-card">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-line pb-4">
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-[0.2em] text-muted">{ui.category}</div>
+          <h3 className="mt-1 text-2xl font-semibold text-ink">{group.label}</h3>
+        </div>
+        <div className="flex gap-2 text-xs font-semibold text-muted">
+          <span className="erp-chip px-3 py-1.5">
+            {ui.categoryTotal} {formatNumber(total)}
+          </span>
+          <span className="erp-chip px-3 py-1.5">
+            {ui.skuCount} {skuCount}
+          </span>
+        </div>
+      </div>
+      <div className="space-y-4">
+        {group.colorGroups.map((colorGroup) => (
+          <ColorStockGroup key={`${group.key}-${colorGroup.key}`} group={colorGroup} ui={ui} metricsByProduct={metricsByProduct} onSaveActualStock={onSaveActualStock} />
+        ))}
+      </div>
     </div>
   );
 }
@@ -1238,6 +1284,20 @@ function stripSystemMemo(memo: string | null) {
   return memo ?? "";
 }
 
+function groupProductsByCategory(products: ProductWithStock[], ui: (typeof copy)[Language]) {
+  const categoryMap = new Map<string, ProductWithStock[]>();
+  for (const product of [...products].sort(compareProducts)) {
+    const key = categoryKey(product);
+    categoryMap.set(key, [...(categoryMap.get(key) ?? []), product]);
+  }
+
+  return Array.from(categoryMap.entries()).map(([key, categoryProducts]) => ({
+    key,
+    label: categoryLabel(key),
+    colorGroups: groupProductsByColor(categoryProducts, ui)
+  }));
+}
+
 function groupProductsByColor(products: ProductWithStock[], ui: (typeof copy)[Language]) {
   const groups = new Map<string, ProductWithStock[]>();
   for (const product of [...products].sort(compareProducts)) {
@@ -1249,6 +1309,9 @@ function groupProductsByColor(products: ProductWithStock[], ui: (typeof copy)[La
 }
 
 function compareProducts(a: ProductWithStock, b: ProductWithStock) {
+  const categoryDiff = categoryKey(a).localeCompare(categoryKey(b), undefined, { numeric: true });
+  if (categoryDiff !== 0) return categoryDiff;
+
   const colorDiff = COLOR_ORDER.indexOf(colorKey(a) as (typeof COLOR_ORDER)[number]) - COLOR_ORDER.indexOf(colorKey(b) as (typeof COLOR_ORDER)[number]);
   if (colorDiff !== 0) return colorDiff;
 
@@ -1260,6 +1323,14 @@ function compareProducts(a: ProductWithStock, b: ProductWithStock) {
 
 function currentStock(product: ProductWithStock | undefined) {
   return product ? getCurrentStock(product) : 0;
+}
+
+function categoryKey(product: ProductWithStock) {
+  return product.sku.split("-")[0]?.trim().toUpperCase() || "OTHER";
+}
+
+function categoryLabel(key: string) {
+  return key === "OTHER" ? "OTHER" : key;
 }
 
 function colorKey(product: ProductWithStock) {
