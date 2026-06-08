@@ -18,7 +18,7 @@ import { ProductSelect } from "@/components/ProductSelect";
 import { useLanguage } from "@/components/LanguageProvider";
 import { activeProducts } from "@/lib/products";
 import { supabase } from "@/lib/supabase";
-import { buildInventoryMetricsByProduct, getComputedCurrentStock, getCurrentStock, type InventoryMetrics } from "@/lib/stock";
+import { getComputedCurrentStock, getCurrentStock, type InventoryMetrics } from "@/lib/stock";
 import type { Language, ProductWithStock, StockMovement } from "@/lib/types";
 
 type InventoryActionType = "purchase" | "sale" | "return_resell" | "damaged" | "lost" | "adjustment";
@@ -423,7 +423,7 @@ function InventoryContent() {
     await load();
   }
 
-  const metricsByProduct = useMemo(() => buildInventoryMetricsByProduct(movements), [movements]);
+  const metricsByProduct = useMemo(() => buildInventoryMetricsByProductFromMovements(movements), [movements]);
   const movementRows = useMemo(() => attachAfterStock(movements, products, metricsByProduct), [movements, products, metricsByProduct]);
   const metrics = useMemo(() => calculateMetrics(products, movements, metricsByProduct), [products, movements, metricsByProduct]);
   const inventoryGroups = useMemo(() => groupProductsByColor(products, ui), [products, ui]);
@@ -1022,6 +1022,38 @@ function calculateMetrics(products: ProductWithStock[], movements: StockMovement
     adjustment,
     flowResult
   };
+}
+
+function buildInventoryMetricsByProductFromMovements(movements: StockMovement[]) {
+  const metricsByProduct = new Map<string, InventoryMetrics>();
+
+  for (const movement of movements) {
+    if (!movement.product_id) continue;
+    const metrics = metricsByProduct.get(movement.product_id) ?? {
+      purchaseInbound: 0,
+      salesRawTotal: 0,
+      lossDefectMissing: 0,
+      effectiveSales: 0,
+      returnInboundSaleable: 0,
+      inventoryAdjustment: 0,
+      availableInventory: 0
+    };
+    const actionType = actionTypeOf(movement);
+    const quantity = Math.abs(safeQuantity(movement.quantity));
+    const rawQuantity = safeQuantity(movement.quantity);
+
+    if (actionType === "purchase") metrics.purchaseInbound += quantity;
+    if (actionType === "sale") metrics.salesRawTotal += quantity;
+    if (actionType === "return_resell") metrics.returnInboundSaleable += quantity;
+    if (actionType === "damaged" || actionType === "lost") metrics.lossDefectMissing += quantity;
+    if (actionType === "adjustment") metrics.inventoryAdjustment += rawQuantity;
+
+    metrics.effectiveSales = metrics.salesRawTotal;
+    metrics.availableInventory = metrics.purchaseInbound - metrics.salesRawTotal - metrics.lossDefectMissing + metrics.inventoryAdjustment;
+    metricsByProduct.set(movement.product_id, metrics);
+  }
+
+  return metricsByProduct;
 }
 
 function attachAfterStock(movements: StockMovement[], products: ProductWithStock[], metricsByProduct: Map<string, InventoryMetrics>) {
