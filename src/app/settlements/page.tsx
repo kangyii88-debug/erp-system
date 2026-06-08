@@ -447,7 +447,7 @@ function SettlementEntry({
         <Field label={copy.month}><input type="month" value={form.settlement_month} onChange={(event) => onFormChange({ ...form, settlement_month: event.target.value })} required /></Field>
         {fields.map(([key, label]) => (
           <Field key={key} label={label}>
-            <input className="text-right tabular-nums" type="number" min="0" value={form[key]} onChange={(event) => onFormChange({ ...form, [key]: event.target.value })} />
+            <input className="text-right tabular-nums" type="number" min={key === "seller_coupon" ? undefined : "0"} value={form[key]} onChange={(event) => onFormChange({ ...form, [key]: event.target.value })} />
           </Field>
         ))}
         <Field label={copy.finalPaymentInput}>
@@ -612,14 +612,15 @@ function calculateSettlement(form: SettlementForm) {
   const salesAmount = amount(form.sales_amount);
   const cancelAmount = amount(form.cancel_amount);
   const salesFee = amount(form.sales_fee);
-  const sellerCoupon = amount(form.seller_coupon);
+  const sellerCoupon = signedAmount(form.seller_coupon);
   const milkRunFee = amount(form.milk_run_fee);
   const adFee = amount(form.ad_fee);
   const settlementDeduction = amount(form.settlement_deduction);
   const fulfillmentFee = amount(form.fulfillment_fee);
   const inventoryLossCompensation = amount(form.inventory_loss_compensation);
   // Coupang statement flow:
-  // 판매액 - 취소액 = 소계, then 소계 - 판매수수료(B) - 판매자할인쿠폰 = 판매기준 매출액.
+  // 판매액 - 취소액 = 소계, then 소계 - 판매수수료(B) - 상계금액(C) = 판매기준 매출액.
+  // Coupang shows seller coupons as negative C values, so -(-10,000) adds back 10,000.
   const actualSalesAmount = salesAmount - cancelAmount;
   const salesBaseAmount = actualSalesAmount - salesFee - sellerCoupon;
   const additionalDeduction = milkRunFee + adFee + settlementDeduction;
@@ -771,6 +772,10 @@ function last12Months() {
 
 function amount(value: string | number | null | undefined) {
   return Math.max(0, Number(value ?? 0) || 0);
+}
+
+function signedAmount(value: string | number | null | undefined) {
+  return Number(value ?? 0) || 0;
 }
 
 function rate(numerator: number, denominator: number) {
