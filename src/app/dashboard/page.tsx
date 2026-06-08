@@ -267,9 +267,9 @@ function DashboardContent() {
       </div>
 
       <div className={`space-y-6 transition-opacity duration-200 ${loading ? "opacity-60" : "opacity-100"}`}>
-        <section className="relative overflow-hidden rounded-[28px] border border-white/25 bg-gradient-to-br from-slate-50 via-zinc-100 to-stone-50 p-4 shadow-soft md:p-5">
-          <div className="pointer-events-none absolute -left-24 -top-28 h-72 w-72 rounded-full bg-emerald-700/5 blur-3xl" />
-          <div className="pointer-events-none absolute -bottom-28 -right-20 h-80 w-80 rounded-full bg-blue-700/5 blur-3xl" />
+        <section className="premium-dashboard-panel relative overflow-hidden rounded-[30px] p-4 md:p-5">
+          <div className="pointer-events-none absolute -left-24 -top-28 h-72 w-72 rounded-full bg-emerald-900/8 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-28 -right-20 h-80 w-80 rounded-full bg-[#bca77a]/12 blur-3xl" />
           <div className="relative grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <ExecutiveKpi
               delay={0}
@@ -580,7 +580,7 @@ function SkuMonthlySalesAnalysis({
 
   return (
     <section className="print:break-before-page">
-      <Card className="overflow-hidden border-white/45 bg-card/95 shadow-2xl backdrop-blur">
+      <Card className="premium-dashboard-panel overflow-hidden rounded-[28px]">
         <div className="relative overflow-hidden rounded-2xl border border-white/30 bg-gradient-to-br from-[#f9faf7] via-[#eef2eb] to-[#f6f1e8] p-5">
           <div className="pointer-events-none absolute -right-24 -top-24 h-56 w-56 rounded-full bg-[#1E5A4E]/10 blur-3xl" />
           <div className="pointer-events-none absolute -bottom-20 left-20 h-56 w-56 rounded-full bg-[#406A7A]/10 blur-3xl" />
@@ -633,16 +633,16 @@ function SkuMonthlySalesAnalysis({
           </div>
         </div>
 
-        <div className="mt-5 overflow-hidden rounded-2xl border border-line bg-white/85 shadow-soft">
+        <div className="mt-5 overflow-hidden rounded-2xl border border-white/60 bg-white/78 shadow-[0_18px_48px_rgba(23,33,29,0.06)] backdrop-blur">
           <div className="max-h-[520px] overflow-auto">
             <table className="min-w-[1280px] w-full border-collapse text-sm">
-              <thead className="sticky top-0 z-20 bg-[#f8faf6]/95 backdrop-blur">
+              <thead className="sticky top-0 z-20 bg-[#f7f8f2]/96 backdrop-blur-xl">
                 <tr>
-                  <th className="sticky left-0 z-30 min-w-[280px] border-b border-line bg-[#f8faf6]/95 px-4 py-3 text-left font-semibold text-ink">{copy.productName}</th>
+                  <th className="sticky left-0 z-30 min-w-[280px] border-b border-line bg-[#f7f8f2]/96 px-4 py-3 text-left text-xs font-extrabold uppercase tracking-[0.12em] text-ink/55">{copy.productName}</th>
                   {Array.from({ length: 12 }, (_, index) => (
-                    <th key={index} className="border-b border-line px-4 py-3 text-right font-semibold text-ink">{index + 1}{copy.month}</th>
+                    <th key={index} className="border-b border-line px-4 py-3 text-right text-xs font-extrabold uppercase tracking-[0.08em] text-ink/55">{index + 1}{copy.month}</th>
                   ))}
-                  <th className="border-b border-line px-4 py-3 text-right font-semibold text-ink">{copy.annualTotal}</th>
+                  <th className="border-b border-line px-4 py-3 text-right text-xs font-extrabold uppercase tracking-[0.08em] text-ink/55">{copy.annualTotal}</th>
                 </tr>
               </thead>
               <tbody>
@@ -653,7 +653,7 @@ function SkuMonthlySalesAnalysis({
                     <Fragment key={row.product.id}>
                       {showColorHeader ? (
                         <tr>
-                          <td colSpan={14} className="sticky left-0 z-10 border-b border-line bg-[#f6f8f3] px-4 py-2">
+                          <td colSpan={14} className="sticky left-0 z-10 border-b border-line bg-[#eef3ed] px-4 py-2">
                             <div className="flex items-center gap-2 text-xs font-semibold text-ink/70">
                               <span className="h-2.5 w-2.5 rounded-full ring-2 ring-white" style={{ backgroundColor: colorToken(color) }} />
                               <span>{color}</span>
@@ -661,8 +661,8 @@ function SkuMonthlySalesAnalysis({
                           </td>
                         </tr>
                       ) : null}
-                      <tr onClick={() => onSelectSku(row.product.id)} className="cursor-pointer transition hover:bg-[#edf3ef]">
-                        <td className="sticky left-0 z-10 border-b border-line bg-white/95 px-4 py-3" style={{ borderLeft: `4px solid ${colorToken(color)}` }}>
+                      <tr onClick={() => onSelectSku(row.product.id)} className="premium-table-row group cursor-pointer">
+                        <td className="sticky left-0 z-10 border-b border-line bg-white/92 px-4 py-3 transition group-hover:bg-[#f6faf6]" style={{ borderLeft: `4px solid ${colorToken(color)}` }}>
                           <div className="flex flex-wrap items-center gap-2">
                             <span className="rounded-full px-2.5 py-1 text-xs font-semibold text-ink shadow-sm ring-1 ring-black/5" style={{ backgroundColor: colorBadgeBackground(color) }}>
                               {color}
@@ -673,11 +673,11 @@ function SkuMonthlySalesAnalysis({
                           <div className="mt-0.5 max-w-[250px] truncate text-xs text-ink/55">{row.product.name}</div>
                         </td>
                         {row.monthly.map((month, monthIndex) => (
-                          <td key={monthIndex} className="border-b border-line px-4 py-3 text-right tabular-nums text-ink/75">
+                          <td key={monthIndex} className="border-b border-line px-4 py-3 text-right font-medium tabular-nums text-ink/72 transition group-hover:text-ink">
                             {formatMonthlyMetricCell(row, month, metric, formatCurrency, formatNumber)}
                           </td>
                         ))}
-                        <td className="border-b border-line px-4 py-3 text-right font-semibold tabular-nums text-ink">
+                        <td className="premium-number border-b border-line px-4 py-3 text-right font-bold tabular-nums text-ink">
                           {formatMonthlyAnnualTotal(row, metric, formatCurrency, formatNumber)}
                         </td>
                       </tr>
@@ -744,19 +744,22 @@ function ExecutiveKpi({
   const { formatCurrency, formatNumber } = useLanguage();
   const direction = compareValue == null ? "neutral" : compareValue >= 0 ? "up" : "down";
   const trendPositive = inverseTrend ? direction === "down" : direction === "up";
+  const trendTone = compareValue == null ? "neutral" : trendPositive ? "positive" : "negative";
 
   return (
     <div
-      className="group relative min-h-36 overflow-hidden rounded-3xl border border-white/25 bg-card/90 p-5 shadow-lg backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:shadow-2xl"
+      className="premium-dashboard-card group min-h-36 rounded-3xl p-5 transition duration-300"
       style={{ animation: `kpi-rise 620ms ease-out ${delay}ms both` }}
     >
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(255,255,255,0.78),transparent_36%),linear-gradient(135deg,rgba(255,255,255,0.46),rgba(255,255,255,0.08))]" />
+      <div className="pointer-events-none absolute inset-x-5 bottom-4 h-12 opacity-70 transition duration-300 group-hover:opacity-100">
+        <MiniKpiSparkline tone={trendTone} />
+      </div>
       <div className="relative flex items-start justify-between gap-4">
         <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-[#1E5A4E] to-[#406A7A] text-white shadow-[0_12px_28px_rgba(30,90,78,0.24)]">
           <Icon size={20} className="opacity-95" />
         </div>
         {compareValue != null ? (
-          <div className={`flex animate-pulse items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold ${
+          <div className={`flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold shadow-sm transition group-hover:scale-105 ${
             trendPositive
               ? "border-emerald-200 bg-emerald-50 text-emerald-700"
               : "border-red-200 bg-red-50 text-red-700"
@@ -767,13 +770,30 @@ function ExecutiveKpi({
         ) : null}
       </div>
       <div className="relative mt-5">
-        <div className="text-sm font-semibold text-ink/55">{label}</div>
+        <div className="text-sm font-semibold text-ink/62">{label}</div>
         {subtitle ? <div className="mt-1 text-xs font-medium text-ink/40">{subtitle}</div> : null}
-        <div className="mt-4 text-3xl font-semibold tracking-tight text-ink md:text-[34px]">
+        <div className="premium-number mt-4 text-3xl font-semibold text-ink md:text-[34px]">
           <CountUpNumber value={value} format={format} suffix={suffix} formatCurrency={formatCurrency} formatNumber={formatNumber} />
         </div>
       </div>
     </div>
+  );
+}
+
+function MiniKpiSparkline({ tone }: { tone: "positive" | "negative" | "neutral" }) {
+  const stroke = tone === "negative" ? "#9a3f3f" : tone === "positive" ? "#23614f" : "#8a6834";
+  const fill = tone === "negative" ? "rgba(154,63,63,0.1)" : tone === "positive" ? "rgba(35,97,79,0.11)" : "rgba(188,167,122,0.12)";
+  const points = tone === "negative"
+    ? "0,18 22,15 44,22 66,14 88,24 110,20 132,30"
+    : tone === "positive"
+      ? "0,30 22,24 44,26 66,16 88,18 110,10 132,7"
+      : "0,22 22,18 44,20 66,17 88,19 110,15 132,16";
+
+  return (
+    <svg viewBox="0 0 132 36" className="h-full w-full" aria-hidden="true">
+      <polyline points={`0,36 ${points} 132,36`} fill={fill} stroke="none" />
+      <polyline points={points} fill="none" stroke={stroke} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   );
 }
 
@@ -817,8 +837,11 @@ function CountUpNumber({
 function DashboardSectionTitle({ eyebrow, title }: { eyebrow: string; title: string }) {
   return (
     <div>
-      <div className="text-sm font-medium text-ink/55">{eyebrow}</div>
-      <h2 className="text-xl font-semibold text-ink">{title}</h2>
+      <div className="premium-section-eyebrow">
+        <span className="h-1.5 w-1.5 rounded-full bg-[#bca77a]" />
+        {eyebrow}
+      </div>
+      <h2 className="mt-2 text-xl font-semibold tracking-tight text-ink">{title}</h2>
     </div>
   );
 }
@@ -844,7 +867,11 @@ function SegmentButton({ active, onClick, children }: { active: boolean; onClick
     <button
       type="button"
       onClick={onClick}
-      className={`rounded border px-3 py-2 text-sm font-semibold ${active ? "border-brand bg-brand text-white" : "border-line bg-white text-ink"}`}
+      className={`rounded-xl border px-3 py-2 text-sm font-semibold shadow-sm transition duration-200 ${
+        active
+          ? "border-brand bg-gradient-to-br from-brand to-brand-strong text-white shadow-[0_10px_24px_rgba(23,72,63,0.18)]"
+          : "border-white/70 bg-white/75 text-ink hover:border-brand/25 hover:bg-white hover:text-brand hover:shadow-soft"
+      }`}
     >
       {children}
     </button>
@@ -941,9 +968,9 @@ function TrendSummary({
 
 function MiniTrendCard({ label, value, sub, tone }: { label: string; value: string | number; sub?: string; tone?: "up" | "down" }) {
   return (
-    <div className="rounded-xl border border-line bg-white/85 p-3">
+    <div className="rounded-2xl border border-white/65 bg-white/74 p-3 shadow-[0_12px_30px_rgba(23,33,29,0.06)] backdrop-blur transition duration-200 hover:-translate-y-0.5 hover:shadow-soft">
       <div className="text-xs font-semibold text-ink/55">{label}</div>
-      <div className={`mt-2 text-2xl font-semibold ${tone === "down" ? "text-red-600" : tone === "up" ? "text-emerald-700" : "text-ink"}`}>{value}</div>
+      <div className={`premium-number mt-2 text-2xl font-semibold ${tone === "down" ? "text-red-600" : tone === "up" ? "text-emerald-700" : "text-ink"}`}>{value}</div>
       {sub ? <div className="mt-1 text-xs text-ink/55">{sub}</div> : null}
     </div>
   );
@@ -1263,7 +1290,7 @@ function MonthlyDecisionCard({ card }: { card: MonthlyDecisionCardData }) {
   }[card.tone];
 
   return (
-    <div className={`rounded-2xl border bg-gradient-to-br p-4 shadow-soft transition duration-200 hover:-translate-y-0.5 hover:shadow-lift ${toneClass}`}>
+    <div className={`rounded-2xl border bg-gradient-to-br p-4 shadow-soft transition duration-200 hover:-translate-y-1 hover:shadow-lift ${toneClass}`}>
       <div className="mb-4 flex items-start gap-3">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white/80 shadow-soft">
           <Icon size={18} />
@@ -1281,7 +1308,7 @@ function MonthlyDecisionCard({ card }: { card: MonthlyDecisionCardData }) {
                 <div className="truncate text-sm font-semibold text-ink">{row.label}</div>
                 <div className="mt-1 truncate text-xs text-ink/45">{row.helper}</div>
               </div>
-              <div className="shrink-0 text-sm font-semibold tabular-nums text-ink">{row.value}</div>
+              <div className="premium-number shrink-0 text-sm font-semibold tabular-nums text-ink">{row.value}</div>
             </div>
           </div>
         ))}
@@ -1488,7 +1515,7 @@ function ReplenishmentActionCenter({
                 <ProductInfoCell product={row.product} />
                 <NumberCell>{formatNumber(row.currentStock)}</NumberCell>
                 <NumberCell>{formatNumber(row.dailyAverage)}</NumberCell>
-                <NumberCell>{formatSaleableDaysText(row, copy)}</NumberCell>
+                <SaleableDaysCell row={row} copy={copy} />
                 <div className="text-center"><StatusBadge status={row.status} /></div>
                 <div className="text-center font-semibold text-ink">{actionLabel(row, copy)}</div>
                 <NumberCell>
@@ -1591,7 +1618,7 @@ function StockRiskRanking({
                 <ProductInfoCell product={row.product} />
                 <NumberCell>{formatNumber(row.currentStock)}</NumberCell>
                 <NumberCell>{formatNumber(row.dailyAverage)}</NumberCell>
-                <NumberCell>{formatSaleableDaysText(row, copy)}</NumberCell>
+                <SaleableDaysCell row={row} copy={copy} />
                 <div className="text-center text-sm font-semibold text-ink/70">{calculateEstimatedStockoutDate(getRowDaysOfStock(row), anchorDate, t)}</div>
                 <NumberCell>{formatCurrency(estimatedLostRevenue(row))}</NumberCell>
                 <div className="text-center"><RiskBadge row={row} copy={copy} /></div>
@@ -1686,7 +1713,7 @@ function SkuLifecycleCenter({
                 <NumberCell>{formatNumber(row.currentStock)}</NumberCell>
                 <NumberCell>{formatNumber(row.sales7)} / {formatNumber(row.salesInWindow)}</NumberCell>
                 <NumberCell>{formatNumber(row.dailyAverage)}</NumberCell>
-                <NumberCell>{formatSaleableDaysText(row, copy)}</NumberCell>
+                <SaleableDaysCell row={row} copy={copy} />
                 <div className="text-center"><LifecycleBadge label={row.lifecycle} status={row.lifecycleStatus} /></div>
                 <div className="text-center font-semibold text-ink">{row.lifecycleAction}</div>
               </DecisionRow>
@@ -1715,15 +1742,18 @@ function DecisionPanel({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-[28px] border border-white/60 bg-white/90 p-5 shadow-soft backdrop-blur-xl md:p-6">
+    <div className="premium-dashboard-panel rounded-[28px] p-5 md:p-6">
       <div className="mb-5 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
         <div>
-          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-ink/35">{eyebrow}</div>
+          <div className="premium-section-eyebrow">
+            <span className="h-1.5 w-1.5 rounded-full bg-[#bca77a]" />
+            {eyebrow}
+          </div>
           <h2 className="mt-1 text-2xl font-semibold tracking-tight text-ink">{title}</h2>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-ink/55">{description}</p>
         </div>
         <div className="flex flex-col items-stretch gap-3 md:flex-row md:items-center">
-          <span className="rounded-full border border-line bg-panel px-3 py-1.5 text-xs font-semibold text-ink/55">{meta}</span>
+          <span className="premium-status-chip px-3 py-1.5 text-xs font-semibold text-ink/58">{meta}</span>
           {toolbar}
         </div>
       </div>
@@ -1740,9 +1770,9 @@ function DecisionMetric({ label, value, tone }: { label: string; value: string; 
     neutral: "from-slate-50 text-ink border-line"
   }[tone];
   return (
-    <div className={`rounded-2xl border bg-gradient-to-br ${colors} to-white p-4 shadow-[0_14px_34px_rgba(31,44,38,0.05)]`}>
+    <div className={`rounded-2xl border bg-gradient-to-br ${colors} to-white p-4 shadow-[0_14px_34px_rgba(31,44,38,0.05)] transition duration-200 hover:-translate-y-0.5 hover:shadow-soft`}>
       <div className="text-xs font-semibold text-ink/45">{label}</div>
-      <div className="mt-2 text-2xl font-bold tracking-tight">{value}</div>
+      <div className="premium-number mt-2 text-2xl font-bold tracking-tight">{value}</div>
     </div>
   );
 }
@@ -1755,7 +1785,7 @@ function DecisionSearch({ value, placeholder, onChange }: { value: string; place
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
-        className="h-10 w-full min-w-[220px] rounded-xl border border-line bg-white pl-9 pr-3 text-sm outline-none transition focus:border-brand/50 focus:ring-2 focus:ring-brand/10"
+        className="h-10 w-full min-w-[220px] rounded-xl border border-white/70 bg-white/78 pl-9 pr-3 text-sm outline-none shadow-sm transition focus:border-brand/50 focus:ring-2 focus:ring-brand/10"
       />
     </label>
   );
@@ -1766,7 +1796,7 @@ function DecisionSelect({ value, onChange, children }: { value: string; onChange
     <select
       value={value}
       onChange={(event) => onChange(event.target.value)}
-      className="h-10 rounded-xl border border-line bg-white px-3 text-sm font-semibold text-ink/70 outline-none transition focus:border-brand/50 focus:ring-2 focus:ring-brand/10"
+      className="h-10 rounded-xl border border-white/70 bg-white/78 px-3 text-sm font-semibold text-ink/70 shadow-sm outline-none transition focus:border-brand/50 focus:ring-2 focus:ring-brand/10"
     >
       {children}
     </select>
@@ -1775,7 +1805,7 @@ function DecisionSelect({ value, onChange, children }: { value: string; onChange
 
 function DecisionTable({ children }: { columns?: string; children: React.ReactNode }) {
   return (
-    <div className="overflow-hidden rounded-2xl border border-line bg-white shadow-[0_18px_48px_rgba(31,44,38,0.05)]">
+    <div className="overflow-hidden rounded-2xl border border-white/65 bg-white/76 shadow-[0_18px_48px_rgba(31,44,38,0.06)] backdrop-blur">
       <div className="overflow-x-auto">
         <div className="min-w-[1040px]">{children}</div>
       </div>
@@ -1785,7 +1815,7 @@ function DecisionTable({ children }: { columns?: string; children: React.ReactNo
 
 function DecisionTableHeader({ columns, children }: { columns: string; children: React.ReactNode }) {
   return (
-    <div className={`grid ${columns} items-center gap-4 border-b border-line bg-panel/70 px-4 py-3 text-xs font-bold uppercase tracking-[0.12em] text-ink/45`}>
+    <div className={`sticky top-0 z-10 grid ${columns} items-center gap-4 border-b border-line bg-[#f3f5ee]/94 px-4 py-3 text-xs font-bold uppercase tracking-[0.12em] text-ink/45 backdrop-blur-xl`}>
       {children}
     </div>
   );
@@ -1793,10 +1823,10 @@ function DecisionTableHeader({ columns, children }: { columns: string; children:
 
 function DecisionRow({ status, columns, children }: { status: SmartReplenishmentRow["status"]; columns: string; children: React.ReactNode }) {
   const line = status === "danger" ? "bg-red-400" : status === "warning" ? "bg-amber-400" : "bg-emerald-500";
-  const highlight = status === "danger" ? "bg-red-50/30" : "";
+  const highlight = status === "danger" ? "bg-red-50/35" : status === "warning" ? "bg-yellow-50/25" : "";
   return (
-    <div className={`group relative grid ${columns} items-center gap-4 px-4 py-4 text-sm transition hover:bg-panel/75 ${highlight}`}>
-      <span className={`absolute left-0 top-3 h-[calc(100%-24px)] w-1 rounded-r-full opacity-70 ${line}`} />
+    <div className={`group relative grid ${columns} items-center gap-4 px-4 py-4 text-sm transition duration-200 hover:-translate-y-0.5 hover:bg-white/86 hover:shadow-[0_12px_30px_rgba(23,33,29,0.06)] ${highlight}`}>
+      <span className={`absolute left-0 top-3 h-[calc(100%-24px)] w-1 rounded-r-full opacity-80 shadow-sm ${line}`} />
       {children}
     </div>
   );
@@ -1819,15 +1849,32 @@ function ProductInfoCell({ product }: { product: ProductWithStock }) {
     <div className="min-w-0">
       <div className="truncate text-sm font-semibold text-ink">{product.name}</div>
       <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-ink/45">
-        <span>{product.sku}</span>
-        <span className="rounded-full bg-panel px-2 py-0.5 font-semibold text-ink/55">{formatVariantName(product)}</span>
+        <span className="font-semibold tabular-nums">{product.sku}</span>
+        <span className="premium-status-chip px-2 py-0.5 font-semibold text-ink/55">{formatVariantName(product)}</span>
       </div>
     </div>
   );
 }
 
 function NumberCell({ children }: { children: React.ReactNode }) {
-  return <div className="text-right font-semibold tabular-nums text-ink">{children}</div>;
+  return <div className="premium-number text-right font-semibold tabular-nums text-ink">{children}</div>;
+}
+
+function SaleableDaysCell({ row, copy }: { row: SmartReplenishmentRow | LifecycleRow; copy: DecisionCopy }) {
+  const days = getRowDaysOfStock(row);
+  const capped = Number.isFinite(days) ? Math.min(30, Math.max(0, days)) : 30;
+  const width = `${Math.max(4, (capped / 30) * 100)}%`;
+  const level = getRiskLevel(days, row.currentStock, row.dailyAverage);
+  const bar = level === "danger" ? "bg-red-500" : level === "warning" ? "bg-amber-500" : "bg-emerald-600";
+
+  return (
+    <div className="text-right">
+      <div className="premium-number font-semibold tabular-nums text-ink">{formatSaleableDaysText(row, copy)}</div>
+      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-black/5">
+        <div className={`h-full rounded-full ${bar}`} style={{ width }} />
+      </div>
+    </div>
+  );
 }
 
 function DecisionEmpty({ text }: { text: string }) {
@@ -1858,7 +1905,7 @@ function RiskBadge({ row, copy }: { row: SmartReplenishmentRow; copy: DecisionCo
     tone === "warning" ? "border-amber-200 bg-amber-50 text-amber-800" :
       "border-emerald-200 bg-emerald-50 text-emerald-800";
   return (
-    <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${className}`}>
+    <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold shadow-sm ${className}`}>
       {label}
     </span>
   );
@@ -2157,7 +2204,7 @@ function StatusBadge({ status }: { status: SmartReplenishmentRow["status"] }) {
     warning: [t("dashboard.status.warning"), "bg-amber-50 text-amber-700 border-amber-200"],
     normal: [t("dashboard.status.normal"), "bg-emerald-50 text-emerald-700 border-emerald-200"]
   }[status];
-  return <span className={`rounded border px-2 py-1 text-xs font-semibold ${config[1]}`}>{config[0]}</span>;
+  return <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold shadow-sm ${config[1]}`}>{config[0]}</span>;
 }
 
 function LifecycleBadge({ label, status }: { label: string; status?: LifecycleStatus }) {
@@ -2165,7 +2212,7 @@ function LifecycleBadge({ label, status }: { label: string; status?: LifecycleSt
     status === "warning" ? "bg-amber-50 text-amber-800 border-amber-200" :
       status === "slow" ? "bg-slate-100 text-slate-700 border-slate-200" :
         "bg-blue-50 text-blue-800 border-blue-200";
-  return <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${color}`}>{label}</span>;
+  return <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold shadow-sm ${color}`}>{label}</span>;
 }
 
 function EmptyRow({ columns }: { columns: number }) {

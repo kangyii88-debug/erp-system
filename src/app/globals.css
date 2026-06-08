@@ -75,6 +75,26 @@ button:active {
   }
 }
 
+@keyframes premium-glow-sweep {
+  from {
+    transform: translateX(-120%) skewX(-12deg);
+  }
+  to {
+    transform: translateX(160%) skewX(-12deg);
+  }
+}
+
+@keyframes premium-value-pop {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 table {
   border-collapse: separate;
   border-spacing: 0;
@@ -176,5 +196,98 @@ table {
     border-color: transparent;
     transform: scale(1.01);
     box-shadow: 0 0 0 4px rgba(23, 72, 63, 0.11), 0 14px 30px rgba(23, 33, 29, 0.08);
+  }
+
+  .premium-dashboard-card {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.58);
+    background:
+      radial-gradient(circle at 14% 0%, rgba(255, 255, 255, 0.92), transparent 34%),
+      linear-gradient(145deg, rgba(255, 253, 248, 0.93), rgba(240, 244, 238, 0.84) 58%, rgba(235, 231, 219, 0.68));
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.92),
+      0 1px 2px rgba(15, 52, 47, 0.04),
+      0 22px 52px rgba(23, 33, 29, 0.1);
+    backdrop-filter: blur(18px);
+  }
+
+  .premium-dashboard-card::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(110deg, transparent 18%, rgba(255, 255, 255, 0.42) 44%, transparent 62%);
+    opacity: 0;
+    transform: translateX(-120%) skewX(-12deg);
+  }
+
+  .premium-dashboard-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(188, 167, 122, 0.44);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.95),
+      0 28px 68px rgba(15, 52, 47, 0.15);
+  }
+
+  .premium-dashboard-card:hover::after {
+    opacity: 1;
+    animation: premium-glow-sweep 900ms ease-out both;
+  }
+
+  .premium-dashboard-panel {
+    border: 1px solid rgba(255, 255, 255, 0.62);
+    background:
+      linear-gradient(145deg, rgba(255, 253, 248, 0.9), rgba(241, 244, 238, 0.78)),
+      var(--color-card);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.9),
+      0 22px 58px rgba(23, 33, 29, 0.08);
+    backdrop-filter: blur(16px);
+  }
+
+  .premium-number {
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0;
+    animation: premium-value-pop 420ms ease-out both;
+  }
+
+  .premium-section-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    width: fit-content;
+    border: 1px solid rgba(188, 167, 122, 0.34);
+    border-radius: 999px;
+    background: rgba(255, 253, 248, 0.72);
+    padding: 0.25rem 0.65rem;
+    color: rgba(15, 52, 47, 0.72);
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.84);
+  }
+
+  .premium-table-row {
+    background:
+      linear-gradient(90deg, rgba(255, 253, 248, 0.92), rgba(255, 253, 248, 0.72));
+    transition: transform 180ms ease, background 180ms ease, box-shadow 180ms ease;
+  }
+
+  .premium-table-row:hover {
+    position: relative;
+    z-index: 2;
+    transform: translateY(-1px);
+    background:
+      linear-gradient(90deg, rgba(238, 246, 241, 0.96), rgba(255, 253, 248, 0.92));
+    box-shadow: 0 12px 28px rgba(23, 33, 29, 0.06);
+  }
+
+  .premium-status-chip {
+    border-radius: 999px;
+    border: 1px solid rgba(197, 201, 189, 0.72);
+    background: rgba(255, 253, 248, 0.82);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
   }
 }
