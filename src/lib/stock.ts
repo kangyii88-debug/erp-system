@@ -123,6 +123,8 @@ function normalizeMovementType(movement: InventoryMovementLike): "purchase" | "s
   const type = String(movement.type ?? "");
   const memo = String(movement.memo ?? "");
 
+  if (includesAny(memo, ["退货入库在售", "退货", "반품 입고 판매가능", "반품 입고 판매", "반품"])) return "return_resell";
+  if (includesAny(memo, ["损耗丢失", "损耗/不良", "损耗", "不良", "丢失", "손상/불량", "손상/분실", "불량", "분실"])) return "loss";
   if (type === "purchase" || type === "inbound") return "purchase";
   if (type === "sale" || type === "outbound") return "sale";
   if (type === "adjustment") return "adjustment";
