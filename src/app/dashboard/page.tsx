@@ -172,7 +172,7 @@ function DashboardContent() {
     const visibleMovements = ((movementRows ?? []) as MovementRow[]).filter((movement) => visibleProductIds.has(movement.product_id));
     const metricsByProduct = buildInventoryMetricsByProduct(visibleMovements);
     const movementSales = visibleMovements
-      .filter((movement) => movement.type === "sale" || movement.type === "outbound")
+      .filter((movement) => (movement.type === "sale" || movement.type === "outbound") && !isReturnInboundMovement(movement) && !isLossMovement(movement))
       .map((movement) => ({
         product_id: movement.product_id,
         sale_date: toDateKey(new Date(movement.happened_at)),
@@ -2792,7 +2792,8 @@ function isReturnInboundMovement(movement: MovementRow) {
     movement.type === "return_resell" ||
     movement.type === "return_inbound" ||
     memo.startsWith("\u9000\u8d27\u5165\u5e93\u5728\u552e") ||
-    memo.startsWith("\ubc18\ud488 \uc785\uace0 \ud310\ub9e4\uac00\ub2a5")
+    memo.startsWith("\ubc18\ud488 \uc785\uace0 \ud310\ub9e4\uac00\ub2a5") ||
+    memo.startsWith("\ubc18\ud488 \uc785\uace0 \ud310\ub9e4")
   );
 }
 
@@ -2808,7 +2809,9 @@ function isLossMovement(movement: MovementRow) {
     memo.startsWith("\u4e0d\u826f") ||
     memo.startsWith("\u4e22\u5931") ||
     memo.startsWith("\uc190\uc0c1/\ubd88\ub7c9") ||
-    memo.startsWith("\uc190\uc0c1/\ubd84\uc2e4")
+    memo.startsWith("\uc190\uc0c1/\ubd84\uc2e4") ||
+    memo.startsWith("\ubd88\ub7c9") ||
+    memo.startsWith("\ubd84\uc2e4")
   );
 }
 
