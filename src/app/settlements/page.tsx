@@ -243,13 +243,13 @@ function SettlementCenter() {
       <section className="mb-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-9">
         <SettlementKpi icon={Wallet} label={copy.salesAmount} value={formatCurrency(currentMetrics.sales_amount)} helper={copy.thisMonth} />
         <SettlementKpi icon={XCircle} label={copy.cancelAmount} value={formatCurrency(currentMetrics.cancel_amount)} helper={formatPercent(currentMetrics.cancel_rate)} tone="red" />
-        <SettlementKpi icon={BarChart3} label={copy.salesBase} value={formatCurrency(salesBaseAmount(currentMetrics))} helper={copy.autoCalculated} />
+        <SettlementKpi icon={BarChart3} label={copy.salesBase} value={formatCurrency(salesBaseAmount(currentMetrics))} helper={copy.afterFeeCoupon} />
         <SettlementKpi icon={CreditCard} label={copy.salesFee} value={formatCurrency(currentMetrics.sales_fee)} helper={formatPercent(currentMetrics.fee_rate)} tone="yellow" />
         <SettlementKpi icon={ReceiptText} label={copy.sellerCoupon} value={formatCurrency(currentMetrics.seller_coupon)} helper={copy.deduction} tone="slate" />
         <SettlementKpi icon={Megaphone} label={copy.adFee} value={formatCurrency(currentMetrics.ad_fee)} helper={formatPercent(currentMetrics.ad_rate)} tone="red" />
         <SettlementKpi icon={MilkIcon} label={copy.milkRunFee} value={formatCurrency(currentMetrics.milk_run_fee)} helper={copy.logistics} tone="yellow" />
         <SettlementKpi icon={ShieldCheck} label={copy.compensation} value={formatCurrency(currentMetrics.inventory_loss_compensation)} helper={copy.addBack} tone="green" />
-        <SettlementKpi icon={Landmark} label={copy.finalPayment} value={formatCurrency(currentMetrics.final_payment_amount)} helper={formatPercent(currentMetrics.payment_rate)} tone="green" />
+        <SettlementKpi icon={Landmark} label={copy.finalPayment} value={formatCurrency(currentMetrics.final_payment_amount)} helper={copy.platformPaysYou} tone="green" />
       </section>
 
       <section className="mb-5 grid gap-4 xl:grid-cols-[1.1fr_1fr]">
@@ -461,11 +461,15 @@ function SettlementEntry({
           </label>
         </Field>
         <Field label={copy.remark}><textarea className="min-h-20" value={form.remark} onChange={(event) => onFormChange({ ...form, remark: event.target.value })} /></Field>
-        <div className="md:col-span-2 grid gap-3 rounded-2xl border border-white/70 bg-white/70 p-4 md:grid-cols-4">
+        <div className="md:col-span-2 grid gap-3 rounded-2xl border border-white/70 bg-white/70 p-4 md:grid-cols-5">
           <MiniCalc label={copy.actualSales} value={formatCurrency(preview.actualSalesAmount)} />
           <MiniCalc label={copy.salesBase} value={formatCurrency(preview.salesBaseAmount)} />
           <MiniCalc label={copy.additionalDeduction} value={formatCurrency(preview.additionalDeduction)} />
+          <MiniCalc label={copy.compensation} value={formatCurrency(preview.inventoryLossCompensation)} />
           <MiniCalc label={copy.autoFinalPayment} value={formatCurrency(preview.finalPaymentAmount)} />
+        </div>
+        <div className="md:col-span-2 rounded-2xl border border-brand/10 bg-brand/5 px-4 py-3 text-xs font-semibold leading-6 text-brand">
+          {copy.formulaHint}
         </div>
         <button className="md:col-span-2 rounded-xl bg-gradient-to-br from-brand to-brand-strong px-4 py-3 text-sm font-semibold text-white shadow-soft transition hover:-translate-y-0.5 hover:shadow-lift">
           <span className="inline-flex items-center justify-center gap-2">
@@ -614,6 +618,8 @@ function calculateSettlement(form: SettlementForm) {
   const settlementDeduction = amount(form.settlement_deduction);
   const fulfillmentFee = amount(form.fulfillment_fee);
   const inventoryLossCompensation = amount(form.inventory_loss_compensation);
+  // Coupang statement flow:
+  // 판매액 - 취소액 = 소계, then 소계 - 판매수수료(B) - 판매자할인쿠폰 = 판매기준 매출액.
   const actualSalesAmount = salesAmount - cancelAmount;
   const salesBaseAmount = actualSalesAmount - salesFee - sellerCoupon;
   const additionalDeduction = milkRunFee + adFee + settlementDeduction;
@@ -801,29 +807,32 @@ function settlementCopy(language: Language) {
       independentNotice: "독립 정산 모듈",
       thisMonth: "이번 달",
       autoCalculated: "자동 계산",
+      afterFeeCoupon: "수수료/쿠폰 차감 후",
+      platformPaysYou: "Coupang 지급 예정",
       deduction: "차감",
       logistics: "물류",
       addBack: "보상 반영",
       month: "정산 월",
       salesAmount: "판매액",
       cancelAmount: "취소액",
-      actualSales: "실제 판매액",
-      salesBase: "판매 기준 금액",
-      salesFee: "판매 수수료",
-      sellerCoupon: "판매자 할인 쿠폰",
-      milkRunFee: "Milk Run 비용",
+      actualSales: "소계 / 실제 판매액",
+      salesBase: "판매기준 매출액",
+      salesFee: "판매수수료 (B)",
+      sellerCoupon: "판매자할인쿠폰",
+      milkRunFee: "밀크런 이용액 (C)",
       adFee: "광고비",
-      settlementDeduction: "정산 차감",
-      fulfillmentFee: "Coupang Fulfillment 비용",
-      compensation: "재고 손실 보상",
-      finalPayment: "최종 지급액",
-      finalPaymentInput: "최종 지급액",
+      settlementDeduction: "기타 정산 차감 (E)",
+      fulfillmentFee: "Coupang Fulfillment 비용 (J)",
+      compensation: "재고 손실 보상 (K)",
+      finalPayment: "최종지급액 (H-I-J+K)",
+      finalPaymentInput: "최종지급액 (H-I-J+K)",
       cancelRate: "취소율",
       feeRate: "수수료율",
       adRate: "광고비율",
       paymentRate: "지급률",
-      additionalDeduction: "추가 차감 금액",
-      autoFinalPayment: "공식 지급액",
+      additionalDeduction: "소계 (C+D+E)",
+      autoFinalPayment: "자동 계산 최종지급액",
+      formulaHint: "계산식: 판매액 - 취소액 = 소계, 소계 - 판매수수료(B) - 판매자할인쿠폰 = 판매기준 매출액, 판매기준 매출액 - 소계(C+D+E) - Fulfillment 비용(J) + 재고 손실 보상(K) = 최종지급액.",
       attachment: "첨부",
       remark: "메모",
       entryTitle: "정산 입력 센터",
@@ -868,29 +877,32 @@ function settlementCopy(language: Language) {
     independentNotice: "独立结算模块",
     thisMonth: "本月",
     autoCalculated: "自动计算",
+    afterFeeCoupon: "扣手续费/优惠券后",
+    platformPaysYou: "平台应付给我",
     deduction: "扣减项",
     logistics: "物流项",
     addBack: "补偿加回",
     month: "结算月份",
     salesAmount: "판매액 / 销售额",
     cancelAmount: "취소액 / 取消金额",
-    actualSales: "实际销售额",
-    salesBase: "销售基准金额",
-    salesFee: "판매수수료 / 销售手续费",
+    actualSales: "소계 / 实际销售额",
+    salesBase: "판매기준 매출액 / 销售基准金额",
+    salesFee: "판매수수료 (B) / 平台手续费",
     sellerCoupon: "판매자할인쿠폰 / 卖家优惠券",
-    milkRunFee: "밀크런 이용액 / Milk Run费用",
-    adFee: "광고비 / 广告费",
-    settlementDeduction: "정산 차감 / 结算扣减",
-    fulfillmentFee: "쿠팡 풀필먼트 서비스 비용 / Coupang Fulfillment服务费",
-    compensation: "재고 손실 보상 / 库存损失补偿",
-    finalPayment: "최종지급액 / 最终到账金额",
-    finalPaymentInput: "최종지급액 / 最终到账金额",
+    milkRunFee: "밀크런 이용액 (C) / Milk Run费用",
+    adFee: "광고비 (D) / 广告费",
+    settlementDeduction: "정산 차감 (E) / 其它结算扣减",
+    fulfillmentFee: "쿠팡 풀필먼트 서비스 비용 (J) / Coupang Fulfillment服务费",
+    compensation: "재고 손실 보상 (K) / 库存损失补偿",
+    finalPayment: "최종지급액 (H-I-J+K) / 最终到账金额",
+    finalPaymentInput: "최종지급액 (H-I-J+K) / 最终到账金额",
     cancelRate: "取消率",
     feeRate: "手续费率",
     adRate: "广告费率",
     paymentRate: "到账率",
-    additionalDeduction: "追加扣减金额",
-    autoFinalPayment: "公式到账金额",
+    additionalDeduction: "소계 (C+D+E) / 追加扣减小计",
+    autoFinalPayment: "自动计算最终到账",
+    formulaHint: "公式：판매액 - 취소액 = 소계；소계 - 판매수수료(B) - 판매자할인쿠폰 = 판매기준 매출액；판매기준 매출액 - 소계(C+D+E) - Fulfillment费用(J) + 재고 손실 보상(K) = 최종지급액。",
     attachment: "附件",
     remark: "备注",
     entryTitle: "结算录入中心",
