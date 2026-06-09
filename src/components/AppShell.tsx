@@ -14,6 +14,7 @@ import {
   LogOut,
   Megaphone,
   Package,
+  PackageSearch,
   ReceiptText,
   Ruler,
   Scale,
@@ -39,7 +40,8 @@ const navItems = [
   { href: "/settlements", icon: Landmark, label: { zh: "Coupang 结算中心", ko: "Coupang 정산 센터" } },
   { href: "/tax-compliance", icon: Scale, label: { zh: "税务与经营合规中心", ko: "세무 및 경영 컴플라이언스 센터" } },
   { href: "/coupang-inbound", icon: Warehouse, label: { zh: "Coupang 入仓记录", ko: "Coupang 입고 기록" } },
-  { href: "/sku-packaging-specs", icon: Ruler, label: { zh: "SKU 包装规格库", ko: "SKU 포장 규격" } }
+  { href: "/sku-packaging-specs", icon: Ruler, label: { zh: "SKU 包装规格库", ko: "SKU 포장 규격" } },
+  { href: "/competitor-products", icon: PackageSearch, label: { zh: "竞品商品采集库", ko: "경쟁 상품 수집库" } }
 ] as const;
 
 export function AppShell({ children }: { children: React.ReactNode }) {
