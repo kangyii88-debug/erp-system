@@ -21,9 +21,9 @@ import { useLanguage } from "@/components/LanguageProvider";
 import { CenterHero, CenterPanel, EmptyState, ExecutiveKpi, KpiGrid, StatusPill } from "@/components/ManagementCenter";
 import { supabase } from "@/lib/supabase";
 
-type ProductStatus = "在售" | "停售" | "待上架" | "已停产";
-type InboundMethod = "택배" | "밀크런" | "팔레트" | "트럭";
-type CompletenessStatus = "缺少尺寸" | "缺少重量" | "箱规完整" | "疑似超重" | "疑似超体积";
+type ProductStatus = "active" | "paused" | "pending_listing" | "discontinued";
+type InboundMethod = "parcel" | "milk_run" | "pallet" | "truck";
+type CompletenessStatus = "missing_dimensions" | "missing_weight" | "complete" | "suspected_overweight" | "suspected_oversize";
 type DrawerMode = "create" | "edit" | "view" | null;
 
 type CategoryRow = {
@@ -91,9 +91,9 @@ type FormState = {
 };
 
 const pageSize = 10;
-const productStatuses: ProductStatus[] = ["在售", "停售", "待上架", "已停产"];
-const inboundMethods: InboundMethod[] = ["택배", "밀크런", "팔레트", "트럭"];
-const completenessOptions: CompletenessStatus[] = ["箱规完整", "缺少尺寸", "缺少重量", "疑似超重", "疑似超体积"];
+const productStatuses: ProductStatus[] = ["active", "paused", "pending_listing", "discontinued"];
+const inboundMethods: InboundMethod[] = ["parcel", "milk_run", "pallet", "truck"];
+const completenessOptions: CompletenessStatus[] = ["complete", "missing_dimensions", "missing_weight", "suspected_overweight", "suspected_oversize"];
 
 const emptyForm: FormState = {
   category_series: "蜂巢帘系列",
@@ -101,7 +101,7 @@ const emptyForm: FormState = {
   product_name: "",
   color: "",
   size: "",
-  product_status: "在售",
+  product_status: "active",
   unit_length_cm: "",
   unit_width_cm: "",
   unit_height_cm: "",
@@ -114,7 +114,7 @@ const emptyForm: FormState = {
   carton_net_weight_kg: "",
   coupang_barcode: "",
   purchase_batch_no: "",
-  default_inbound_method: "택배",
+  default_inbound_method: "parcel",
   fragile: false,
   notes: ""
 };
@@ -285,13 +285,18 @@ const copyText = {
 };
 
 const productStatusLabel: Record<"zh" | "ko", Record<ProductStatus, string>> = {
-  zh: { 在售: "在售", 停售: "停售", 待上架: "待上架", 已停产: "已停产" },
-  ko: { 在售: "판매중", 停售: "판매중지", 待上架: "입점대기", 已停产: "단종" }
+  zh: { active: "在售", paused: "停售", pending_listing: "待上架", discontinued: "已停产" },
+  ko: { active: "판매중", paused: "판매중지", pending_listing: "입점대기", discontinued: "단종" }
 };
 
 const completenessLabel: Record<"zh" | "ko", Record<CompletenessStatus, string>> = {
-  zh: { 箱规完整: "箱规完整", 缺少尺寸: "缺少尺寸", 缺少重量: "缺少重量", 疑似超重: "疑似超重", 疑似超体积: "疑似超体积" },
-  ko: { 箱规完整: "규격완성", 缺少尺寸: "치수누락", 缺少重量: "중량누락", 疑似超重: "초중량 의심", 疑似超体积: "초부피 의심" }
+  zh: { complete: "箱规完整", missing_dimensions: "缺少尺寸", missing_weight: "缺少重量", suspected_overweight: "疑似超重", suspected_oversize: "疑似超体积" },
+  ko: { complete: "규격완성", missing_dimensions: "치수누락", missing_weight: "중량누락", suspected_overweight: "초중량 의심", suspected_oversize: "초부피 의심" }
+};
+
+const inboundMethodLabel: Record<"zh" | "ko", Record<InboundMethod, string>> = {
+  zh: { parcel: "택배", milk_run: "밀크런", pallet: "팔레트", truck: "트럭" },
+  ko: { parcel: "택배", milk_run: "밀크런", pallet: "팔레트", truck: "트럭" }
 };
 
 function toNumber(value: string | number | null | undefined) {
@@ -315,16 +320,16 @@ function calcCbm(a: string | number | null, b: string | number | null, c: string
 
 function getCompleteness(row: Pick<SpecRow, "completeness_status" | "unit_length_cm" | "unit_width_cm" | "unit_height_cm" | "carton_length_cm" | "carton_width_cm" | "carton_height_cm" | "units_per_carton" | "unit_weight_kg" | "carton_gross_weight_kg" | "carton_net_weight_kg">): CompletenessStatus {
   if (row.completeness_status) return row.completeness_status;
-  if (!row.unit_length_cm || !row.unit_width_cm || !row.unit_height_cm || !row.carton_length_cm || !row.carton_width_cm || !row.carton_height_cm || !row.units_per_carton) return "缺少尺寸";
-  if (!row.unit_weight_kg || !row.carton_gross_weight_kg || !row.carton_net_weight_kg) return "缺少重量";
-  if (row.carton_gross_weight_kg >= 20) return "疑似超重";
-  if (calcCbm(row.carton_length_cm, row.carton_width_cm, row.carton_height_cm) >= 0.18 || Math.max(row.carton_length_cm, row.carton_width_cm, row.carton_height_cm) >= 120) return "疑似超体积";
-  return "箱规完整";
+  if (!row.unit_length_cm || !row.unit_width_cm || !row.unit_height_cm || !row.carton_length_cm || !row.carton_width_cm || !row.carton_height_cm || !row.units_per_carton) return "missing_dimensions";
+  if (!row.unit_weight_kg || !row.carton_gross_weight_kg || !row.carton_net_weight_kg) return "missing_weight";
+  if (row.carton_gross_weight_kg >= 20) return "suspected_overweight";
+  if (calcCbm(row.carton_length_cm, row.carton_width_cm, row.carton_height_cm) >= 0.18 || Math.max(row.carton_length_cm, row.carton_width_cm, row.carton_height_cm) >= 120) return "suspected_oversize";
+  return "complete";
 }
 
 function statusTone(status: CompletenessStatus) {
-  if (status === "箱规完整") return "good";
-  if (status === "疑似超重" || status === "疑似超体积") return "risk";
+  if (status === "complete") return "good";
+  if (status === "suspected_overweight" || status === "suspected_oversize") return "risk";
   return "watch";
 }
 
@@ -452,8 +457,8 @@ function SkuPackagingSpecsContent() {
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const paged = filtered.slice((page - 1) * pageSize, page * pageSize);
-  const completeCount = specs.filter((row) => getCompleteness(row) === "箱规完整").length;
-  const missingCount = specs.filter((row) => ["缺少尺寸", "缺少重量"].includes(getCompleteness(row))).length;
+  const completeCount = specs.filter((row) => getCompleteness(row) === "complete").length;
+  const missingCount = specs.filter((row) => ["missing_dimensions", "missing_weight"].includes(getCompleteness(row))).length;
 
   const openCreate = () => {
     setSelected(null);
@@ -790,7 +795,7 @@ function SkuPackagingSpecsContent() {
               <FormSection title={c.sections.logistics}>
                 <Field label={c.fields.barcode} value={form.coupang_barcode} disabled={readOnly} onChange={(value) => setForm({ ...form, coupang_barcode: value })} />
                 <Field label={c.fields.batch} value={form.purchase_batch_no} disabled={readOnly} onChange={(value) => setForm({ ...form, purchase_batch_no: value })} />
-                <SelectField label={c.fields.method} value={form.default_inbound_method} disabled={readOnly} onChange={(value) => setForm({ ...form, default_inbound_method: value as InboundMethod })} options={inboundMethods} />
+                <SelectField label={c.fields.method} value={form.default_inbound_method} disabled={readOnly} onChange={(value) => setForm({ ...form, default_inbound_method: value as InboundMethod })} options={inboundMethods} labelMap={inboundMethodLabel[language]} />
                 <label className="flex items-center gap-2 rounded-2xl border border-line bg-white/70 px-3 py-2 text-sm font-bold text-ink">
                   <input type="checkbox" className="h-4 w-4" checked={form.fragile} disabled={readOnly} onChange={(event) => setForm({ ...form, fragile: event.target.checked })} />
                   {c.fields.fragile}

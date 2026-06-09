@@ -764,14 +764,32 @@ function DatePresetBar({ value, onChange, c }: { value: DatePreset; onChange: (v
     { value: "lastMonth", label: c.datePresets.lastMonth },
     { value: "custom", label: c.datePresets.custom }
   ];
-  return <Segmented value={value} options={options.map((item) => [item.value, item.label])} onChange={(next) => onChange(next as DatePreset)} />;
+  return <Segmented value={value} options={options.map((item) => [item.value, item.label])} onChange={(next) => onChange(next as DatePreset)} tone="dark" />;
 }
 
-function Segmented({ value, options, onChange }: { value: string; options: string[][]; onChange: (value: string) => void }) {
+function Segmented({ value, options, onChange, tone = "light" }: { value: string; options: string[][]; onChange: (value: string) => void; tone?: "light" | "dark" }) {
+  const dark = tone === "dark";
   return (
-    <div className="flex flex-wrap gap-1 rounded-2xl border border-line bg-white/72 p-1 shadow-soft dark:border-white/10 dark:bg-white/[0.06]">
+    <div className={`flex flex-wrap gap-1 rounded-2xl border p-1 shadow-soft ${
+      dark ? "border-white/18 bg-white/[0.12] shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_14px_34px_rgba(0,0,0,0.18)]" : "border-line bg-white/72 dark:border-white/10 dark:bg-white/[0.06]"
+    }`}>
       {options.map(([key, label]) => (
-        <button key={key} className={`rounded-xl px-3 py-2 text-sm font-bold transition ${value === key ? "bg-[#17483f] text-white shadow-soft" : "text-ink/68 hover:bg-white"}`} onClick={() => onChange(key)} type="button">{label}</button>
+        <button
+          key={key}
+          className={`rounded-xl px-3 py-2 text-sm font-bold transition ${
+            value === key
+              ? dark
+                ? "bg-[#1f7a6b] text-white shadow-[0_10px_24px_rgba(31,122,107,0.36)]"
+                : "bg-[#17483f] text-white shadow-soft"
+              : dark
+                ? "text-white/82 hover:bg-white/[0.12] hover:text-white"
+                : "text-ink/68 hover:bg-white"
+          }`}
+          onClick={() => onChange(key)}
+          type="button"
+        >
+          {label}
+        </button>
       ))}
     </div>
   );

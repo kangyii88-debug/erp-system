@@ -27,7 +27,7 @@ create table if not exists sku_packaging_specs (
   product_name text not null,
   color text,
   size text,
-  product_status text not null default '在售' check (product_status in ('在售', '停售', '待上架', '已停产')),
+  product_status text not null default 'active' check (product_status in ('active', 'paused', 'pending_listing', 'discontinued')),
   unit_length_cm numeric(12, 2),
   unit_width_cm numeric(12, 2),
   unit_height_cm numeric(12, 2),
@@ -49,7 +49,7 @@ create table if not exists sku_packaging_specs (
   ) stored,
   coupang_barcode text,
   purchase_batch_no text,
-  default_inbound_method text not null default '택배' check (default_inbound_method in ('택배', '밀크런', '팔레트', '트럭')),
+  default_inbound_method text not null default 'parcel' check (default_inbound_method in ('parcel', 'milk_run', 'pallet', 'truck')),
   fragile boolean not null default false,
   overweight_flag boolean generated always as (coalesce(carton_gross_weight_kg, 0) >= 20) stored,
   oversize_flag boolean generated always as (
@@ -64,14 +64,14 @@ create table if not exists sku_packaging_specs (
         or coalesce(carton_length_cm, 0) <= 0
         or coalesce(carton_width_cm, 0) <= 0
         or coalesce(carton_height_cm, 0) <= 0
-        or coalesce(units_per_carton, 0) <= 0 then '缺少尺寸'
+        or coalesce(units_per_carton, 0) <= 0 then 'missing_dimensions'
       when coalesce(unit_weight_kg, 0) <= 0
         or coalesce(carton_gross_weight_kg, 0) <= 0
-        or coalesce(carton_net_weight_kg, 0) <= 0 then '缺少重量'
-      when coalesce(carton_gross_weight_kg, 0) >= 20 then '疑似超重'
+        or coalesce(carton_net_weight_kg, 0) <= 0 then 'missing_weight'
+      when coalesce(carton_gross_weight_kg, 0) >= 20 then 'suspected_overweight'
       when ((coalesce(carton_length_cm, 0) * coalesce(carton_width_cm, 0) * coalesce(carton_height_cm, 0)) / 1000000.0) >= 0.18
-        or greatest(coalesce(carton_length_cm, 0), coalesce(carton_width_cm, 0), coalesce(carton_height_cm, 0)) >= 120 then '疑似超体积'
-      else '箱规完整'
+        or greatest(coalesce(carton_length_cm, 0), coalesce(carton_width_cm, 0), coalesce(carton_height_cm, 0)) >= 120 then 'suspected_oversize'
+      else 'complete'
     end
   ) stored,
   notes text,
