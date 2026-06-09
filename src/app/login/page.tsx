@@ -2,18 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  ArrowRight,
-  Boxes,
-  CheckCircle2,
-  Globe2,
-  LockKeyhole,
-  Mail,
-  PackageCheck,
-  Radar,
-  ShieldCheck,
-  TrendingUp
-} from "lucide-react";
+import { ArrowRight, Boxes, CheckCircle2, Globe2, LockKeyhole, Mail, ShieldCheck } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { LanguageProvider, useLanguage } from "@/components/LanguageProvider";
 import type { Language } from "@/lib/types";
@@ -23,39 +12,21 @@ const loginCopy = {
     eyebrow: "经营管理系统",
     titleMain: "Coupang ERP",
     titleAccent: "经营控制台",
-    subtitle: "把库存、利润、补货、新品开发和客诉洞察集中到一个清晰的经营入口。",
-    metricProfit: "30日利润",
-    metricHealth: "健康SKU",
-    metricRisk: "风险预警",
-    previewTitle: "今日经营概览",
-    chartLabel: "利润趋势",
-    signalRestock: "补货优先级",
-    signalProduct: "新品开发",
-    signalIssue: "客诉洞察",
-    online: "实时",
+    subtitle: "把库存、利润、补货、新品开发和客诉问题集中到一个清晰的经营入口。",
     loginSubtitle: "登录后进入经营管理后台",
     secure: "安全访问",
     enterTitle: "进入系统",
-    enterText: "查看库存风险、利润趋势、待办执行、新品开发和客诉问题。",
+    enterText: "查看库存风险、利润趋势、待办执行、新品开发和客户问题。",
     encrypted: "加密",
     cloud: "云端",
     realtime: "实时",
     processing: "处理中"
   },
   ko: {
-    eyebrow: "운영 관리 시스템",
+    eyebrow: "경영관리 시스템",
     titleMain: "Coupang ERP",
     titleAccent: "경영관리 시스템",
     subtitle: "재고, 이익, 발주, 신상품 개발, 고객 이슈를 하나의 명확한 운영 입구로 모읍니다.",
-    metricProfit: "30일 이익",
-    metricHealth: "건강 SKU",
-    metricRisk: "위험 알림",
-    previewTitle: "오늘 운영 현황",
-    chartLabel: "이익 추세",
-    signalRestock: "발주 우선순위",
-    signalProduct: "신상품 개발",
-    signalIssue: "고객 이슈",
-    online: "실시간",
     loginSubtitle: "로그인 후 운영 관리 화면으로 이동",
     secure: "보안 접속",
     enterTitle: "시스템 접속",
@@ -79,7 +50,7 @@ function LoginForm() {
   const router = useRouter();
   const { language, setLanguage, t } = useLanguage();
   const copy = loginCopy[language];
-  const titleAccentClass = language === "ko" ? "text-[2.95rem] leading-[1.1] xl:text-[3.2rem]" : "text-[3.25rem] leading-[1.06] xl:text-[3.55rem]";
+  const titleAccentClass = language === "ko" ? "text-[2.85rem] leading-[1.12] xl:text-[3.12rem]" : "text-[3.18rem] leading-[1.06] xl:text-[3.48rem]";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
@@ -104,62 +75,24 @@ function LoginForm() {
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#eef2ec] text-ink">
-      <div className="absolute inset-0 bg-[linear-gradient(rgba(23,72,63,0.055)_1px,transparent_1px),linear-gradient(90deg,rgba(23,72,63,0.055)_1px,transparent_1px)] bg-[size:64px_64px]" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(42,128,103,0.16),transparent_26rem),radial-gradient(circle_at_82%_20%,rgba(188,167,122,0.20),transparent_28rem),linear-gradient(135deg,#f9faf5_0%,#edf2ec_48%,#e7eee8_100%)]" />
+      <div className="absolute inset-0 bg-[linear-gradient(rgba(23,72,63,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(23,72,63,0.05)_1px,transparent_1px)] bg-[size:64px_64px]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(42,128,103,0.14),transparent_25rem),radial-gradient(circle_at_82%_20%,rgba(188,167,122,0.18),transparent_28rem),linear-gradient(135deg,#fafbf6_0%,#edf2ec_52%,#e7eee8_100%)]" />
 
-      <section className="relative mx-auto grid min-h-screen w-full max-w-7xl items-start gap-10 px-5 py-10 lg:grid-cols-[1.04fr_0.96fr] lg:px-8 xl:py-14">
-        <div className="mx-auto w-full max-w-[760px] lg:mx-0">
+      <section className="relative mx-auto grid min-h-screen w-full max-w-6xl items-center gap-12 px-5 py-10 lg:grid-cols-[0.95fr_1.05fr] lg:px-8 xl:py-14">
+        <div className="mx-auto w-full max-w-[640px] lg:mx-0">
           <div className="inline-flex items-center gap-2 rounded-full border border-[#17483f]/16 bg-white/78 px-3 py-1.5 text-xs font-bold tracking-[0.08em] text-[#17483f] shadow-[0_12px_30px_rgba(23,33,29,0.06)] backdrop-blur-xl">
             <ShieldCheck className="h-3.5 w-3.5" />
             {copy.eyebrow}
           </div>
 
-          <h1 className="mt-6 tracking-tight text-[#102b27]">
+          <h1 className="mt-7 tracking-tight text-[#102b27]">
             <span className="block text-[3.85rem] font-semibold leading-[0.98] xl:text-[4.08rem]">{copy.titleMain}</span>
             <span className={`mt-2 block font-semibold text-[#2d8169] ${titleAccentClass}`}>{copy.titleAccent}</span>
           </h1>
-          <p className="mt-5 max-w-[690px] text-base font-medium leading-7 text-[#4d5d56]">{copy.subtitle}</p>
-
-          <div className="mt-8 grid max-w-[700px] gap-3 sm:grid-cols-3">
-            <HeroMetric icon={TrendingUp} label={copy.metricProfit} value="₩18.6M" trend="+24.8%" />
-            <HeroMetric icon={PackageCheck} label={copy.metricHealth} value="86%" trend={copy.online} />
-            <HeroMetric icon={Radar} label={copy.metricRisk} value="7" trend={copy.online} />
-          </div>
-
-          <div className="mt-5 max-w-[700px] rounded-[28px] border border-[#cdd8cf] bg-white/82 p-5 shadow-[0_28px_80px_rgba(23,33,29,0.12)] backdrop-blur-xl">
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <h2 className="text-xl font-semibold tracking-tight text-[#102b27]">{copy.previewTitle}</h2>
-              <span className="rounded-full border border-[#2d8169]/18 bg-[#e6f2ed] px-3 py-1 text-xs font-bold text-[#23614f]">{copy.online}</span>
-            </div>
-
-            <div className="grid gap-3 md:grid-cols-[1.22fr_0.78fr]">
-              <div className="rounded-[22px] border border-[#d9dfd7] bg-[#f8faf6] p-4">
-                <div className="mb-5 flex items-center justify-between text-xs font-bold text-[#6a756f]">
-                  <span>{copy.chartLabel}</span>
-                  <span>2026 Q2</span>
-                </div>
-                <div className="flex h-52 items-end gap-2">
-                  {[42, 58, 46, 72, 66, 88, 76, 94, 83, 100].map((height, index) => (
-                    <div key={index} className="flex flex-1 items-end rounded-full bg-[#e5ebe4]">
-                      <div
-                        className="w-full rounded-full bg-gradient-to-t from-[#17483f] via-[#36aa87] to-[#d8c27d]"
-                        style={{ height: `${height}%` }}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="grid auto-rows-fr gap-3">
-                <SignalCard label={copy.signalRestock} value="P1 · 3 SKU" tone="risk" />
-                <SignalCard label={copy.signalProduct} value="6" tone="good" />
-                <SignalCard label={copy.signalIssue} value="42%" tone="watch" />
-              </div>
-            </div>
-          </div>
+          <p className="mt-5 max-w-[560px] text-base font-medium leading-7 text-[#4d5d56]">{copy.subtitle}</p>
         </div>
 
-        <section className="mx-auto w-full max-w-[480px] rounded-[32px] border border-[#c9d3cb] bg-white/70 p-3 shadow-[0_34px_90px_rgba(23,33,29,0.14)] backdrop-blur-xl lg:mx-0 lg:mt-[15.9rem] lg:justify-self-end xl:mt-[16.15rem]">
+        <section className="mx-auto w-full max-w-[480px] rounded-[32px] border border-[#c9d3cb] bg-white/70 p-3 shadow-[0_34px_90px_rgba(23,33,29,0.14)] backdrop-blur-xl lg:mx-0 lg:justify-self-end">
           <div className="rounded-[26px] border border-white bg-[#fffdf8] p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]">
             <div className="mb-7 grid grid-cols-[1fr_auto] items-start gap-4">
               <div className="flex min-w-0 items-center gap-3">
@@ -243,34 +176,6 @@ function LoginForm() {
         </section>
       </section>
     </main>
-  );
-}
-
-function HeroMetric({ icon: Icon, label, value, trend }: { icon: typeof TrendingUp; label: string; value: string; trend: string }) {
-  return (
-    <div className="rounded-[22px] border border-[#cdd8cf] bg-white/78 p-4 shadow-[0_18px_45px_rgba(23,33,29,0.09)] backdrop-blur-xl">
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <span className="grid h-9 w-9 place-items-center rounded-2xl border border-[#17483f]/14 bg-[#e6f2ed] text-[#17483f]">
-          <Icon className="h-4 w-4" />
-        </span>
-        <span className="rounded-full border border-[#d4dacd] bg-[#f8faf6] px-2.5 py-1 text-xs font-bold text-[#4d5d56]">{trend}</span>
-      </div>
-      <div className="text-xs font-bold text-[#66706a]">{label}</div>
-      <div className="mt-1 text-2xl font-semibold tabular-nums text-[#102b27]">{value}</div>
-    </div>
-  );
-}
-
-function SignalCard({ label, value, tone }: { label: string; value: string; tone: "good" | "watch" | "risk" }) {
-  const dot = tone === "good" ? "bg-emerald-500" : tone === "watch" ? "bg-[#c4a64f]" : "bg-red-500";
-  return (
-    <div className="rounded-[20px] border border-[#d9dfd7] bg-[#f8faf6] p-4">
-      <div className="flex items-center gap-2 text-xs font-bold text-[#66706a]">
-        <span className={`h-2 w-2 rounded-full ${dot}`} />
-        {label}
-      </div>
-      <div className="mt-2 text-lg font-semibold tabular-nums text-[#102b27]">{value}</div>
-    </div>
   );
 }
 
