@@ -3,25 +3,43 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { BarChart3, Boxes, ClipboardCheck, ClipboardList, FileText, Landmark, Lightbulb, LogOut, Megaphone, Package, ReceiptText, Scale, ShieldAlert, ShoppingCart, Warehouse } from "lucide-react";
+import {
+  BarChart3,
+  Boxes,
+  ClipboardCheck,
+  ClipboardList,
+  FileText,
+  Landmark,
+  Lightbulb,
+  LogOut,
+  Megaphone,
+  Package,
+  ReceiptText,
+  Ruler,
+  Scale,
+  ShieldAlert,
+  ShoppingCart,
+  Warehouse
+} from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { LanguageProvider, useLanguage } from "./LanguageProvider";
 
 const navItems = [
-  { href: "/dashboard", key: "nav.dashboard", icon: BarChart3, label: { zh: "数据看板", ko: "데이터 대시보드" } },
-  { href: "/products", key: "nav.products", icon: Package, label: { zh: "商品管理", ko: "상품 관리" } },
-  { href: "/inventory", key: "nav.inventory", icon: Boxes, label: { zh: "库存管理", ko: "재고 관리" } },
-  { href: "/sales", key: "nav.sales", icon: ShoppingCart, label: { zh: "销售管理", ko: "판매 관리" } },
-  { href: "/advertising", key: "nav.advertising", icon: Megaphone, label: { zh: "广告分析中心", ko: "광고 분석 센터" } },
-  { href: "/purchases", key: "nav.purchases", icon: ClipboardList, label: { zh: "采购管理", ko: "구매 관리" } },
-  { href: "/expenses", key: "nav.expenses", icon: ReceiptText, label: { zh: "财务支出报表", ko: "재무 지출 리포트" } },
-  { href: "/task-center", key: "nav.taskCenter", icon: ClipboardCheck, label: { zh: "待办中心", ko: "업무 센터" } },
-  { href: "/single-product-report", key: "nav.singleProductReport", icon: FileText, label: { zh: "单品分析报表", ko: "단품 분석 리포트" } },
-  { href: "/product-development", key: "nav.productDevelopment", icon: Lightbulb, label: { zh: "产品开发中心", ko: "상품 개발 센터" } },
-  { href: "/customer-issues", key: "nav.customerIssues", icon: ShieldAlert, label: { zh: "客诉问题库", ko: "고객 이슈 관리" } },
-  { href: "/settlements", key: "nav.settlements", icon: Landmark, label: { zh: "Coupang 结算中心", ko: "Coupang 정산 센터" } },
-  { href: "/tax-compliance", key: "nav.taxCompliance", icon: Scale, label: { zh: "税务与经营合规中心", ko: "세무 및 경영 컴플라이언스" } },
-  { href: "/coupang-inbound", key: "nav.coupangInbound", icon: Warehouse, label: { zh: "Coupang 入仓记录", ko: "Coupang 입고 기록" } }
+  { href: "/dashboard", icon: BarChart3, label: { zh: "数据看板", ko: "데이터 대시보드" } },
+  { href: "/products", icon: Package, label: { zh: "商品管理", ko: "상품 관리" } },
+  { href: "/inventory", icon: Boxes, label: { zh: "库存管理", ko: "재고 관리" } },
+  { href: "/sales", icon: ShoppingCart, label: { zh: "销售管理", ko: "판매 관리" } },
+  { href: "/advertising", icon: Megaphone, label: { zh: "广告分析中心", ko: "광고 분석 센터" } },
+  { href: "/purchases", icon: ClipboardList, label: { zh: "采购管理", ko: "구매 관리" } },
+  { href: "/expenses", icon: ReceiptText, label: { zh: "财务支出报表", ko: "재무 지출 리포트" } },
+  { href: "/task-center", icon: ClipboardCheck, label: { zh: "待办中心", ko: "업무 센터" } },
+  { href: "/single-product-report", icon: FileText, label: { zh: "单品分析报表", ko: "단품 분석 리포트" } },
+  { href: "/product-development", icon: Lightbulb, label: { zh: "产品开发中心", ko: "상품 개발 센터" } },
+  { href: "/customer-issues", icon: ShieldAlert, label: { zh: "客诉问题库", ko: "고객 리뷰 센터" } },
+  { href: "/settlements", icon: Landmark, label: { zh: "Coupang 结算中心", ko: "Coupang 정산 센터" } },
+  { href: "/tax-compliance", icon: Scale, label: { zh: "税务与经营合规中心", ko: "세무 및 경영 컴플라이언스 센터" } },
+  { href: "/coupang-inbound", icon: Warehouse, label: { zh: "Coupang 入仓记录", ko: "Coupang 입고 기록" } },
+  { href: "/sku-packaging-specs", icon: Ruler, label: { zh: "SKU 包装规格库", ko: "SKU 포장 규격" } }
 ] as const;
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -69,11 +87,13 @@ function ProtectedShell({ children }: { children: React.ReactNode }) {
                 key={item.href}
                 href={item.href}
                 className={`group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium ${
-                  active ? "bg-white/[0.12] text-white shadow-[inset_3px_0_0_rgba(183,199,182,0.95)]" : "text-white/72 hover:bg-white/[0.07] hover:text-white"
+                  active
+                    ? "bg-white/[0.12] text-white shadow-[inset_3px_0_0_rgba(183,199,182,0.95)]"
+                    : "text-white/72 hover:bg-white/[0.07] hover:text-white"
                 }`}
               >
                 <Icon size={17} className={active ? "text-[#dce7dc]" : "text-white/55 group-hover:text-[#dce7dc]"} />
-                {item.label[language]}
+                <span className="truncate">{item.label[language]}</span>
               </Link>
             );
           })}
