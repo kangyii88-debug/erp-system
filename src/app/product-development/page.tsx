@@ -35,20 +35,15 @@ const funnelStatuses: DevStatus[] = ["待开发", "询价中", "打样中", "测
 const priorityOptions: ProductPriority[] = ["S级", "A级", "B级", "C级"];
 const emptyForm = {
   product_name: "",
-  product_image_url: "",
   product_category: "",
   supplier: "",
   purchase_cost: "0",
   expected_price: "0",
-  expected_margin: "",
   owner: "",
   development_status: "待开发" as DevStatus,
   expected_launch_date: "",
   priority: "B级" as ProductPriority,
   market_potential_score: "0",
-  competition_score: "0",
-  supply_chain_score: "0",
-  profit_score: "0",
   remark: ""
 };
 
@@ -91,20 +86,20 @@ function ProductDevelopmentContent() {
 
     const payload = {
       product_name: form.product_name.trim(),
-      product_image_url: form.product_image_url.trim() || null,
+      product_image_url: null,
       product_category: form.product_category.trim(),
       supplier: form.supplier.trim() || null,
       purchase_cost: Number(form.purchase_cost || 0),
       expected_price: Number(form.expected_price || 0),
-      expected_margin: form.expected_margin === "" ? null : Number(form.expected_margin),
+      expected_margin: calculateMargin(Number(form.purchase_cost || 0), Number(form.expected_price || 0)),
       owner: form.owner.trim(),
       development_status: form.development_status,
       expected_launch_date: form.expected_launch_date || null,
       priority: form.priority,
       market_potential_score: clampScore(form.market_potential_score),
-      competition_score: clampScore(form.competition_score),
-      supply_chain_score: clampScore(form.supply_chain_score),
-      profit_score: clampScore(form.profit_score),
+      competition_score: 0,
+      supply_chain_score: 0,
+      profit_score: 0,
       remark: form.remark.trim() || null
     };
 
@@ -143,20 +138,15 @@ function ProductDevelopmentContent() {
     setEditingId(item.id);
     setForm({
       product_name: item.product_name,
-      product_image_url: item.product_image_url ?? "",
       product_category: item.product_category,
       supplier: item.supplier ?? "",
       purchase_cost: String(item.purchase_cost ?? 0),
       expected_price: String(item.expected_price ?? 0),
-      expected_margin: item.expected_margin == null ? "" : String(item.expected_margin),
       owner: item.owner,
       development_status: item.development_status,
       expected_launch_date: item.expected_launch_date ?? "",
       priority: item.priority,
       market_potential_score: String(item.market_potential_score ?? 0),
-      competition_score: String(item.competition_score ?? 0),
-      supply_chain_score: String(item.supply_chain_score ?? 0),
-      profit_score: String(item.profit_score ?? 0),
       remark: item.remark ?? ""
     });
     setShowForm(true);
@@ -231,9 +221,7 @@ function ProductDevelopmentContent() {
                     </div>
                     <div className="mt-4 grid grid-cols-2 gap-2">
                       <MetricLine label="市场潜力" value={item.market_potential_score} tone="brand" />
-                      <MetricLine label="竞争强度" value={item.competition_score} tone={item.competition_score >= 75 ? "watch" : "good"} />
-                      <MetricLine label="供应链稳定性" value={item.supply_chain_score} tone="brand" />
-                      <MetricLine label="利润空间" value={item.profit_score} tone="good" />
+                      <MetricLine label="预计利润率" value={`${expectedMargin(item).toFixed(1)}%`} tone="good" />
                     </div>
                   </button>
                 ))}
@@ -285,23 +273,23 @@ function ProductDevelopmentContent() {
 }
 
 function ProductForm({ form, editing, onChange, onSubmit, onCancel }: { form: typeof emptyForm; editing: boolean; onChange: (form: typeof emptyForm) => void; onSubmit: (event: FormEvent) => void; onCancel: () => void }) {
+  const previewCost = Number(form.purchase_cost || 0);
+  const previewPrice = Number(form.expected_price || 0);
+  const previewMargin = calculateMargin(previewCost, previewPrice);
+
   return (
     <CenterPanel eyebrow={editing ? "Edit Project" : "New Project"} title={editing ? "编辑产品项目" : "新增产品项目"}>
       <form onSubmit={onSubmit} className="grid gap-4 lg:grid-cols-4">
         <Field label="产品名称"><input className="premium-input" required value={form.product_name} onChange={(event) => onChange({ ...form, product_name: event.target.value })} /></Field>
         <Field label="产品分类"><input className="premium-input" required value={form.product_category} onChange={(event) => onChange({ ...form, product_category: event.target.value })} /></Field>
-        <Field label="产品图片"><input className="premium-input" value={form.product_image_url} onChange={(event) => onChange({ ...form, product_image_url: event.target.value })} /></Field>
         <Field label="供应商"><input className="premium-input" value={form.supplier} onChange={(event) => onChange({ ...form, supplier: event.target.value })} /></Field>
         <Field label="采购成本"><input className="premium-input" type="number" min="0" value={form.purchase_cost} onChange={(event) => onChange({ ...form, purchase_cost: event.target.value })} /></Field>
         <Field label="预计售价"><input className="premium-input" type="number" min="0" value={form.expected_price} onChange={(event) => onChange({ ...form, expected_price: event.target.value })} /></Field>
-        <Field label="预计利润率"><input className="premium-input" type="number" value={form.expected_margin} onChange={(event) => onChange({ ...form, expected_margin: event.target.value })} /></Field>
+        <Field label="预计利润率"><div className="premium-input flex items-center bg-white/55 font-semibold text-ink">{previewMargin.toFixed(1)}%</div></Field>
         <Field label="开发负责人"><input className="premium-input" required value={form.owner} onChange={(event) => onChange({ ...form, owner: event.target.value })} /></Field>
         <Field label="开发状态"><Select value={form.development_status} options={statusOptions} onChange={(value) => onChange({ ...form, development_status: value as DevStatus })} /></Field>
         <Field label="产品优先级"><Select value={form.priority} options={priorityOptions} onChange={(value) => onChange({ ...form, priority: value as ProductPriority })} /></Field>
         <Field label="市场潜力评分"><Score value={form.market_potential_score} onChange={(value) => onChange({ ...form, market_potential_score: value })} /></Field>
-        <Field label="竞争强度评分"><Score value={form.competition_score} onChange={(value) => onChange({ ...form, competition_score: value })} /></Field>
-        <Field label="供应链稳定性评分"><Score value={form.supply_chain_score} onChange={(value) => onChange({ ...form, supply_chain_score: value })} /></Field>
-        <Field label="利润空间评分"><Score value={form.profit_score} onChange={(value) => onChange({ ...form, profit_score: value })} /></Field>
         <Field label="预计上线时间"><input className="premium-input" type="date" value={form.expected_launch_date} onChange={(event) => onChange({ ...form, expected_launch_date: event.target.value })} /></Field>
         <Field label="备注"><input className="premium-input" value={form.remark} onChange={(event) => onChange({ ...form, remark: event.target.value })} /></Field>
         <div className="flex items-end gap-2">
@@ -356,12 +344,15 @@ function expectedProfit(item: ProductDevRow) {
 }
 
 function expectedMargin(item: ProductDevRow) {
-  if (item.expected_margin != null) return Number(item.expected_margin);
-  return item.expected_price > 0 ? (expectedProfit(item) / item.expected_price) * 100 : 0;
+  return calculateMargin(item.purchase_cost, item.expected_price);
 }
 
 function totalScore(item: ProductDevRow) {
-  return Math.round((item.market_potential_score + item.competition_score + item.supply_chain_score + item.profit_score) / 4);
+  return Math.round(item.market_potential_score || 0);
+}
+
+function calculateMargin(cost: number, price: number) {
+  return price > 0 ? ((price - cost) / price) * 100 : 0;
 }
 
 function priorityTone(priority: ProductPriority) {
