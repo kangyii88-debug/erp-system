@@ -253,3 +253,71 @@ for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 create policy "coupang settlements owner access" on coupang_settlements
 for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+insert into storage.buckets (id, name, public)
+values
+  ('expense-attachments', 'expense-attachments', true),
+  ('settlement-attachments', 'settlement-attachments', true)
+on conflict (id) do nothing;
+
+drop policy if exists "expense attachments owner read" on storage.objects;
+create policy "expense attachments owner read" on storage.objects
+for select using (
+  bucket_id = 'expense-attachments'
+  and auth.uid()::text = split_part(name, '/', 1)
+);
+
+drop policy if exists "expense attachments owner insert" on storage.objects;
+create policy "expense attachments owner insert" on storage.objects
+for insert with check (
+  bucket_id = 'expense-attachments'
+  and auth.uid()::text = split_part(name, '/', 1)
+);
+
+drop policy if exists "expense attachments owner update" on storage.objects;
+create policy "expense attachments owner update" on storage.objects
+for update using (
+  bucket_id = 'expense-attachments'
+  and auth.uid()::text = split_part(name, '/', 1)
+) with check (
+  bucket_id = 'expense-attachments'
+  and auth.uid()::text = split_part(name, '/', 1)
+);
+
+drop policy if exists "expense attachments owner delete" on storage.objects;
+create policy "expense attachments owner delete" on storage.objects
+for delete using (
+  bucket_id = 'expense-attachments'
+  and auth.uid()::text = split_part(name, '/', 1)
+);
+
+drop policy if exists "settlement attachments owner read" on storage.objects;
+create policy "settlement attachments owner read" on storage.objects
+for select using (
+  bucket_id = 'settlement-attachments'
+  and auth.uid()::text = split_part(name, '/', 1)
+);
+
+drop policy if exists "settlement attachments owner insert" on storage.objects;
+create policy "settlement attachments owner insert" on storage.objects
+for insert with check (
+  bucket_id = 'settlement-attachments'
+  and auth.uid()::text = split_part(name, '/', 1)
+);
+
+drop policy if exists "settlement attachments owner update" on storage.objects;
+create policy "settlement attachments owner update" on storage.objects
+for update using (
+  bucket_id = 'settlement-attachments'
+  and auth.uid()::text = split_part(name, '/', 1)
+) with check (
+  bucket_id = 'settlement-attachments'
+  and auth.uid()::text = split_part(name, '/', 1)
+);
+
+drop policy if exists "settlement attachments owner delete" on storage.objects;
+create policy "settlement attachments owner delete" on storage.objects
+for delete using (
+  bucket_id = 'settlement-attachments'
+  and auth.uid()::text = split_part(name, '/', 1)
+);

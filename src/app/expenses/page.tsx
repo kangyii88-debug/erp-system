@@ -109,14 +109,15 @@ function ExpenseCenter() {
     }
 
     let attachmentUrl = form.attachment_url || null;
+    let uploadWarning = "";
     if (attachmentFile) {
       const uploaded = await uploadAttachment(auth.user.id, attachmentFile);
       if (uploaded.error) {
-        setMessage(uploaded.error);
-        setSaving(false);
-        return;
+        uploadWarning = friendlyExpenseMessage(uploaded.error);
+        attachmentUrl = form.attachment_url || null;
+      } else {
+        attachmentUrl = uploaded.url;
       }
-      attachmentUrl = uploaded.url;
     }
 
     const payload = {
@@ -144,6 +145,7 @@ function ExpenseCenter() {
 
     resetForm();
     await load();
+    if (uploadWarning) setMessage(uploadWarning);
   }
 
   async function uploadAttachment(userId: string, file: File) {
@@ -461,7 +463,7 @@ function CategoryDonut({ data, copy }: { data: Array<{ name: string; key: Expens
   );
 }
 
-function MonthlyTrend({ data, copy, formatCurrency }: { data: Array<{ month: string; amount: number }>; copy: ExpenseCopy; formatCurrency: (value: number) => string }) {
+function MonthlyTrend({ data, copy, formatCurrency }: { data: Array<{ month: string; monthLabel: string; amount: number }>; copy: ExpenseCopy; formatCurrency: (value: number) => string }) {
   return (
     <div className="premium-dashboard-panel rounded-[28px] p-5">
       <div className="premium-section-eyebrow">Monthly Trend</div>
@@ -476,9 +478,12 @@ function MonthlyTrend({ data, copy, formatCurrency }: { data: Array<{ month: str
               </linearGradient>
             </defs>
             <CartesianGrid stroke="#d7d9cf" strokeDasharray="4 7" vertical={false} />
-            <XAxis dataKey="month" tickLine={false} axisLine={false} tick={{ fill: "#66706a", fontSize: 12 }} />
+            <XAxis dataKey="monthLabel" tickLine={false} axisLine={false} tick={{ fill: "#66706a", fontSize: 12 }} />
             <YAxis tickLine={false} axisLine={false} tick={{ fill: "#66706a", fontSize: 12 }} width={60} />
-            <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+            <Tooltip
+              labelFormatter={(label, payload) => payload?.[0]?.payload?.month ?? label}
+              formatter={(value) => [formatCurrency(Number(value)), copy.monthlyTotal]}
+            />
             <Area type="monotone" dataKey="amount" stroke="#17483f" strokeWidth={3} fill="url(#expenseTrend)" />
           </AreaChart>
         </ResponsiveContainer>
@@ -595,6 +600,7 @@ function buildExpenseMetrics(records: ExpenseRecord[], copy: ExpenseCopy) {
   }));
   const monthlyTrend = last12Months().map((month) => ({
     month: month.label,
+    monthLabel: month.shortLabel,
     amount: sumAmount(records.filter((record) => record.expense_date?.startsWith(month.key)))
   }));
   const projectTotals = new Map<string, number>();
@@ -686,7 +692,8 @@ function last12Months() {
     const date = new Date(now.getFullYear(), now.getMonth() - 11 + index, 1);
     return {
       key: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`,
-      label: `${date.getMonth() + 1}`
+      label: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`,
+      shortLabel: `${date.getMonth() + 1}`
     };
   });
 }
@@ -699,6 +706,13 @@ function todayKey() {
 function emptyToNull(value: string) {
   const trimmed = value.trim();
   return trimmed ? trimmed : null;
+}
+
+function friendlyExpenseMessage(message: string) {
+  if (message.includes("Bucket not found")) {
+    return "支出记录已保存，但附件没有上传成功：Supabase Storage 缺少 expense-attachments 存储桶。请执行 supabase/migrations/create-expense-records.sql 或在 Supabase 后台创建该 bucket。";
+  }
+  return `支出记录已保存，但附件没有上传成功：${message}`;
 }
 
 function expenseCopy(language: Language) {

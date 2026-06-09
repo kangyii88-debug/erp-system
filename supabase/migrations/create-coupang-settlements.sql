@@ -25,6 +25,15 @@ create table if not exists coupang_settlements (
   unique (user_id, settlement_month)
 );
 
+create or replace function set_updated_at()
+returns trigger language plpgsql as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+drop trigger if exists coupang_settlements_updated_at on coupang_settlements;
 create trigger coupang_settlements_updated_at before update on coupang_settlements
 for each row execute function set_updated_at();
 

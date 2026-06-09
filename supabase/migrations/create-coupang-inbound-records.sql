@@ -34,6 +34,14 @@ drop policy if exists "coupang inbound owner access" on coupang_inbound_records;
 create policy "coupang inbound owner access" on coupang_inbound_records
 for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
+create or replace function set_updated_at()
+returns trigger language plpgsql as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
 drop trigger if exists coupang_inbound_records_updated_at on coupang_inbound_records;
 create trigger coupang_inbound_records_updated_at before update on coupang_inbound_records
 for each row execute function set_updated_at();
