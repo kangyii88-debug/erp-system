@@ -428,14 +428,14 @@ function AdvertisingDailyCenter() {
 
   return (
     <div className="space-y-6">
-      <section className="relative overflow-hidden rounded-[30px] border border-[#dfe2da] bg-[#fbfaf6]/92 px-6 py-7 shadow-[0_22px_70px_rgba(18,31,27,0.08)] backdrop-blur dark:border-white/10 dark:bg-[#101815]">
-        <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-emerald-900/10 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-28 left-16 h-72 w-72 rounded-full bg-[#bca77a]/12 blur-3xl" />
+      <section className="relative overflow-hidden rounded-[30px] border border-[#d9ded6] bg-[#fbfaf6] px-6 py-7 shadow-[0_22px_70px_rgba(18,31,27,0.08)] backdrop-blur">
+        <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-emerald-900/8 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-28 left-16 h-72 w-72 rounded-full bg-[#bca77a]/14 blur-3xl" />
         <div className="relative flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <div className="premium-section-eyebrow">{c.pageEyebrow}</div>
-            <h1 className="mt-3 text-4xl font-semibold tracking-tight text-ink dark:text-white md:text-5xl">{c.title}</h1>
-            <p className="mt-3 max-w-2xl text-base text-muted dark:text-white/62">{c.subtitle}</p>
+            <h1 className="mt-3 text-4xl font-semibold tracking-tight text-ink md:text-5xl">{c.title}</h1>
+            <p className="mt-3 max-w-2xl text-base text-muted">{c.subtitle}</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <button className="erp-button-primary inline-flex items-center gap-2 px-4 py-2 text-sm font-bold" onClick={() => { setForm(emptyForm); setEditingId(null); setShowForm(true); }}>
@@ -447,7 +447,7 @@ function AdvertisingDailyCenter() {
         <div className="relative mt-7 flex flex-wrap items-center gap-2">
           <DatePresetBar value={preset} onChange={setPreset} c={c} />
           {preset === "custom" ? (
-            <div className="flex items-center gap-2 rounded-2xl border border-line bg-white/72 p-2 shadow-soft dark:border-white/10 dark:bg-white/[0.06]">
+            <div className="flex items-center gap-2 rounded-2xl border border-line bg-white/80 p-2 shadow-soft">
               <input className="premium-input h-10 w-40" type="date" value={customStart} onChange={(event) => setCustomStart(event.target.value)} />
               <span className="text-muted">~</span>
               <input className="premium-input h-10 w-40" type="date" value={customEnd} onChange={(event) => setCustomEnd(event.target.value)} />
@@ -635,14 +635,14 @@ function DailyEntryForm({ form, c, editing, saving, onChange, onSubmit, onCancel
 function KpiCard({ icon: Icon, label, value, helper, change, good = true }: { icon: LucideIcon; label: string; value: string; helper?: string; change?: number | null; good?: boolean }) {
   const positive = change == null ? good : change >= 0;
   return (
-    <div className="group rounded-[24px] border border-line bg-white/76 p-5 shadow-[0_16px_46px_rgba(18,31,27,0.06)] transition duration-300 hover:-translate-y-1 hover:shadow-lift dark:border-white/10 dark:bg-white/[0.06]">
+    <div className="group rounded-[24px] border border-line bg-white/82 p-5 shadow-[0_16px_46px_rgba(18,31,27,0.06)] transition duration-300 hover:-translate-y-1 hover:shadow-lift">
       <div className="flex items-start justify-between gap-3">
         <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#17483f] text-white shadow-soft"><Icon className="h-5 w-5" /></span>
         {change != null ? <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${positive ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"}`}>{change >= 0 ? "↗" : "↘"} {formatNumber(Math.abs(change), 1)}%</span> : null}
       </div>
-      <div className="mt-5 text-sm font-semibold text-ink dark:text-white">{label}</div>
-      <div className="mt-2 text-3xl font-semibold tabular-nums tracking-tight text-ink dark:text-white">{value}</div>
-      {helper ? <div className="mt-2 text-xs font-medium text-muted dark:text-white/55">{helper}</div> : null}
+      <div className="mt-5 text-sm font-semibold text-ink">{label}</div>
+      <div className="mt-2 text-3xl font-semibold tabular-nums tracking-tight text-ink">{value}</div>
+      {helper ? <div className="mt-2 text-xs font-medium text-muted">{helper}</div> : null}
     </div>
   );
 }
@@ -764,14 +764,14 @@ function DatePresetBar({ value, onChange, c }: { value: DatePreset; onChange: (v
     { value: "lastMonth", label: c.datePresets.lastMonth },
     { value: "custom", label: c.datePresets.custom }
   ];
-  return <Segmented value={value} options={options.map((item) => [item.value, item.label])} onChange={(next) => onChange(next as DatePreset)} tone="dark" />;
+  return <Segmented value={value} options={options.map((item) => [item.value, item.label])} onChange={(next) => onChange(next as DatePreset)} />;
 }
 
 function Segmented({ value, options, onChange, tone = "light" }: { value: string; options: string[][]; onChange: (value: string) => void; tone?: "light" | "dark" }) {
   const dark = tone === "dark";
   return (
     <div className={`flex flex-wrap gap-1 rounded-2xl border p-1 shadow-soft ${
-      dark ? "border-white/18 bg-white/[0.12] shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_14px_34px_rgba(0,0,0,0.18)]" : "border-line bg-white/72 dark:border-white/10 dark:bg-white/[0.06]"
+      dark ? "border-white/18 bg-white/[0.12] shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_14px_34px_rgba(0,0,0,0.18)]" : "border-line bg-white/82"
     }`}>
       {options.map(([key, label]) => (
         <button
