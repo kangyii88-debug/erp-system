@@ -1,32 +1,22 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Activity,
   AlertTriangle,
   BadgeCheck,
-  BarChart3,
-  Boxes,
-  Brain,
-  CheckCircle2,
-  CircleDollarSign,
-  ClipboardList,
+  Check,
+  Copy,
+  Download,
   Edit3,
-  Eye,
-  Gauge,
-  Layers3,
-  Link as LinkIcon,
-  MousePointerClick,
-  PackageCheck,
+  ExternalLink,
+  FileSpreadsheet,
+  Filter,
+  PackageSearch,
   Plus,
-  Radar,
-  Rocket,
+  RotateCcw,
   Search,
-  ShieldAlert,
-  Sparkles,
-  Target,
   Trash2,
-  TrendingUp,
+  Upload,
   X
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -34,813 +24,790 @@ import { AppShell } from "@/components/AppShell";
 import { useLanguage } from "@/components/LanguageProvider";
 import { supabase } from "@/lib/supabase";
 
-type Phase = "existing" | "new_test" | "hero" | "watch" | "problem" | "retire";
-type Status = "active" | "testing" | "optimizing" | "paused" | "retired";
-type NoteType = "review" | "test" | "ad" | "stock" | "issue" | "decision";
-type Decision = "scale" | "keep" | "optimize" | "reduce" | "pause" | "retire";
+type DevelopmentStatus = "pending_analysis" | "analyzed" | "sampled" | "quoted" | "testing" | "ready_launch" | "listed" | "abandoned";
+type RecommendationGrade = "A_PLUS" | "A" | "B" | "C" | "D";
+type Priority = "high" | "medium" | "low";
+type DrawerMode = "create" | "edit" | null;
+type SortKey = "product_name" | "analysis_date" | "estimated_monthly_revenue_krw" | "profit_krw" | "profit_margin" | "recommendation_grade" | "priority";
 
-type AnalysisItem = {
+type ProductTestRow = {
   id: string;
-  user_id: string;
-  linked_product_id: string | null;
+  product_image_url: string | null;
   product_name: string;
-  sku: string;
-  product_series: string | null;
-  phase: Phase;
+  category: string | null;
   coupang_url: string | null;
-  cost: number;
-  sale_price: number;
-  target_margin_rate: number;
-  status: Status;
-  owner: string | null;
-  test_start_date: string | null;
-  test_goal: string | null;
+  selling_price_krw: number;
+  analysis_date: string;
+  estimated_monthly_sales: number;
+  estimated_monthly_revenue_krw: number;
+  purchase_price_cny: number;
+  international_shipping_cny: number;
+  landed_cost_cny: number;
+  exchange_rate: number;
+  landed_cost_krw: number;
+  expected_selling_price_krw: number;
+  platform_commission_rate: number;
+  platform_commission_krw: number;
+  korean_shipping_fee_krw: number;
+  ad_cost_krw: number;
+  total_cost_krw: number;
+  profit_krw: number;
+  profit_margin: number;
+  supplier_url: string | null;
+  development_status: DevelopmentStatus;
+  recommendation_grade: RecommendationGrade;
+  priority: Priority;
   notes: string | null;
   created_at: string;
-  updated_at?: string | null;
+  updated_at: string;
 };
 
-type ProductRow = {
-  id: string;
-  name: string;
-  sku: string;
-  color: string | null;
-  size: string | null;
-  purchase_price: number;
-  sale_price: number;
-  platform_fee_rate: number;
-  memo: string | null;
-  inventory_balances?: { current_stock: number } | { current_stock: number }[] | null;
-};
-
-type StockMovementRow = {
-  id: string;
-  product_id: string;
-  type: string;
-  quantity: number;
-  happened_at: string;
-  products?: Pick<ProductRow, "id" | "name" | "sku" | "color" | "size" | "sale_price" | "purchase_price" | "platform_fee_rate"> | null;
-};
-
-type RawStockMovementRow = Omit<StockMovementRow, "products"> & {
-  products?: Pick<ProductRow, "id" | "name" | "sku" | "color" | "size" | "sale_price" | "purchase_price" | "platform_fee_rate"> | Pick<ProductRow, "id" | "name" | "sku" | "color" | "size" | "sale_price" | "purchase_price" | "platform_fee_rate">[] | null;
-};
-
-type AdRecord = {
-  id: string;
-  record_date: string;
-  sku: string;
+type FormState = {
+  product_image_url: string;
   product_name: string;
-  ad_spend: number;
-  ad_sales: number;
-  clicks: number;
-  impressions: number;
-  ad_sales_count: number;
-  ad_order_count: number;
-};
-
-type CustomerIssue = {
-  id: string;
-  issue_date: string;
-  sku: string;
-  product_name: string;
-  issue_category: string;
-  status: string;
-};
-
-type AnalysisNote = {
-  id: string;
-  analysis_item_id: string;
-  note_date: string;
-  note_type: NoteType;
-  title: string;
-  content: string | null;
-};
-
-type CompetitorProduct = {
-  id: string;
-  analysis_item_id: string;
-  competitor_name: string | null;
-  product_url: string | null;
-  price: number;
-  rating: number | null;
-  review_count: number;
-  key_selling_points: string | null;
-  risk_notes: string | null;
-};
-
-type ItemForm = {
-  linked_product_id: string;
-  product_name: string;
-  sku: string;
-  product_series: string;
-  phase: Phase;
+  category: string;
   coupang_url: string;
-  cost: string;
-  sale_price: string;
-  target_margin_rate: string;
-  status: Status;
-  owner: string;
-  test_start_date: string;
-  test_goal: string;
+  selling_price_krw: string;
+  analysis_date: string;
+  estimated_monthly_sales: string;
+  purchase_price_cny: string;
+  international_shipping_cny: string;
+  exchange_rate: string;
+  expected_selling_price_krw: string;
+  platform_commission_rate: string;
+  korean_shipping_fee_krw: string;
+  ad_cost_krw: string;
+  supplier_url: string;
+  development_status: DevelopmentStatus;
+  recommendation_grade: RecommendationGrade;
+  priority: Priority;
   notes: string;
 };
 
-const emptyForm: ItemForm = {
-  linked_product_id: "",
+const pageSize = 20;
+const statusOptions: DevelopmentStatus[] = ["pending_analysis", "analyzed", "sampled", "quoted", "testing", "ready_launch", "listed", "abandoned"];
+const gradeOptions: RecommendationGrade[] = ["A_PLUS", "A", "B", "C", "D"];
+const priorityOptions: Priority[] = ["high", "medium", "low"];
+
+const today = () => new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
+
+const emptyForm: FormState = {
+  product_image_url: "",
   product_name: "",
-  sku: "",
-  product_series: "",
-  phase: "new_test",
+  category: "",
   coupang_url: "",
-  cost: "",
-  sale_price: "",
-  target_margin_rate: "25",
-  status: "testing",
-  owner: "",
-  test_start_date: "",
-  test_goal: "",
+  selling_price_krw: "",
+  analysis_date: today(),
+  estimated_monthly_sales: "",
+  purchase_price_cny: "",
+  international_shipping_cny: "",
+  exchange_rate: "220",
+  expected_selling_price_krw: "",
+  platform_commission_rate: "11.9",
+  korean_shipping_fee_krw: "500",
+  ad_cost_krw: "500",
+  supplier_url: "",
+  development_status: "pending_analysis",
+  recommendation_grade: "B",
+  priority: "medium",
   notes: ""
 };
 
-const copy = {
+const copyText = {
   zh: {
-    eyebrow: "PRODUCT INTELLIGENCE CENTER",
-    title: "产品分析与新品测试中心",
-    subtitle: "把所有需要分析的老品、新品、主推款和问题款集中管理，用真实销售、广告、库存和客诉数据判断下一步经营动作。",
-    add: "新增分析产品",
-    edit: "编辑分析产品",
-    databaseHint: "数据库表尚未创建：请在 Supabase SQL Editor 执行 supabase/migrations/create-product-intelligence-center.sql。",
-    emptyTitle: "暂无分析产品",
-    emptyText: "点击新增分析产品，把需要观察、测试或主推的 SKU 加入产品分析中心。",
-    tabs: { all: "全部产品", new_test: "新品测试", hero: "主推产品", problem: "问题产品", retire: "待淘汰" },
-    phase: { existing: "老品", new_test: "新品测试", hero: "主推款", watch: "观察款", problem: "问题款", retire: "淘汰款" },
-    status: { active: "运行中", testing: "测试中", optimizing: "优化中", paused: "暂停", retired: "已淘汰" },
+    eyebrow: "PRODUCT TEST DATABASE",
+    title: "商品测试数据库",
+    subtitle: "用于新品选品、成本测算、利润测算、供应商链接保存与开发状态管理的 Excel Pro 型数据库。",
+    add: "新增测试商品",
+    export: "导出 Excel",
+    import: "导入 Excel",
+    databaseHint: "数据库表尚未创建：请在 Supabase SQL Editor 执行 supabase/migrations/create-product-test-database.sql。",
+    empty: "暂无测试商品，请点击新增测试商品开始记录候选商品。",
     kpi: {
-      sales: "近30天销量",
-      revenue: "近30天销售额",
-      profit: "预估利润",
-      margin: "利润率",
-      adSpend: "广告花费",
-      roas: "ROAS",
-      stock: "当前库存",
-      issues: "客诉数量"
+      total: "已测试商品数",
+      focus: "重点跟进商品数",
+      avgMargin: "平均利润率",
+      monthlyRevenue: "预计月销售额",
+      highProfit: "高利润商品数",
+      abandoned: "已放弃商品数"
     },
-    score: "综合经营评分",
-    verdict: "经营决策",
-    productList: "分析产品库",
-    dashboard: "经营驾驶舱",
-    testCenter: "新品测试中心",
-    skuMatrix: "尺寸 / 颜色表现",
-    adCenter: "广告与利润联动",
-    riskCenter: "库存与客诉风险",
-    notes: "复盘记录",
-    competitors: "竞品观察",
-    noSelected: "请选择一个分析产品。",
-    noData: "暂无真实经营数据，录入销售、广告、库存或客诉后会自动汇总。",
-    actions: { save: "保存", cancel: "取消", edit: "编辑", delete: "删除", close: "关闭" },
-    fields: {
-      linked: "关联现有 SKU",
-      productName: "产品名称",
-      sku: "SKU",
-      series: "产品系列",
-      phase: "产品阶段",
-      status: "状态",
-      url: "Coupang 链接",
-      cost: "成本",
-      price: "售价",
-      targetMargin: "目标利润率 %",
-      owner: "负责人",
-      testStart: "测试开始日期",
-      testGoal: "测试目标",
+    filters: {
+      title: "筛选区",
+      searchName: "搜索产品名称",
+      searchUrl: "搜索 Coupang 链接",
+      category: "全部类目",
+      status: "全部开发状态",
+      grade: "全部推荐等级",
+      priority: "全部优先级",
+      margin: "利润率区间",
+      start: "分析开始",
+      end: "分析结束",
+      reset: "重置筛选"
+    },
+    status: {
+      pending_analysis: "待分析",
+      analyzed: "已分析",
+      sampled: "已打样",
+      quoted: "已报价",
+      testing: "测试中",
+      ready_launch: "准备上线",
+      listed: "已上架",
+      abandoned: "已放弃"
+    },
+    grade: { A_PLUS: "A+", A: "A", B: "B", C: "C", D: "D" },
+    priority: { high: "高", medium: "中", low: "低" },
+    sections: {
+      basic: "基础信息",
+      sales: "销售预测",
+      cost: "成本信息",
+      result: "自动计算结果",
+      development: "开发管理",
       notes: "备注"
     },
-    decisions: {
-      scale: "强推 / 加预算",
-      keep: "继续观察",
-      optimize: "优化后再推",
-      reduce: "降低预算",
-      pause: "暂停测试",
-      retire: "准备淘汰"
-    }
+    actions: { save: "保存", cancel: "取消", edit: "编辑", copy: "复制", delete: "删除", open: "打开链接" }
   },
   ko: {
-    eyebrow: "PRODUCT INTELLIGENCE CENTER",
-    title: "상품 분석 및 신제품 테스트 센터",
-    subtitle: "분석이 필요한 기존 상품, 신제품, 주력 상품, 문제 상품을 한곳에서 관리하고 실제 판매, 광고, 재고, 고객 이슈로 다음 액션을 판단합니다.",
-    add: "분석 상품 추가",
-    edit: "분석 상품 수정",
-    databaseHint: "데이터베이스 테이블이 없습니다. Supabase SQL Editor에서 supabase/migrations/create-product-intelligence-center.sql을 실행하세요.",
-    emptyTitle: "분석 상품 없음",
-    emptyText: "분석 상품 추가를 눌러 관찰, 테스트, 주력 SKU를 등록하세요.",
-    tabs: { all: "전체 상품", new_test: "신제품 테스트", hero: "주력 상품", problem: "문제 상품", retire: "퇴출 후보" },
-    phase: { existing: "기존 상품", new_test: "신제품 테스트", hero: "주력 상품", watch: "관찰 상품", problem: "문제 상품", retire: "퇴출 상품" },
-    status: { active: "운영중", testing: "테스트중", optimizing: "최적화중", paused: "중지", retired: "퇴출" },
+    eyebrow: "PRODUCT TEST DATABASE",
+    title: "상품 테스트 데이터베이스",
+    subtitle: "신제품 후보, 원가 계산, 이익 계산, 공급업체 링크와 개발 상태를 관리하는 Excel Pro형 데이터베이스입니다.",
+    add: "테스트 상품 추가",
+    export: "Excel 내보내기",
+    import: "Excel 가져오기",
+    databaseHint: "데이터베이스 테이블이 없습니다. Supabase SQL Editor에서 supabase/migrations/create-product-test-database.sql을 실행하세요.",
+    empty: "테스트 상품이 없습니다. 테스트 상품 추가로 후보 상품을 기록하세요.",
     kpi: {
-      sales: "최근 30일 판매량",
-      revenue: "최근 30일 매출",
-      profit: "예상 이익",
-      margin: "이익률",
-      adSpend: "광고비",
-      roas: "ROAS",
-      stock: "현재 재고",
-      issues: "고객 이슈"
+      total: "테스트 상품 수",
+      focus: "중점 follow 상품",
+      avgMargin: "평균 이익률",
+      monthlyRevenue: "예상 월매출",
+      highProfit: "고이익 상품",
+      abandoned: "포기 상품"
     },
-    score: "종합 경영 점수",
-    verdict: "경영 의사결정",
-    productList: "분석 상품库",
-    dashboard: "경영 대시보드",
-    testCenter: "신제품 테스트 센터",
-    skuMatrix: "사이즈 / 색상 성과",
-    adCenter: "광고 및 이익 연동",
-    riskCenter: "재고 및 고객 이슈 리스크",
-    notes: "리뷰 기록",
-    competitors: "경쟁 상품 관찰",
-    noSelected: "분석 상품을 선택하세요.",
-    noData: "실제 경영 데이터가 없습니다. 판매, 광고, 재고, 고객 이슈를 입력하면 자동으로 집계됩니다.",
-    actions: { save: "저장", cancel: "취소", edit: "수정", delete: "삭제", close: "닫기" },
-    fields: {
-      linked: "기존 SKU 연결",
-      productName: "상품명",
-      sku: "SKU",
-      series: "상품 시리즈",
-      phase: "상품 단계",
-      status: "상태",
-      url: "Coupang 링크",
-      cost: "원가",
-      price: "판매가",
-      targetMargin: "목표 이익률 %",
-      owner: "담당자",
-      testStart: "테스트 시작일",
-      testGoal: "테스트 목표",
+    filters: {
+      title: "필터",
+      searchName: "상품명 검색",
+      searchUrl: "Coupang 링크 검색",
+      category: "전체 카테고리",
+      status: "전체 개발 상태",
+      grade: "전체 추천 등급",
+      priority: "전체 우선순위",
+      margin: "이익률 구간",
+      start: "분석 시작",
+      end: "분석 종료",
+      reset: "필터 초기화"
+    },
+    status: {
+      pending_analysis: "분석 대기",
+      analyzed: "분석 완료",
+      sampled: "샘플 완료",
+      quoted: "견적 완료",
+      testing: "테스트중",
+      ready_launch: "출시 준비",
+      listed: "출시 완료",
+      abandoned: "포기"
+    },
+    grade: { A_PLUS: "A+", A: "A", B: "B", C: "C", D: "D" },
+    priority: { high: "높음", medium: "중간", low: "낮음" },
+    sections: {
+      basic: "기본 정보",
+      sales: "판매 예측",
+      cost: "원가 정보",
+      result: "자동 계산 결과",
+      development: "개발 관리",
       notes: "메모"
     },
-    decisions: {
-      scale: "강력 추천 / 예산 증액",
-      keep: "계속 관찰",
-      optimize: "최적화 후 재추진",
-      reduce: "예산 축소",
-      pause: "테스트 중지",
-      retire: "퇴출 준비"
-    }
+    actions: { save: "저장", cancel: "취소", edit: "수정", copy: "복사", delete: "삭제", open: "링크 열기" }
   }
 };
 
-const phaseOptions: Phase[] = ["existing", "new_test", "hero", "watch", "problem", "retire"];
-const statusOptions: Status[] = ["active", "testing", "optimizing", "paused", "retired"];
-const filterTabs = ["all", "new_test", "hero", "problem", "retire"] as const;
-
-function todayKey() {
-  return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
+function num(value: string | number | null | undefined) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function offsetDate(days: number) {
-  const date = new Date(`${todayKey()}T00:00:00`);
-  date.setDate(date.getDate() + days);
-  return date.toLocaleDateString("en-CA");
-}
-
-function num(value: unknown) {
-  const number = Number(value);
-  return Number.isFinite(number) ? number : 0;
-}
-
-function won(value: number) {
+function krw(value: number) {
   return new Intl.NumberFormat("ko-KR", { style: "currency", currency: "KRW", maximumFractionDigits: 0 }).format(value);
 }
 
+function cny(value: number) {
+  return `¥${new Intl.NumberFormat("zh-CN", { maximumFractionDigits: 2 }).format(value)}`;
+}
+
 function pct(value: number) {
-  return `${value.toFixed(1)}%`;
+  return `${num(value).toFixed(1)}%`;
 }
 
-function getStock(product: ProductRow | undefined) {
-  const balance = product?.inventory_balances;
-  if (Array.isArray(balance)) return num(balance[0]?.current_stock);
-  return num(balance?.current_stock);
+function compute(form: FormState) {
+  const sellingPrice = num(form.selling_price_krw);
+  const estimatedSales = num(form.estimated_monthly_sales);
+  const purchase = num(form.purchase_price_cny);
+  const intl = num(form.international_shipping_cny);
+  const exchange = num(form.exchange_rate) || 220;
+  const expectedPrice = num(form.expected_selling_price_krw);
+  const commissionRate = num(form.platform_commission_rate) || 11.9;
+  const koreaShipping = num(form.korean_shipping_fee_krw);
+  const ad = num(form.ad_cost_krw);
+  const landedCny = purchase + intl;
+  const landedKrw = landedCny * exchange;
+  const monthlyRevenue = sellingPrice * estimatedSales;
+  const commission = expectedPrice * commissionRate / 100;
+  const totalCost = landedKrw + commission + koreaShipping + ad;
+  const profit = expectedPrice - totalCost;
+  const margin = expectedPrice > 0 ? profit / expectedPrice * 100 : 0;
+  return { landedCny, landedKrw, monthlyRevenue, commission, totalCost, profit, margin };
 }
 
-export default function SingleProductReportPage() {
+function formFromRow(row: ProductTestRow): FormState {
+  return {
+    product_image_url: row.product_image_url ?? "",
+    product_name: row.product_name,
+    category: row.category ?? "",
+    coupang_url: row.coupang_url ?? "",
+    selling_price_krw: String(row.selling_price_krw || ""),
+    analysis_date: row.analysis_date,
+    estimated_monthly_sales: String(row.estimated_monthly_sales || ""),
+    purchase_price_cny: String(row.purchase_price_cny || ""),
+    international_shipping_cny: String(row.international_shipping_cny || ""),
+    exchange_rate: String(row.exchange_rate || 220),
+    expected_selling_price_krw: String(row.expected_selling_price_krw || ""),
+    platform_commission_rate: String(row.platform_commission_rate || 11.9),
+    korean_shipping_fee_krw: String(row.korean_shipping_fee_krw || 500),
+    ad_cost_krw: String(row.ad_cost_krw || 500),
+    supplier_url: row.supplier_url ?? "",
+    development_status: row.development_status,
+    recommendation_grade: row.recommendation_grade,
+    priority: row.priority,
+    notes: row.notes ?? ""
+  };
+}
+
+export default function ProductTestDatabasePage() {
   return (
     <AppShell>
-      <ProductIntelligenceContent />
+      <ProductTestDatabaseContent />
     </AppShell>
   );
 }
 
-function ProductIntelligenceContent() {
+function ProductTestDatabaseContent() {
   const { language, formatDate } = useLanguage();
-  const c = copy[language];
-  const [items, setItems] = useState<AnalysisItem[]>([]);
-  const [products, setProducts] = useState<ProductRow[]>([]);
-  const [movements, setMovements] = useState<StockMovementRow[]>([]);
-  const [ads, setAds] = useState<AdRecord[]>([]);
-  const [issues, setIssues] = useState<CustomerIssue[]>([]);
-  const [notes, setNotes] = useState<AnalysisNote[]>([]);
-  const [competitors, setCompetitors] = useState<CompetitorProduct[]>([]);
-  const [selectedId, setSelectedId] = useState("");
-  const [filter, setFilter] = useState<"all" | Phase>("all");
-  const [search, setSearch] = useState("");
-  const [showForm, setShowForm] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState<ItemForm>(emptyForm);
+  const c = copyText[language];
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [rows, setRows] = useState<ProductTestRow[]>([]);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
+  const [toast, setToast] = useState("");
+  const [drawer, setDrawer] = useState<DrawerMode>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState<FormState>(emptyForm);
+  const [page, setPage] = useState(1);
+  const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({ key: "analysis_date", dir: "desc" });
+  const [filters, setFilters] = useState({ name: "", url: "", category: "", status: "", grade: "", priority: "", margin: "", start: "", end: "" });
 
-  const loadData = async () => {
+  const loadRows = async () => {
     setLoading(true);
     setMessage("");
-    const results = await Promise.all([
-      supabase.from("product_analysis_items").select("*").order("updated_at", { ascending: false }),
-      supabase.from("products").select("id,name,sku,color,size,purchase_price,sale_price,platform_fee_rate,memo,inventory_balances(current_stock)").order("name"),
-      supabase.from("stock_movements").select("id,product_id,type,quantity,happened_at,products(id,name,sku,color,size,sale_price,purchase_price,platform_fee_rate)").gte("happened_at", `${offsetDate(-90)}T00:00:00`).order("happened_at", { ascending: false }),
-      supabase.from("advertising_daily_records").select("id,record_date,sku,product_name,ad_spend,ad_sales,clicks,impressions,ad_sales_count,ad_order_count").gte("record_date", offsetDate(-90)),
-      supabase.from("customer_issues").select("id,issue_date,sku,product_name,issue_category,status").gte("issue_date", offsetDate(-90)),
-      supabase.from("product_analysis_notes").select("*").order("note_date", { ascending: false }),
-      supabase.from("competitor_products").select("*").order("updated_at", { ascending: false })
-    ]);
-
-    const firstError = results.find((result) => result.error)?.error;
-    if (firstError) {
+    const { data, error } = await supabase.from("product_test_database").select("*").order("analysis_date", { ascending: false });
+    if (error) {
       setMessage(c.databaseHint);
       setLoading(false);
       return;
     }
-
-    const [itemResult, productResult, movementResult, adResult, issueResult, noteResult, competitorResult] = results;
-    setItems((itemResult.data ?? []) as AnalysisItem[]);
-    setProducts(((productResult.data ?? []) as ProductRow[]).filter((product) => !String(product.memo ?? "").startsWith("__ERP_DELETED__")));
-    setMovements(((movementResult.data ?? []) as unknown as RawStockMovementRow[]).map((row) => ({
-      ...row,
-      products: Array.isArray(row.products) ? row.products[0] ?? null : row.products ?? null
-    })));
-    setAds((adResult.data ?? []) as AdRecord[]);
-    setIssues((issueResult.data ?? []) as CustomerIssue[]);
-    setNotes((noteResult.data ?? []) as AnalysisNote[]);
-    setCompetitors((competitorResult.data ?? []) as CompetitorProduct[]);
-
-    const nextItems = (itemResult.data ?? []) as AnalysisItem[];
-    if (!selectedId && nextItems.length) setSelectedId(nextItems[0].id);
+    setRows((data ?? []) as ProductTestRow[]);
     setLoading(false);
   };
 
   useEffect(() => {
-    loadData();
+    loadRows();
   }, []);
 
-  const filteredItems = useMemo(() => {
-    const keyword = search.trim().toLowerCase();
-    return items.filter((item) => {
-      if (filter !== "all" && item.phase !== filter) return false;
-      if (!keyword) return true;
-      return `${item.product_name} ${item.sku} ${item.product_series ?? ""}`.toLowerCase().includes(keyword);
+  useEffect(() => {
+    if (!toast) return;
+    const timer = window.setTimeout(() => setToast(""), 2200);
+    return () => window.clearTimeout(timer);
+  }, [toast]);
+
+  const categories = Array.from(new Set(rows.map((row) => row.category).filter(Boolean))) as string[];
+  const filtered = useMemo(() => {
+    const marginMatch = (margin: number) => {
+      if (!filters.margin) return true;
+      if (filters.margin === "40") return margin >= 40;
+      if (filters.margin === "20") return margin >= 20 && margin < 40;
+      if (filters.margin === "10") return margin >= 10 && margin < 20;
+      if (filters.margin === "0") return margin < 10;
+      return true;
+    };
+    const result = rows.filter((row) => (
+      (!filters.name || row.product_name.toLowerCase().includes(filters.name.toLowerCase())) &&
+      (!filters.url || String(row.coupang_url ?? "").toLowerCase().includes(filters.url.toLowerCase())) &&
+      (!filters.category || row.category === filters.category) &&
+      (!filters.status || row.development_status === filters.status) &&
+      (!filters.grade || row.recommendation_grade === filters.grade) &&
+      (!filters.priority || row.priority === filters.priority) &&
+      (!filters.start || row.analysis_date >= filters.start) &&
+      (!filters.end || row.analysis_date <= filters.end) &&
+      marginMatch(row.profit_margin)
+    ));
+    return result.sort((a, b) => {
+      const av = a[sort.key];
+      const bv = b[sort.key];
+      const direction = sort.dir === "asc" ? 1 : -1;
+      if (typeof av === "number" && typeof bv === "number") return (av - bv) * direction;
+      return String(av).localeCompare(String(bv)) * direction;
     });
-  }, [filter, items, search]);
+  }, [filters, rows, sort]);
 
-  const selected = items.find((item) => item.id === selectedId) ?? filteredItems[0] ?? items[0];
-  const selectedProduct = selected ? products.find((product) => product.id === selected.linked_product_id || product.sku === selected.sku) : undefined;
-  const analysis = useMemo(() => (selected ? buildAnalysis(selected, selectedProduct, movements, ads, issues) : null), [ads, issues, movements, selected, selectedProduct]);
-  const selectedNotes = selected ? notes.filter((note) => note.analysis_item_id === selected.id).slice(0, 5) : [];
-  const selectedCompetitors = selected ? competitors.filter((row) => row.analysis_item_id === selected.id).slice(0, 4) : [];
-  const skuMatrix = selected ? buildSkuMatrix(selected, movements) : [];
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const pageRows = filtered.slice((page - 1) * pageSize, page * pageSize);
+  const avgMargin = rows.length ? rows.reduce((sum, row) => sum + row.profit_margin, 0) / rows.length : 0;
+  const monthlyRevenue = rows.reduce((sum, row) => sum + row.estimated_monthly_revenue_krw, 0);
 
-  const startCreate = () => {
+  const openCreate = () => {
     setEditingId(null);
     setForm(emptyForm);
-    setShowForm(true);
+    setDrawer("create");
   };
 
-  const startEdit = (item: AnalysisItem) => {
-    setEditingId(item.id);
-    setForm({
-      linked_product_id: item.linked_product_id ?? "",
-      product_name: item.product_name,
-      sku: item.sku,
-      product_series: item.product_series ?? "",
-      phase: item.phase,
-      coupang_url: item.coupang_url ?? "",
-      cost: String(item.cost || ""),
-      sale_price: String(item.sale_price || ""),
-      target_margin_rate: String(item.target_margin_rate || 25),
-      status: item.status,
-      owner: item.owner ?? "",
-      test_start_date: item.test_start_date ?? "",
-      test_goal: item.test_goal ?? "",
-      notes: item.notes ?? ""
-    });
-    setShowForm(true);
+  const openEdit = (row: ProductTestRow) => {
+    setEditingId(row.id);
+    setForm(formFromRow(row));
+    setDrawer("edit");
   };
 
-  const pickProduct = (productId: string) => {
-    const product = products.find((row) => row.id === productId);
-    setForm({
-      ...form,
-      linked_product_id: productId,
-      product_name: product?.name ?? form.product_name,
-      sku: product?.sku ?? form.sku,
-      cost: product ? String(product.purchase_price ?? 0) : form.cost,
-      sale_price: product ? String(product.sale_price ?? 0) : form.sale_price
-    });
+  const duplicate = (row: ProductTestRow) => {
+    setEditingId(null);
+    setForm({ ...formFromRow(row), product_name: `${row.product_name} Copy`, analysis_date: today() });
+    setDrawer("create");
+  };
+
+  const payload = async () => {
+    const { data } = await supabase.auth.getUser();
+    if (!data.user) throw new Error("Missing user");
+    return {
+      user_id: data.user.id,
+      product_image_url: form.product_image_url.trim() || null,
+      product_name: form.product_name.trim(),
+      category: form.category.trim() || null,
+      coupang_url: form.coupang_url.trim() || null,
+      selling_price_krw: num(form.selling_price_krw),
+      analysis_date: form.analysis_date || today(),
+      estimated_monthly_sales: Math.round(num(form.estimated_monthly_sales)),
+      purchase_price_cny: num(form.purchase_price_cny),
+      international_shipping_cny: num(form.international_shipping_cny),
+      exchange_rate: num(form.exchange_rate) || 220,
+      expected_selling_price_krw: num(form.expected_selling_price_krw),
+      platform_commission_rate: num(form.platform_commission_rate) || 11.9,
+      korean_shipping_fee_krw: num(form.korean_shipping_fee_krw),
+      ad_cost_krw: num(form.ad_cost_krw),
+      supplier_url: form.supplier_url.trim() || null,
+      development_status: form.development_status,
+      recommendation_grade: form.recommendation_grade,
+      priority: form.priority,
+      notes: form.notes.trim() || null
+    };
   };
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    const { data } = await supabase.auth.getUser();
-    if (!data.user) return;
-    const payload = {
-      user_id: data.user.id,
-      linked_product_id: form.linked_product_id || null,
-      product_name: form.product_name.trim(),
-      sku: form.sku.trim(),
-      product_series: form.product_series.trim() || null,
-      phase: form.phase,
-      coupang_url: form.coupang_url.trim() || null,
-      cost: num(form.cost),
-      sale_price: num(form.sale_price),
-      target_margin_rate: num(form.target_margin_rate) || 25,
-      status: form.status,
-      owner: form.owner.trim() || null,
-      test_start_date: form.test_start_date || null,
-      test_goal: form.test_goal.trim() || null,
-      notes: form.notes.trim() || null
-    };
-    if (!payload.product_name || !payload.sku) {
-      setMessage(language === "zh" ? "请填写产品名称和 SKU。" : "상품명과 SKU를 입력하세요.");
+    if (!form.product_name.trim()) {
+      setMessage(language === "zh" ? "产品名称必填。" : "상품명은 필수입니다.");
       return;
     }
-    const result = editingId
-      ? await supabase.from("product_analysis_items").update(payload).eq("id", editingId)
-      : await supabase.from("product_analysis_items").insert(payload);
+    const data = await payload();
+    const result = editingId ? await supabase.from("product_test_database").update(data).eq("id", editingId) : await supabase.from("product_test_database").insert(data);
     if (result.error) {
       setMessage(result.error.message);
       return;
     }
-    setShowForm(false);
-    setEditingId(null);
-    await loadData();
+    setDrawer(null);
+    setToast(language === "zh" ? "保存成功" : "저장되었습니다");
+    await loadRows();
   };
 
-  const deleteItem = async (item: AnalysisItem) => {
-    if (!window.confirm(`${c.actions.delete}: ${item.product_name}?`)) return;
-    const { error } = await supabase.from("product_analysis_items").delete().eq("id", item.id);
+  const remove = async (ids: string[]) => {
+    if (!ids.length) return;
+    if (!window.confirm(language === "zh" ? `确定删除 ${ids.length} 条记录？` : `${ids.length}개 기록을 삭제할까요?`)) return;
+    const { error } = await supabase.from("product_test_database").delete().in("id", ids);
     if (error) {
       setMessage(error.message);
       return;
     }
-    setSelectedId("");
-    await loadData();
+    setSelectedIds([]);
+    setToast(language === "zh" ? "删除成功" : "삭제되었습니다");
+    await loadRows();
+  };
+
+  const exportCsv = () => {
+    const headers = ["产品名称", "类目", "Coupang链接", "销售价格(KRW)", "分析日期", "一个月预计销量", "一个月预计销售额(KRW)", "采购价(CNY)", "国际物流费(CNY)", "到韩总成本(CNY)", "汇率", "到韩总成本(KRW)", "预计售价(KRW)", "平台佣金率(%)", "平台佣金(KRW)", "韩国物流费(KRW)", "广告费(KRW)", "总成本(KRW)", "利润(KRW)", "利润率(%)", "供应商链接", "开发状态", "推荐等级", "优先级", "备注"];
+    const body = filtered.map((row) => [row.product_name, row.category ?? "", row.coupang_url ?? "", row.selling_price_krw, row.analysis_date, row.estimated_monthly_sales, row.estimated_monthly_revenue_krw, row.purchase_price_cny, row.international_shipping_cny, row.landed_cost_cny, row.exchange_rate, row.landed_cost_krw, row.expected_selling_price_krw, row.platform_commission_rate, row.platform_commission_krw, row.korean_shipping_fee_krw, row.ad_cost_krw, row.total_cost_krw, row.profit_krw, row.profit_margin, row.supplier_url ?? "", row.development_status, row.recommendation_grade, row.priority, row.notes ?? ""]);
+    const csv = [headers, ...body].map((line) => line.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(",")).join("\n");
+    const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `product-test-database-${today()}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const importCsv = async (file: File) => {
+    const text = await file.text();
+    const lines = text.split(/\r?\n/).filter(Boolean);
+    if (lines.length <= 1) return;
+    const { data } = await supabase.auth.getUser();
+    if (!data.user) return;
+    const records = lines.slice(1).map((line) => {
+      const cols = parseCsvLine(line);
+      return {
+        user_id: data.user!.id,
+        product_name: cols[0] || "Unnamed",
+        category: cols[1] || null,
+        coupang_url: cols[2] || null,
+        selling_price_krw: num(cols[3]),
+        analysis_date: cols[4] || today(),
+        estimated_monthly_sales: Math.round(num(cols[5])),
+        purchase_price_cny: num(cols[7]),
+        international_shipping_cny: num(cols[8]),
+        exchange_rate: num(cols[10]) || 220,
+        expected_selling_price_krw: num(cols[12]),
+        platform_commission_rate: num(cols[13]) || 11.9,
+        korean_shipping_fee_krw: num(cols[15]) || 500,
+        ad_cost_krw: num(cols[16]) || 500,
+        supplier_url: cols[20] || null,
+        development_status: statusOptions.includes(cols[21] as DevelopmentStatus) ? cols[21] as DevelopmentStatus : "pending_analysis",
+        recommendation_grade: gradeOptions.includes(cols[22] as RecommendationGrade) ? cols[22] as RecommendationGrade : "B",
+        priority: priorityOptions.includes(cols[23] as Priority) ? cols[23] as Priority : "medium",
+        notes: cols[24] || null
+      };
+    });
+    const { error } = await supabase.from("product_test_database").insert(records);
+    if (error) setMessage(error.message);
+    else {
+      setToast(language === "zh" ? "导入成功" : "가져오기 완료");
+      await loadRows();
+    }
+  };
+
+  const toggleSort = (key: SortKey) => {
+    setSort((current) => ({ key, dir: current.key === key && current.dir === "desc" ? "asc" : "desc" }));
   };
 
   return (
     <div className="space-y-6">
-      <section className="relative overflow-hidden rounded-[32px] border border-[#d8ddd4] bg-[#f8faf6] shadow-[0_28px_90px_rgba(18,31,27,0.10)]">
-        <div className="pointer-events-none absolute right-0 top-0 h-80 w-96 bg-[radial-gradient(circle,rgba(28,116,99,0.22),transparent_65%)]" />
-        <div className="pointer-events-none absolute bottom-0 left-1/2 h-72 w-[34rem] -translate-x-1/2 bg-[radial-gradient(circle,rgba(188,167,122,0.22),transparent_66%)]" />
-        <div className="relative grid gap-6 p-6 xl:grid-cols-[1.05fr_0.95fr] xl:p-8">
+      {toast ? <div className="fixed right-6 top-20 z-50 rounded-full bg-[#123c35] px-4 py-2 text-sm font-semibold text-white shadow-lift">{toast}</div> : null}
+
+      <section className="relative overflow-hidden rounded-[32px] border border-[#d7ddd4] bg-[#f9faf6] p-6 shadow-[0_26px_82px_rgba(18,31,27,0.10)] md:p-8">
+        <div className="pointer-events-none absolute right-0 top-0 h-72 w-96 bg-[radial-gradient(circle,rgba(23,72,63,0.16),transparent_65%)]" />
+        <div className="relative flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div>
             <div className="premium-section-eyebrow">{c.eyebrow}</div>
-            <h1 className="mt-4 max-w-4xl text-4xl font-semibold tracking-tight text-ink md:text-6xl">{c.title}</h1>
+            <h1 className="mt-4 text-4xl font-semibold tracking-tight text-ink md:text-6xl">{c.title}</h1>
             <p className="mt-4 max-w-3xl text-sm leading-7 text-muted md:text-base">{c.subtitle}</p>
-            <div className="mt-6 flex flex-wrap gap-2">
-              <HeroChip icon={Brain} label={language === "zh" ? "真实数据决策" : "실데이터 의사결정"} />
-              <HeroChip icon={Radar} label={language === "zh" ? "新品测试雷达" : "신제품 테스트 레이더"} />
-              <HeroChip icon={Sparkles} label={language === "zh" ? "经营建议自动生成" : "경영 제안 자동 생성"} />
-            </div>
           </div>
-          <div className="rounded-[28px] border border-[#113b34]/15 bg-[#102b27] p-6 text-white shadow-[0_24px_70px_rgba(16,43,39,0.22)]">
-            <div className="flex items-center gap-3">
-              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 text-[#d7c487]">
-                <Gauge className="h-6 w-6" />
-              </span>
-              <div>
-                <div className="text-xs font-bold uppercase tracking-[0.2em] text-[#d7c487]">{c.verdict}</div>
-                <h2 className="mt-1 text-2xl font-semibold">{analysis ? c.decisions[analysis.decision] : c.noSelected}</h2>
-              </div>
-            </div>
-            <div className="mt-6 grid grid-cols-2 gap-3">
-              <DarkMetric label={c.score} value={analysis ? `${analysis.score}` : "-"} />
-              <DarkMetric label={c.kpi.roas} value={analysis ? analysis.roas.toFixed(2) : "-"} />
-              <DarkMetric label={c.kpi.stock} value={analysis ? String(analysis.stock) : "-"} />
-              <DarkMetric label={c.kpi.margin} value={analysis ? pct(analysis.marginRate) : "-"} />
-            </div>
+          <div className="flex flex-wrap gap-2">
+            <input ref={inputRef} className="hidden" type="file" accept=".csv" onChange={(event) => event.target.files?.[0] && importCsv(event.target.files[0])} />
+            <button className="erp-button-subtle inline-flex items-center gap-2 px-4 py-2 text-sm font-bold" onClick={() => inputRef.current?.click()}><Upload size={16} />{c.import}</button>
+            <button className="erp-button-subtle inline-flex items-center gap-2 px-4 py-2 text-sm font-bold" onClick={exportCsv}><Download size={16} />{c.export}</button>
+            <button className="erp-button-primary inline-flex items-center gap-2 px-4 py-2 text-sm font-bold" onClick={openCreate}><Plus size={16} />{c.add}</button>
           </div>
+        </div>
+        <div className="relative mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+          <Kpi icon={FileSpreadsheet} label={c.kpi.total} value={rows.length} />
+          <Kpi icon={BadgeCheck} label={c.kpi.focus} value={rows.filter((row) => row.priority === "high" || row.recommendation_grade === "A_PLUS" || row.recommendation_grade === "A").length} />
+          <Kpi icon={Filter} label={c.kpi.avgMargin} value={pct(avgMargin)} />
+          <Kpi icon={PackageSearch} label={c.kpi.monthlyRevenue} value={krw(monthlyRevenue)} />
+          <Kpi icon={Check} label={c.kpi.highProfit} value={rows.filter((row) => row.profit_margin >= 40).length} />
+          <Kpi icon={AlertTriangle} label={c.kpi.abandoned} value={rows.filter((row) => row.development_status === "abandoned").length} />
         </div>
       </section>
 
       {message ? <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{message}</div> : null}
 
-      <section className="grid gap-6 xl:grid-cols-[360px_1fr]">
-        <aside className="space-y-4">
-          <Panel title={c.productList} eyebrow="ANALYSIS LIBRARY" action={<button className="erp-button-primary inline-flex items-center gap-2 px-3 py-2 text-sm font-bold" onClick={startCreate}><Plus size={16} />{c.add}</button>}>
-            <div className="mb-4 flex flex-wrap gap-2">
-              {filterTabs.map((key) => (
-                <button key={key} className={`rounded-full px-3 py-1.5 text-xs font-bold ${filter === key ? "bg-[#17483f] text-white" : "border border-line bg-white/70 text-muted"}`} onClick={() => setFilter(key)}>
-                  {key === "all" ? c.tabs.all : c.tabs[key]}
-                </button>
-              ))}
-            </div>
-            <label className="relative mb-4 block">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
-              <input className="w-full pl-9" value={search} placeholder="SKU / Product" onChange={(event) => setSearch(event.target.value)} />
-            </label>
-            {loading ? <SkeletonList /> : filteredItems.length ? (
-              <div className="space-y-2">
-                {filteredItems.map((item) => {
-                  const selectedClass = selected?.id === item.id;
-                  return (
-                    <button key={item.id} className={`w-full rounded-2xl border p-3 text-left transition hover:-translate-y-0.5 ${selectedClass ? "border-[#17483f]/30 bg-[#e8f1ed] shadow-card" : "border-line bg-white/70"}`} onClick={() => setSelectedId(item.id)}>
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <div className="truncate font-bold text-ink">{item.product_name}</div>
-                          <div className="mt-1 text-xs font-semibold text-muted">{item.sku}</div>
-                        </div>
-                        <StatusPill>{c.phase[item.phase]}</StatusPill>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="rounded-2xl border border-dashed border-line bg-white/50 px-4 py-8 text-center">
-                <PackageCheck className="mx-auto h-9 w-9 text-[#17483f]" />
-                <div className="mt-3 font-semibold text-ink">{c.emptyTitle}</div>
-                <p className="mt-2 text-sm leading-6 text-muted">{c.emptyText}</p>
-              </div>
-            )}
-          </Panel>
-        </aside>
-
-        <main className="space-y-6">
-          {selected && analysis ? (
-            <>
-              <Panel
-                title={selected.product_name}
-                eyebrow={c.dashboard}
-                action={
-                  <div className="flex gap-2">
-                    {selected.coupang_url ? <a className="erp-button-subtle inline-flex items-center gap-2 px-3 py-2 text-sm font-bold" href={selected.coupang_url} target="_blank"><LinkIcon size={16} />Coupang</a> : null}
-                    <button className="erp-button-subtle inline-flex items-center gap-2 px-3 py-2 text-sm font-bold" onClick={() => startEdit(selected)}><Edit3 size={16} />{c.actions.edit}</button>
-                    <button className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm font-bold text-red-700" onClick={() => deleteItem(selected)}><Trash2 size={16} /></button>
-                  </div>
-                }
-              >
-                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                  <Kpi icon={TrendingUp} label={c.kpi.sales} value={String(analysis.salesQty)} helper={analysis.salesQty ? "Real sales" : c.noData} />
-                  <Kpi icon={CircleDollarSign} label={c.kpi.revenue} value={won(analysis.revenue)} />
-                  <Kpi icon={BadgeCheck} label={c.kpi.profit} value={won(analysis.profit)} tone={analysis.profit >= 0 ? "good" : "risk"} />
-                  <Kpi icon={Target} label={c.score} value={`${analysis.score}`} helper={c.decisions[analysis.decision]} tone={analysis.score >= 75 ? "good" : analysis.score < 45 ? "risk" : "watch"} />
-                  <Kpi icon={MousePointerClick} label={c.kpi.adSpend} value={won(analysis.adSpend)} />
-                  <Kpi icon={Activity} label={c.kpi.roas} value={analysis.roas.toFixed(2)} tone={analysis.roas >= 4 ? "good" : "watch"} />
-                  <Kpi icon={Boxes} label={c.kpi.stock} value={String(analysis.stock)} tone={analysis.stock < 10 ? "risk" : "neutral"} />
-                  <Kpi icon={ShieldAlert} label={c.kpi.issues} value={String(analysis.issueCount)} tone={analysis.issueCount ? "watch" : "good"} />
-                </div>
-              </Panel>
-
-              <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-                <Panel title={c.testCenter} eyebrow="NEW PRODUCT TEST">
-                  <div className="grid gap-4 md:grid-cols-3">
-                    <ScoreCard label={language === "zh" ? "测试天数" : "테스트 일수"} value={selected.test_start_date ? `${Math.max(1, Math.ceil((Date.now() - new Date(selected.test_start_date).getTime()) / 86400000))}` : "-"} />
-                    <ScoreCard label={language === "zh" ? "测试目标" : "테스트 목표"} value={selected.test_goal || "-"} />
-                    <ScoreCard label={language === "zh" ? "当前阶段" : "현재 단계"} value={c.phase[selected.phase]} />
-                  </div>
-                  <DecisionStrip analysis={analysis} labels={c.decisions} />
-                </Panel>
-
-                <Panel title={c.adCenter} eyebrow="AD PROFIT LINK">
-                  <InsightLine label={language === "zh" ? "广告成本占比" : "광고비 비중"} value={analysis.revenue ? pct((analysis.adSpend / analysis.revenue) * 100) : "0.0%"} tone={analysis.revenue && analysis.adSpend / analysis.revenue > 0.25 ? "risk" : "good"} />
-                  <InsightLine label={language === "zh" ? "广告订单数" : "광고 주문수"} value={String(analysis.adOrders)} />
-                  <InsightLine label={language === "zh" ? "广告成交数" : "광고 판매수"} value={String(analysis.adSalesCount)} />
-                  <InsightLine label={language === "zh" ? "利润率 vs 目标" : "이익률 vs 목표"} value={`${pct(analysis.marginRate)} / ${pct(selected.target_margin_rate)}`} tone={analysis.marginRate >= selected.target_margin_rate ? "good" : "watch"} />
-                </Panel>
-              </div>
-
-              <div className="grid gap-6 xl:grid-cols-2">
-                <Panel title={c.skuMatrix} eyebrow="SKU MATRIX">
-                  {skuMatrix.length ? <Matrix rows={skuMatrix} /> : <PanelEmpty text={c.noData} />}
-                </Panel>
-                <Panel title={c.riskCenter} eyebrow="RISK RADAR">
-                  <RiskRadar analysis={analysis} />
-                </Panel>
-              </div>
-
-              <div className="grid gap-6 xl:grid-cols-2">
-                <Panel title={c.notes} eyebrow="REVIEW LOG">
-                  {selectedNotes.length ? selectedNotes.map((note) => <NoteCard key={note.id} note={note} formatDate={formatDate} />) : <PanelEmpty text={language === "zh" ? "暂无复盘记录。" : "리뷰 기록이 없습니다."} />}
-                </Panel>
-                <Panel title={c.competitors} eyebrow="COMPETITOR WATCH">
-                  {selectedCompetitors.length ? selectedCompetitors.map((row) => <CompetitorCard key={row.id} row={row} />) : <PanelEmpty text={language === "zh" ? "暂无竞品记录，后续可以维护竞品价格、评分和卖点。" : "경쟁 상품 기록이 없습니다."} />}
-                </Panel>
-              </div>
-            </>
-          ) : (
-            <Panel title={c.emptyTitle} eyebrow="EMPTY">
-              <div className="rounded-3xl border border-dashed border-line bg-white/55 px-6 py-16 text-center">
-                <Rocket className="mx-auto h-12 w-12 text-[#17483f]" />
-                <h2 className="mt-4 text-2xl font-semibold text-ink">{c.emptyTitle}</h2>
-                <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-muted">{c.emptyText}</p>
-                <button className="mt-5 erp-button-primary inline-flex items-center gap-2 px-4 py-2 font-bold" onClick={startCreate}><Plus size={16} />{c.add}</button>
-              </div>
-            </Panel>
-          )}
-        </main>
-      </section>
-
-      {showForm ? (
-        <div className="fixed inset-0 z-40 flex justify-end bg-[#071512]/40 backdrop-blur-sm" onClick={() => setShowForm(false)}>
-          <form className="h-full w-full max-w-4xl overflow-y-auto border-l border-white/40 bg-[#f6f7f1] p-6 shadow-lift" onClick={(event) => event.stopPropagation()} onSubmit={submit}>
-            <div className="mb-6 flex items-start justify-between gap-4">
-              <div>
-                <div className="premium-section-eyebrow">PRODUCT SETUP</div>
-                <h2 className="mt-2 text-3xl font-semibold text-ink">{editingId ? c.edit : c.add}</h2>
-              </div>
-              <button type="button" className="erp-button-subtle p-2" onClick={() => setShowForm(false)}><X size={18} /></button>
-            </div>
-            <div className="grid gap-4 md:grid-cols-2">
-              <label className="md:col-span-2">
-                <span className="mb-1 block text-xs font-bold text-muted">{c.fields.linked}</span>
-                <select className="w-full" value={form.linked_product_id} onChange={(event) => pickProduct(event.target.value)}>
-                  <option value="">-</option>
-                  {products.map((product) => <option key={product.id} value={product.id}>{product.sku} · {product.name}</option>)}
-                </select>
-              </label>
-              <Field label={c.fields.productName} value={form.product_name} onChange={(value) => setForm({ ...form, product_name: value })} required />
-              <Field label={c.fields.sku} value={form.sku} onChange={(value) => setForm({ ...form, sku: value })} required />
-              <Field label={c.fields.series} value={form.product_series} onChange={(value) => setForm({ ...form, product_series: value })} />
-              <SelectField label={c.fields.phase} value={form.phase} options={phaseOptions} labelMap={c.phase} onChange={(value) => setForm({ ...form, phase: value as Phase })} />
-              <SelectField label={c.fields.status} value={form.status} options={statusOptions} labelMap={c.status} onChange={(value) => setForm({ ...form, status: value as Status })} />
-              <Field label={c.fields.url} value={form.coupang_url} onChange={(value) => setForm({ ...form, coupang_url: value })} />
-              <Field label={c.fields.cost} value={form.cost} onChange={(value) => setForm({ ...form, cost: value })} type="number" />
-              <Field label={c.fields.price} value={form.sale_price} onChange={(value) => setForm({ ...form, sale_price: value })} type="number" />
-              <Field label={c.fields.targetMargin} value={form.target_margin_rate} onChange={(value) => setForm({ ...form, target_margin_rate: value })} type="number" />
-              <Field label={c.fields.owner} value={form.owner} onChange={(value) => setForm({ ...form, owner: value })} />
-              <Field label={c.fields.testStart} value={form.test_start_date} onChange={(value) => setForm({ ...form, test_start_date: value })} type="date" />
-              <Field label={c.fields.testGoal} value={form.test_goal} onChange={(value) => setForm({ ...form, test_goal: value })} />
-              <label className="md:col-span-2">
-                <span className="mb-1 block text-xs font-bold text-muted">{c.fields.notes}</span>
-                <textarea className="min-h-28 w-full" value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} />
-              </label>
-            </div>
-            <div className="mt-6 flex justify-end gap-2">
-              <button type="button" className="erp-button-subtle px-4 py-2 font-bold" onClick={() => setShowForm(false)}>{c.actions.cancel}</button>
-              <button type="submit" className="erp-button-primary px-4 py-2 font-bold">{c.actions.save}</button>
-            </div>
-          </form>
+      <Panel title={c.filters.title} eyebrow="FILTERS">
+        <div className="grid gap-3 md:grid-cols-4 xl:grid-cols-9">
+          <label className="relative md:col-span-2">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+            <input className="w-full pl-9" placeholder={c.filters.searchName} value={filters.name} onChange={(event) => setFilters({ ...filters, name: event.target.value })} />
+          </label>
+          <input placeholder={c.filters.searchUrl} value={filters.url} onChange={(event) => setFilters({ ...filters, url: event.target.value })} />
+          <Select value={filters.category} options={categories} allLabel={c.filters.category} onChange={(value) => setFilters({ ...filters, category: value })} />
+          <Select value={filters.status} options={statusOptions} labelMap={c.status} allLabel={c.filters.status} onChange={(value) => setFilters({ ...filters, status: value })} />
+          <Select value={filters.grade} options={gradeOptions} labelMap={c.grade} allLabel={c.filters.grade} onChange={(value) => setFilters({ ...filters, grade: value })} />
+          <Select value={filters.priority} options={priorityOptions} labelMap={c.priority} allLabel={c.filters.priority} onChange={(value) => setFilters({ ...filters, priority: value })} />
+          <Select value={filters.margin} options={["40", "20", "10", "0"]} labelMap={{ "40": ">=40%", "20": "20%-40%", "10": "10%-20%", "0": "<10%" }} allLabel={c.filters.margin} onChange={(value) => setFilters({ ...filters, margin: value })} />
+          <input type="date" value={filters.start} onChange={(event) => setFilters({ ...filters, start: event.target.value })} />
+          <input type="date" value={filters.end} onChange={(event) => setFilters({ ...filters, end: event.target.value })} />
+          <button className="erp-button-subtle inline-flex items-center justify-center gap-2 px-3 py-2 text-sm font-bold" onClick={() => setFilters({ name: "", url: "", category: "", status: "", grade: "", priority: "", margin: "", start: "", end: "" })}>
+            <RotateCcw size={15} />{c.filters.reset}
+          </button>
         </div>
-      ) : null}
+      </Panel>
+
+      <Panel title={c.title} eyebrow="EXCEL PRO DATABASE">
+        {selectedIds.length ? (
+          <div className="mb-3 flex items-center justify-between rounded-2xl border border-red-200 bg-red-50 px-4 py-3">
+            <span className="text-sm font-bold text-red-700">{selectedIds.length} selected</span>
+            <button className="rounded bg-red-700 px-3 py-2 text-sm font-bold text-white" onClick={() => remove(selectedIds)}>{c.actions.delete}</button>
+          </div>
+        ) : null}
+        {loading ? <Skeleton /> : pageRows.length ? (
+          <>
+            <div className="overflow-hidden rounded-2xl border border-line bg-white/72">
+              <div className="max-w-full overflow-x-auto">
+                <table className="min-w-[2600px] w-full border-separate border-spacing-0 text-left text-sm">
+                  <thead className="sticky top-0 z-[3] bg-[#eef3ef] text-xs uppercase tracking-[0.08em] text-muted">
+                    <tr>
+                      <th className="sticky left-0 z-[4] w-10 border-b border-line bg-[#eef3ef] px-3 py-3"><input type="checkbox" checked={pageRows.every((row) => selectedIds.includes(row.id))} onChange={(event) => setSelectedIds(event.target.checked ? Array.from(new Set([...selectedIds, ...pageRows.map((row) => row.id)])) : selectedIds.filter((id) => !pageRows.some((row) => row.id === id)))} /></th>
+                      <th className="sticky left-10 z-[4] w-24 border-b border-line bg-[#eef3ef] px-4 py-3">产品图片</th>
+                      <SortableTh stickyLeft="left-[136px]" label="产品名称" keyName="product_name" sort={sort} onSort={toggleSort} />
+                      <th className="border-b border-line px-4 py-3">类目</th>
+                      <th className="border-b border-line px-4 py-3">Coupang链接</th>
+                      <th className="border-b border-line px-4 py-3">销售价格</th>
+                      <SortableTh label="分析日期" keyName="analysis_date" sort={sort} onSort={toggleSort} />
+                      <th className="border-b border-line px-4 py-3">预计销量</th>
+                      <SortableTh label="预计月销售额" keyName="estimated_monthly_revenue_krw" sort={sort} onSort={toggleSort} />
+                      <th className="border-b border-line px-4 py-3">采购价(CNY)</th>
+                      <th className="border-b border-line px-4 py-3">国际物流(CNY)</th>
+                      <th className="border-b border-line px-4 py-3">到韩成本(CNY)</th>
+                      <th className="border-b border-line px-4 py-3">汇率</th>
+                      <th className="border-b border-line px-4 py-3">到韩成本(KRW)</th>
+                      <th className="border-b border-line px-4 py-3">预计售价</th>
+                      <th className="border-b border-line px-4 py-3">佣金率</th>
+                      <th className="border-b border-line px-4 py-3">平台佣金</th>
+                      <th className="border-b border-line px-4 py-3">韩国物流</th>
+                      <th className="border-b border-line px-4 py-3">广告费</th>
+                      <th className="border-b border-line px-4 py-3">总成本</th>
+                      <SortableTh label="利润" keyName="profit_krw" sort={sort} onSort={toggleSort} />
+                      <SortableTh label="利润率" keyName="profit_margin" sort={sort} onSort={toggleSort} />
+                      <th className="border-b border-line px-4 py-3">供应商链接</th>
+                      <th className="border-b border-line px-4 py-3">开发状态</th>
+                      <SortableTh label="推荐等级" keyName="recommendation_grade" sort={sort} onSort={toggleSort} />
+                      <SortableTh label="优先级" keyName="priority" sort={sort} onSort={toggleSort} />
+                      <th className="border-b border-line px-4 py-3">备注</th>
+                      <th className="border-b border-line px-4 py-3 text-right">操作</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pageRows.map((row) => (
+                      <tr key={row.id} className={`group border-t border-line transition hover:bg-[#f3f7f3] ${row.profit_krw < 0 ? "bg-red-50/40" : ""}`}>
+                        <td className="sticky left-0 z-[2] border-b border-line bg-white px-3 py-3 group-hover:bg-[#f3f7f3]"><input type="checkbox" checked={selectedIds.includes(row.id)} onChange={(event) => setSelectedIds(event.target.checked ? [...selectedIds, row.id] : selectedIds.filter((id) => id !== row.id))} /></td>
+                        <td className="sticky left-10 z-[2] border-b border-line bg-white px-4 py-3 group-hover:bg-[#f3f7f3]">
+                          <div className="h-14 w-14 overflow-hidden rounded-2xl border border-line bg-[#f5f6f1]">
+                            {row.product_image_url ? <img className="h-full w-full object-cover" src={row.product_image_url} alt="" /> : <PackageSearch className="m-4 h-6 w-6 text-muted" />}
+                          </div>
+                        </td>
+                        <td className="sticky left-[136px] z-[2] max-w-[260px] border-b border-line bg-white px-4 py-3 font-bold text-ink group-hover:bg-[#f3f7f3]">{row.product_name}</td>
+                        <td className="border-b border-line px-4 py-3">{emptyWarn(row.category)}</td>
+                        <td className="border-b border-line px-4 py-3">{row.coupang_url ? <a className="inline-flex items-center gap-1 font-bold text-[#17483f]" href={row.coupang_url} target="_blank">Open<ExternalLink size={13} /></a> : emptyWarn("")}</td>
+                        <td className="border-b border-line px-4 py-3 font-semibold tabular-nums">{krw(row.selling_price_krw)}</td>
+                        <td className="border-b border-line px-4 py-3">{formatDate(row.analysis_date)}</td>
+                        <td className="border-b border-line px-4 py-3 font-semibold tabular-nums">{row.estimated_monthly_sales.toLocaleString()}</td>
+                        <td className="border-b border-line px-4 py-3 font-semibold tabular-nums">{krw(row.estimated_monthly_revenue_krw)}</td>
+                        <td className="border-b border-line px-4 py-3">{cny(row.purchase_price_cny)}</td>
+                        <td className="border-b border-line px-4 py-3">{cny(row.international_shipping_cny)}</td>
+                        <td className="border-b border-line px-4 py-3 font-semibold">{cny(row.landed_cost_cny)}</td>
+                        <td className="border-b border-line px-4 py-3">{row.exchange_rate}</td>
+                        <td className="border-b border-line px-4 py-3">{krw(row.landed_cost_krw)}</td>
+                        <td className="border-b border-line px-4 py-3 font-semibold">{krw(row.expected_selling_price_krw)}</td>
+                        <td className="border-b border-line px-4 py-3">{pct(row.platform_commission_rate)}</td>
+                        <td className="border-b border-line px-4 py-3">{krw(row.platform_commission_krw)}</td>
+                        <td className="border-b border-line px-4 py-3">{krw(row.korean_shipping_fee_krw)}</td>
+                        <td className="border-b border-line px-4 py-3">{krw(row.ad_cost_krw)}</td>
+                        <td className="border-b border-line px-4 py-3 font-semibold">{krw(row.total_cost_krw)}</td>
+                        <td className={`border-b border-line px-4 py-3 font-bold ${row.profit_krw < 0 ? "text-red-700" : "text-emerald-700"}`}>{krw(row.profit_krw)}</td>
+                        <td className="border-b border-line px-4 py-3"><MarginPill value={row.profit_margin} /></td>
+                        <td className="border-b border-line px-4 py-3">{row.supplier_url ? <a className="font-bold text-[#17483f]" href={row.supplier_url} target="_blank">Supplier</a> : "-"}</td>
+                        <td className="border-b border-line px-4 py-3"><Tag>{c.status[row.development_status]}</Tag></td>
+                        <td className="border-b border-line px-4 py-3"><Tag tone={row.recommendation_grade === "A_PLUS" || row.recommendation_grade === "A" ? "good" : row.recommendation_grade === "D" ? "risk" : "neutral"}>{c.grade[row.recommendation_grade]}</Tag></td>
+                        <td className="border-b border-line px-4 py-3"><Tag tone={row.priority === "high" ? "risk" : row.priority === "medium" ? "watch" : "neutral"}>{c.priority[row.priority]}</Tag></td>
+                        <td className="max-w-[220px] truncate border-b border-line px-4 py-3 text-muted">{row.notes || "-"}</td>
+                        <td className="border-b border-line px-4 py-3">
+                          <div className="flex justify-end gap-1.5">
+                            <IconButton label={c.actions.edit} icon={<Edit3 size={14} />} onClick={() => openEdit(row)} />
+                            <IconButton label={c.actions.copy} icon={<Copy size={14} />} onClick={() => duplicate(row)} />
+                            <IconButton danger label={c.actions.delete} icon={<Trash2 size={14} />} onClick={() => remove([row.id])} />
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div className="mt-4 flex items-center justify-between text-sm text-muted">
+              <span>{filtered.length} rows · {page}/{totalPages}</span>
+              <div className="flex gap-2">
+                <button className="erp-button-subtle px-3 py-2 font-bold disabled:opacity-40" disabled={page <= 1} onClick={() => setPage((value) => Math.max(1, value - 1))}>Prev</button>
+                <button className="erp-button-subtle px-3 py-2 font-bold disabled:opacity-40" disabled={page >= totalPages} onClick={() => setPage((value) => Math.min(totalPages, value + 1))}>Next</button>
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="rounded-3xl border border-dashed border-line bg-white/50 px-6 py-14 text-center">
+            <FileSpreadsheet className="mx-auto h-12 w-12 text-[#17483f]" />
+            <p className="mt-4 text-lg font-bold text-ink">{c.empty}</p>
+            <button className="mt-5 erp-button-primary inline-flex items-center gap-2 px-4 py-2 font-bold" onClick={openCreate}><Plus size={16} />{c.add}</button>
+          </div>
+        )}
+      </Panel>
+
+      {drawer ? <Drawer c={c} mode={drawer} form={form} setForm={setForm} onClose={() => setDrawer(null)} onSubmit={submit} /> : null}
     </div>
   );
 }
 
-function buildAnalysis(item: AnalysisItem, product: ProductRow | undefined, movements: StockMovementRow[], ads: AdRecord[], issues: CustomerIssue[]) {
-  const sku = item.sku;
-  const productId = item.linked_product_id;
-  const saleMovements = movements.filter((row) => row.type === "sale" && (row.product_id === productId || row.products?.sku === sku));
-  const salesQty = saleMovements.reduce((sum, row) => sum + Math.abs(num(row.quantity)), 0);
-  const salePrice = item.sale_price || product?.sale_price || 0;
-  const cost = item.cost || product?.purchase_price || 0;
-  const platformFeeRate = product?.platform_fee_rate ?? 11.6;
-  const revenue = salesQty * salePrice;
-  const matchedAds = ads.filter((row) => row.sku === sku || row.product_name.includes(item.product_name));
-  const adSpend = matchedAds.reduce((sum, row) => sum + num(row.ad_spend), 0);
-  const adSales = matchedAds.reduce((sum, row) => sum + num(row.ad_sales), 0);
-  const adOrders = matchedAds.reduce((sum, row) => sum + num(row.ad_order_count), 0);
-  const adSalesCount = matchedAds.reduce((sum, row) => sum + num(row.ad_sales_count), 0);
-  const fee = revenue * (platformFeeRate / 100);
-  const profit = revenue - salesQty * cost - adSpend - fee;
-  const marginRate = revenue ? (profit / revenue) * 100 : 0;
-  const roas = adSpend ? adSales / adSpend : 0;
-  const stock = getStock(product);
-  const matchedIssues = issues.filter((row) => row.sku === sku || row.product_name.includes(item.product_name));
-  const issueCount = matchedIssues.length;
-  const salesScore = Math.min(100, salesQty * 5);
-  const marginScore = Math.max(0, Math.min(100, marginRate * 2.4));
-  const roasScore = adSpend ? Math.min(100, roas * 18) : salesQty ? 55 : 25;
-  const stockScore = stock <= 0 ? 15 : stock < 10 ? 45 : stock > 180 && salesQty < 5 ? 50 : 82;
-  const issueScore = Math.max(10, 100 - issueCount * 18);
-  const score = Math.round(salesScore * 0.22 + marginScore * 0.24 + roasScore * 0.24 + stockScore * 0.15 + issueScore * 0.15);
-  const decision: Decision = score >= 78 && marginRate >= item.target_margin_rate && (roas >= 4 || !adSpend) ? "scale" : score >= 64 ? "keep" : issueCount >= 3 ? "optimize" : roas > 0 && roas < 2 ? "reduce" : score < 36 ? "pause" : item.phase === "retire" ? "retire" : "optimize";
-
-  return { salesQty, revenue, profit, marginRate, adSpend, adSales, roas, adOrders, adSalesCount, stock, issueCount, score, decision };
-}
-
-function buildSkuMatrix(item: AnalysisItem, movements: StockMovementRow[]) {
-  const map = new Map<string, { color: string; size: string; qty: number; revenue: number }>();
-  movements
-    .filter((row) => row.type === "sale" && (row.products?.sku === item.sku || row.products?.name?.includes(item.product_name)))
-    .forEach((row) => {
-      const color = row.products?.color ?? "-";
-      const size = row.products?.size ?? "-";
-      const key = `${color}|${size}`;
-      const current = map.get(key) ?? { color, size, qty: 0, revenue: 0 };
-      current.qty += Math.abs(num(row.quantity));
-      current.revenue += Math.abs(num(row.quantity)) * num(row.products?.sale_price);
-      map.set(key, current);
-    });
-  return Array.from(map.values()).sort((a, b) => b.qty - a.qty).slice(0, 8);
-}
-
-function HeroChip({ icon: Icon, label }: { icon: LucideIcon; label: string }) {
-  return <span className="inline-flex items-center gap-2 rounded-full border border-[#cfd8cf] bg-white/75 px-3 py-1.5 text-xs font-bold text-[#17483f] shadow-sm"><Icon size={14} />{label}</span>;
-}
-
-function DarkMetric({ label, value }: { label: string; value: string }) {
-  return <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-3"><div className="text-xs text-white/58">{label}</div><div className="mt-1 text-xl font-semibold tabular-nums">{value}</div></div>;
-}
-
-function Panel({ eyebrow, title, action, children }: { eyebrow?: string; title: string; action?: React.ReactNode; children: React.ReactNode }) {
+function Drawer({ c, mode, form, setForm, onClose, onSubmit }: { c: typeof copyText.zh; mode: DrawerMode; form: FormState; setForm: (form: FormState) => void; onClose: () => void; onSubmit: (event: FormEvent) => void }) {
+  const calc = compute(form);
   return (
-    <section className="rounded-[28px] border border-line bg-card/92 p-5 shadow-card backdrop-blur">
-      <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          {eyebrow ? <p className="text-xs font-bold uppercase tracking-[0.18em] text-muted">{eyebrow}</p> : null}
-          <h2 className="mt-1 text-2xl font-semibold tracking-tight text-ink">{title}</h2>
+    <div className="fixed inset-0 z-40 flex justify-end bg-[#071512]/40 backdrop-blur-sm" onClick={onClose}>
+      <form className="h-full w-full max-w-5xl overflow-y-auto border-l border-white/40 bg-[#f6f7f1] p-6 shadow-lift" onClick={(event) => event.stopPropagation()} onSubmit={onSubmit}>
+        <div className="mb-6 flex items-start justify-between gap-4">
+          <div>
+            <div className="premium-section-eyebrow">PRODUCT TEST</div>
+            <h2 className="mt-2 text-3xl font-semibold tracking-tight text-ink">{mode === "edit" ? c.actions.edit : c.add}</h2>
+          </div>
+          <button type="button" className="erp-button-subtle p-2" onClick={onClose}><X size={18} /></button>
         </div>
-        {action}
-      </div>
-      {children}
-    </section>
-  );
-}
 
-function Kpi({ icon: Icon, label, value, helper, tone = "neutral" }: { icon: LucideIcon; label: string; value: string; helper?: string; tone?: "neutral" | "good" | "watch" | "risk" }) {
-  const toneClass = tone === "good" ? "text-emerald-700 bg-emerald-50 border-emerald-200" : tone === "risk" ? "text-red-700 bg-red-50 border-red-200" : tone === "watch" ? "text-yellow-800 bg-yellow-50 border-yellow-200" : "text-[#17483f] bg-[#e8f1ed] border-[#17483f]/15";
-  return (
-    <div className="rounded-[24px] border border-line bg-white/78 p-4 shadow-[0_14px_34px_rgba(23,33,29,0.055)] transition hover:-translate-y-1 hover:shadow-lift">
-      <span className={`flex h-10 w-10 items-center justify-center rounded-2xl border ${toneClass}`}><Icon size={19} /></span>
-      <div className="mt-4 text-xs font-bold text-muted">{label}</div>
-      <div className="mt-1 text-2xl font-semibold tabular-nums text-ink">{value}</div>
-      {helper ? <div className="mt-1 text-xs text-muted">{helper}</div> : null}
+        <FormSection title={c.sections.basic}>
+          <Field label="产品图片 URL" value={form.product_image_url} onChange={(value) => setForm({ ...form, product_image_url: value })} />
+          <Field label="产品名称" value={form.product_name} required onChange={(value) => setForm({ ...form, product_name: value })} />
+          <Field label="类目" value={form.category} onChange={(value) => setForm({ ...form, category: value })} />
+          <Field label="Coupang链接" value={form.coupang_url} onChange={(value) => setForm({ ...form, coupang_url: value })} />
+          <Field label="供应商链接" value={form.supplier_url} onChange={(value) => setForm({ ...form, supplier_url: value })} />
+          <Field label="分析日期" type="date" value={form.analysis_date} onChange={(value) => setForm({ ...form, analysis_date: value })} />
+        </FormSection>
+
+        <FormSection title={c.sections.sales}>
+          <Field label="销售价格(KRW)" type="number" value={form.selling_price_krw} onChange={(value) => setForm({ ...form, selling_price_krw: value })} />
+          <Field label="一个月预计销量" type="number" value={form.estimated_monthly_sales} onChange={(value) => setForm({ ...form, estimated_monthly_sales: value })} />
+          <Field label="预计售价(KRW)" type="number" value={form.expected_selling_price_krw} onChange={(value) => setForm({ ...form, expected_selling_price_krw: value })} />
+          <ReadOnlyMetric label="一个月预计销售额" value={krw(calc.monthlyRevenue)} />
+        </FormSection>
+
+        <FormSection title={c.sections.cost}>
+          <Field label="采购价(CNY)" type="number" value={form.purchase_price_cny} onChange={(value) => setForm({ ...form, purchase_price_cny: value })} />
+          <Field label="国际物流费(CNY)" type="number" value={form.international_shipping_cny} onChange={(value) => setForm({ ...form, international_shipping_cny: value })} />
+          <Field label="汇率" type="number" value={form.exchange_rate} onChange={(value) => setForm({ ...form, exchange_rate: value })} />
+          <Field label="平台佣金率(%)" type="number" value={form.platform_commission_rate} onChange={(value) => setForm({ ...form, platform_commission_rate: value })} />
+          <Field label="韩国物流费(KRW)" type="number" value={form.korean_shipping_fee_krw} onChange={(value) => setForm({ ...form, korean_shipping_fee_krw: value })} />
+          <Field label="广告费(KRW)" type="number" value={form.ad_cost_krw} onChange={(value) => setForm({ ...form, ad_cost_krw: value })} />
+        </FormSection>
+
+        <FormSection title={c.sections.result}>
+          <ReadOnlyMetric label="到韩总成本(CNY)" value={cny(calc.landedCny)} />
+          <ReadOnlyMetric label="到韩总成本(KRW)" value={krw(calc.landedKrw)} />
+          <ReadOnlyMetric label="平台佣金(KRW)" value={krw(calc.commission)} />
+          <ReadOnlyMetric label="总成本(KRW)" value={krw(calc.totalCost)} />
+          <ReadOnlyMetric label="利润(KRW)" value={krw(calc.profit)} tone={calc.profit < 0 ? "risk" : "good"} />
+          <ReadOnlyMetric label="利润率(%)" value={pct(calc.margin)} tone={calc.margin >= 40 ? "good" : calc.margin < 10 ? "risk" : "watch"} />
+        </FormSection>
+
+        <FormSection title={c.sections.development}>
+          <SelectField label="开发状态" value={form.development_status} options={statusOptions} labelMap={c.status} onChange={(value) => setForm({ ...form, development_status: value as DevelopmentStatus })} />
+          <SelectField label="推荐等级" value={form.recommendation_grade} options={gradeOptions} labelMap={c.grade} onChange={(value) => setForm({ ...form, recommendation_grade: value as RecommendationGrade })} />
+          <SelectField label="优先级" value={form.priority} options={priorityOptions} labelMap={c.priority} onChange={(value) => setForm({ ...form, priority: value as Priority })} />
+        </FormSection>
+
+        <FormSection title={c.sections.notes}>
+          <label className="md:col-span-3">
+            <span className="mb-1 block text-xs font-bold text-muted">备注</span>
+            <textarea className="min-h-28 w-full" value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} />
+          </label>
+        </FormSection>
+
+        <div className="mt-6 flex justify-end gap-2">
+          <button type="button" className="erp-button-subtle px-4 py-2 font-bold" onClick={onClose}>{c.actions.cancel}</button>
+          <button type="submit" className="erp-button-primary px-4 py-2 font-bold">{c.actions.save}</button>
+        </div>
+      </form>
     </div>
   );
 }
 
-function StatusPill({ children }: { children: React.ReactNode }) {
-  return <span className="shrink-0 rounded-full border border-[#17483f]/15 bg-[#e8f1ed] px-2.5 py-1 text-xs font-bold text-[#17483f]">{children}</span>;
+function parseCsvLine(line: string) {
+  const cells: string[] = [];
+  let current = "";
+  let quoted = false;
+  for (let i = 0; i < line.length; i += 1) {
+    const char = line[i];
+    const next = line[i + 1];
+    if (char === '"' && quoted && next === '"') {
+      current += '"';
+      i += 1;
+    } else if (char === '"') {
+      quoted = !quoted;
+    } else if (char === "," && !quoted) {
+      cells.push(current);
+      current = "";
+    } else {
+      current += char;
+    }
+  }
+  cells.push(current);
+  return cells;
 }
 
-function ScoreCard({ label, value }: { label: string; value: string }) {
-  return <div className="rounded-2xl border border-line bg-white/70 p-4"><div className="text-xs font-bold text-muted">{label}</div><div className="mt-2 line-clamp-2 text-lg font-semibold text-ink">{value}</div></div>;
+function emptyWarn(value: string | null | undefined) {
+  return value ? value : <span className="rounded-full border border-yellow-200 bg-yellow-50 px-2 py-1 text-xs font-bold text-yellow-800">缺少数据</span>;
 }
 
-function DecisionStrip({ analysis, labels }: { analysis: ReturnType<typeof buildAnalysis>; labels: Record<string, string> }) {
-  const steps = ["pause", "optimize", "keep", "scale"];
-  const activeIndex = steps.indexOf(analysis.decision);
-  return (
-    <div className="mt-5 rounded-3xl border border-line bg-white/60 p-4">
-      <div className="grid gap-2 md:grid-cols-4">
-        {steps.map((step, index) => (
-          <div key={step} className={`rounded-2xl px-3 py-3 text-center text-xs font-bold ${index <= activeIndex ? "bg-[#17483f] text-white" : "bg-[#edf0eb] text-muted"}`}>{labels[step]}</div>
-        ))}
-      </div>
-    </div>
-  );
+function marginTone(value: number) {
+  if (value >= 40) return "good";
+  if (value >= 20) return "blue";
+  if (value >= 10) return "watch";
+  return "risk";
 }
 
-function InsightLine({ label, value, tone = "neutral" }: { label: string; value: string; tone?: "neutral" | "good" | "watch" | "risk" }) {
-  const color = tone === "good" ? "text-emerald-700" : tone === "risk" ? "text-red-700" : tone === "watch" ? "text-yellow-800" : "text-ink";
-  return <div className="mb-3 flex items-center justify-between rounded-2xl border border-line bg-white/70 px-4 py-3"><span className="text-sm font-semibold text-muted">{label}</span><span className={`text-lg font-bold tabular-nums ${color}`}>{value}</span></div>;
+function MarginPill({ value }: { value: number }) {
+  const tone = marginTone(value);
+  const styles = tone === "good" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : tone === "blue" ? "border-blue-200 bg-blue-50 text-blue-700" : tone === "watch" ? "border-yellow-200 bg-yellow-50 text-yellow-800" : "border-red-200 bg-red-50 text-red-700";
+  return <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-bold ${styles}`}>{pct(value)}</span>;
 }
 
-function Matrix({ rows }: { rows: Array<{ color: string; size: string; qty: number; revenue: number }> }) {
-  return (
-    <div className="overflow-hidden rounded-2xl border border-line bg-white/70">
-      <table className="w-full text-sm">
-        <thead className="bg-[#eef3ef] text-xs uppercase tracking-[0.12em] text-muted"><tr><th className="px-4 py-3 text-left">Color</th><th className="px-4 py-3 text-left">Size</th><th className="px-4 py-3 text-right">Qty</th><th className="px-4 py-3 text-right">Sales</th></tr></thead>
-        <tbody>{rows.map((row) => <tr key={`${row.color}-${row.size}`} className="border-t border-line"><td className="px-4 py-3 font-semibold">{row.color}</td><td className="px-4 py-3">{row.size}</td><td className="px-4 py-3 text-right font-bold">{row.qty}</td><td className="px-4 py-3 text-right font-bold">{won(row.revenue)}</td></tr>)}</tbody>
-      </table>
-    </div>
-  );
+function Kpi({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: string | number }) {
+  return <div className="rounded-2xl border border-white/70 bg-white/78 p-4 shadow-[0_12px_34px_rgba(20,33,29,0.08)] backdrop-blur"><Icon className="h-5 w-5 text-[#17483f]" /><div className="mt-3 text-xs font-bold text-muted">{label}</div><div className="mt-1 text-2xl font-semibold tabular-nums text-ink">{value}</div></div>;
 }
 
-function RiskRadar({ analysis }: { analysis: ReturnType<typeof buildAnalysis> }) {
-  const risks = [
-    { label: "Stock", value: analysis.stock < 10 ? 78 : 18, icon: Boxes },
-    { label: "Issue", value: Math.min(100, analysis.issueCount * 22), icon: ShieldAlert },
-    { label: "Ad Cost", value: analysis.revenue ? Math.min(100, (analysis.adSpend / analysis.revenue) * 260) : 35, icon: MousePointerClick },
-    { label: "Margin", value: analysis.marginRate < 15 ? 72 : 20, icon: AlertTriangle }
-  ];
-  return <div className="grid gap-3 md:grid-cols-2">{risks.map(({ label, value, icon: Icon }) => <div key={label} className="rounded-2xl border border-line bg-white/70 p-4"><div className="flex items-center justify-between"><span className="flex items-center gap-2 font-bold text-ink"><Icon size={16} />{label}</span><span className="text-sm font-bold text-muted">{Math.round(value)}%</span></div><div className="mt-3 h-2 overflow-hidden rounded-full bg-[#e4e9e4]"><div className={`h-full rounded-full ${value > 60 ? "bg-red-500" : value > 35 ? "bg-yellow-500" : "bg-emerald-600"}`} style={{ width: `${Math.max(4, value)}%` }} /></div></div>)}</div>;
+function Panel({ eyebrow, title, children }: { eyebrow?: string; title: string; children: React.ReactNode }) {
+  return <section className="rounded-[28px] border border-line bg-card/92 p-5 shadow-card backdrop-blur"><div className="mb-5"><p className="text-xs font-bold uppercase tracking-[0.18em] text-muted">{eyebrow}</p><h2 className="mt-1 text-2xl font-semibold tracking-tight text-ink">{title}</h2></div>{children}</section>;
 }
 
-function NoteCard({ note, formatDate }: { note: AnalysisNote; formatDate: (value: string | Date) => string }) {
-  return <div className="mb-3 rounded-2xl border border-line bg-white/70 p-4"><div className="flex items-center justify-between gap-3"><div className="font-bold text-ink">{note.title}</div><span className="text-xs text-muted">{formatDate(note.note_date)}</span></div>{note.content ? <p className="mt-2 text-sm leading-6 text-muted">{note.content}</p> : null}</div>;
-}
-
-function CompetitorCard({ row }: { row: CompetitorProduct }) {
-  return <div className="mb-3 rounded-2xl border border-line bg-white/70 p-4"><div className="flex items-start justify-between gap-3"><div><div className="font-bold text-ink">{row.competitor_name || "Competitor"}</div><div className="mt-1 text-xs text-muted">{row.key_selling_points || "-"}</div></div><div className="text-right"><div className="font-bold text-ink">{won(row.price)}</div><div className="text-xs text-muted">{row.rating ?? "-"} / {row.review_count}</div></div></div>{row.product_url ? <a className="mt-3 inline-flex items-center gap-1 text-xs font-bold text-[#17483f]" href={row.product_url} target="_blank"><Eye size={14} />Open</a> : null}</div>;
-}
-
-function PanelEmpty({ text }: { text: string }) {
-  return <div className="rounded-2xl border border-dashed border-line bg-white/45 px-4 py-8 text-center text-sm font-semibold text-muted">{text}</div>;
-}
-
-function SkeletonList() {
-  return <div className="space-y-2">{Array.from({ length: 4 }).map((_, index) => <div key={index} className="h-20 animate-pulse rounded-2xl bg-white/65" />)}</div>;
+function FormSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return <section className="mb-5 rounded-[24px] border border-line bg-white/72 p-4 shadow-card"><h3 className="mb-4 text-lg font-semibold text-ink">{title}</h3><div className="grid gap-3 md:grid-cols-3">{children}</div></section>;
 }
 
 function Field({ label, value, onChange, type = "text", required = false }: { label: string; value: string; onChange: (value: string) => void; type?: "text" | "number" | "date"; required?: boolean }) {
   return <label><span className="mb-1 block text-xs font-bold text-muted">{label}{required ? " *" : ""}</span><input className="w-full" type={type} min={type === "number" ? "0" : undefined} step={type === "number" ? "0.01" : undefined} value={value} required={required} onChange={(event) => onChange(event.target.value)} /></label>;
 }
 
+function Select({ value, options, allLabel, labelMap, onChange }: { value: string; options: string[]; allLabel: string; labelMap?: Record<string, string>; onChange: (value: string) => void }) {
+  return <select className="w-full" value={value} onChange={(event) => onChange(event.target.value)}><option value="">{allLabel}</option>{options.map((option) => <option key={option} value={option}>{labelMap?.[option] ?? option}</option>)}</select>;
+}
+
 function SelectField({ label, value, options, labelMap, onChange }: { label: string; value: string; options: string[]; labelMap: Record<string, string>; onChange: (value: string) => void }) {
   return <label><span className="mb-1 block text-xs font-bold text-muted">{label}</span><select className="w-full" value={value} onChange={(event) => onChange(event.target.value)}>{options.map((option) => <option key={option} value={option}>{labelMap[option]}</option>)}</select></label>;
+}
+
+function ReadOnlyMetric({ label, value, tone = "neutral" }: { label: string; value: string; tone?: "neutral" | "good" | "watch" | "risk" }) {
+  const color = tone === "good" ? "text-emerald-700" : tone === "risk" ? "text-red-700" : tone === "watch" ? "text-yellow-800" : "text-ink";
+  return <div className="rounded-2xl border border-line bg-[#f3f6f1] px-3 py-2"><div className="text-xs font-bold text-muted">{label}</div><div className={`mt-1 font-semibold tabular-nums ${color}`}>{value}</div></div>;
+}
+
+function Tag({ children, tone = "neutral" }: { children: React.ReactNode; tone?: "neutral" | "good" | "watch" | "risk" }) {
+  const styles = tone === "good" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : tone === "risk" ? "border-red-200 bg-red-50 text-red-700" : tone === "watch" ? "border-yellow-200 bg-yellow-50 text-yellow-800" : "border-[#17483f]/15 bg-[#e8f1ed] text-[#17483f]";
+  return <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-bold ${styles}`}>{children}</span>;
+}
+
+function IconButton({ label, icon, onClick, danger = false }: { label: string; icon: React.ReactNode; onClick: () => void; danger?: boolean }) {
+  return <button type="button" title={label} className={`inline-flex h-8 w-8 items-center justify-center rounded-lg border ${danger ? "border-red-200 bg-red-50 text-red-700" : "border-line bg-white/80 text-ink hover:bg-[#eef4ef]"}`} onClick={onClick}>{icon}</button>;
+}
+
+function SortableTh({ label, keyName, sort, onSort, stickyLeft }: { label: string; keyName: SortKey; sort: { key: SortKey; dir: "asc" | "desc" }; onSort: (key: SortKey) => void; stickyLeft?: string }) {
+  return <th className={`${stickyLeft ? `sticky ${stickyLeft} z-[4] bg-[#eef3ef]` : ""} border-b border-line px-4 py-3`}><button className="font-bold" onClick={() => onSort(keyName)}>{label}{sort.key === keyName ? sort.dir === "asc" ? " ↑" : " ↓" : ""}</button></th>;
+}
+
+function Skeleton() {
+  return <div className="grid gap-3">{Array.from({ length: 8 }).map((_, index) => <div key={index} className="h-16 animate-pulse rounded-2xl bg-white/65" />)}</div>;
 }

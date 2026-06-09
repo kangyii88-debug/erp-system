@@ -34,7 +34,7 @@ const navItems = [
   { href: "/purchases", icon: ClipboardList, label: { zh: "采购管理", ko: "구매 관리" } },
   { href: "/expenses", icon: ReceiptText, label: { zh: "财务支出报表", ko: "재무 지출 리포트" } },
   { href: "/task-center", icon: ClipboardCheck, label: { zh: "待办中心", ko: "업무 센터" } },
-  { href: "/single-product-report", icon: FileText, label: { zh: "单品分析报表", ko: "단품 분석 리포트" } },
+  { href: "/single-product-report", icon: FileText, label: { zh: "商品测试数据库", ko: "상품 테스트 데이터베이스" } },
   { href: "/product-development", icon: Lightbulb, label: { zh: "产品开发中心", ko: "상품 개발 센터" } },
   { href: "/customer-issues", icon: ShieldAlert, label: { zh: "客诉问题库", ko: "고객 리뷰 센터" } },
   { href: "/settlements", icon: Landmark, label: { zh: "Coupang 结算中心", ko: "Coupang 정산 센터" } },
