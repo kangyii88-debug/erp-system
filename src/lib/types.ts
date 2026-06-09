@@ -134,7 +134,7 @@ export type Task = {
   user_id: string;
   task_name: string;
   task_type: string;
-  priority: "P1 紧急" | "P2 重要" | "P3 普通" | "P4 低优先级";
+  priority: "P1 紧急" | "P2 重要" | "P3 普通" | "P4 低";
   owner: string;
   due_date: string;
   status: "待处理" | "进行中" | "已完成" | "已取消";

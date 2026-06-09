@@ -62,6 +62,8 @@ create table if not exists customer_issues (
   updated_at timestamptz not null default now()
 );
 
+alter table customer_issues add column if not exists customer_original_text text;
+
 create index if not exists tasks_user_due_status_idx on tasks (user_id, due_date, status);
 create index if not exists product_development_user_status_idx on product_development (user_id, development_status, priority);
 create index if not exists customer_issues_user_date_category_idx on customer_issues (user_id, issue_date, issue_category);
