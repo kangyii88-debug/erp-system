@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { BarChart3, Boxes, ClipboardCheck, ClipboardList, Landmark, Lightbulb, LogOut, Package, ReceiptText, ShieldAlert, ShoppingCart, Warehouse } from "lucide-react";
+import { BarChart3, Boxes, ClipboardCheck, ClipboardList, Landmark, Lightbulb, LogOut, Megaphone, Package, ReceiptText, ShieldAlert, ShoppingCart, Warehouse } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { LanguageProvider, useLanguage } from "./LanguageProvider";
 
@@ -12,6 +12,7 @@ const navItems = [
   { href: "/products", key: "nav.products", icon: Package },
   { href: "/inventory", key: "nav.inventory", icon: Boxes },
   { href: "/sales", key: "nav.sales", icon: ShoppingCart },
+  { href: "/advertising", key: "nav.advertising", icon: Megaphone },
   { href: "/purchases", key: "nav.purchases", icon: ClipboardList },
   { href: "/expenses", key: "nav.expenses", icon: ReceiptText },
   { href: "/task-center", key: "nav.taskCenter", icon: ClipboardCheck },

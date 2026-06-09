@@ -145,6 +145,27 @@ create table if not exists coupang_settlements (
   unique (user_id, settlement_month)
 );
 
+create table if not exists advertising_campaigns (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  campaign_name text not null,
+  status text not null default 'running',
+  budget numeric(14, 2) not null default 0,
+  spend numeric(14, 2) not null default 0,
+  sales numeric(14, 2) not null default 0,
+  profit numeric(14, 2) not null default 0,
+  orders integer not null default 0,
+  impressions integer not null default 0,
+  clicks integer not null default 0,
+  conversions integer not null default 0,
+  sku text,
+  product_name text,
+  record_date date not null default current_date,
+  last_updated_at timestamptz not null default now(),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 create table if not exists tasks (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -207,6 +228,9 @@ create index if not exists tasks_user_due_status_idx on tasks (user_id, due_date
 create index if not exists product_development_user_status_idx on product_development (user_id, development_status, priority);
 create index if not exists customer_issues_user_date_category_idx on customer_issues (user_id, issue_date, issue_category);
 create index if not exists customer_issues_user_sku_idx on customer_issues (user_id, sku);
+create index if not exists advertising_campaigns_user_date_idx on advertising_campaigns (user_id, record_date desc);
+create index if not exists advertising_campaigns_user_campaign_idx on advertising_campaigns (user_id, campaign_name);
+create index if not exists advertising_campaigns_user_sku_idx on advertising_campaigns (user_id, sku);
 
 create or replace function set_updated_at()
 returns trigger language plpgsql as $$
@@ -238,6 +262,9 @@ create trigger product_development_updated_at before update on product_developme
 for each row execute function set_updated_at();
 
 create trigger customer_issues_updated_at before update on customer_issues
+for each row execute function set_updated_at();
+
+create trigger advertising_campaigns_updated_at before update on advertising_campaigns
 for each row execute function set_updated_at();
 
 create or replace function ensure_inventory_balance()
@@ -297,6 +324,7 @@ alter table coupang_settlements enable row level security;
 alter table tasks enable row level security;
 alter table product_development enable row level security;
 alter table customer_issues enable row level security;
+alter table advertising_campaigns enable row level security;
 
 create policy "products owner access" on products
 for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
@@ -336,6 +364,9 @@ create policy "product development owner access" on product_development
 for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 create policy "customer issues owner access" on customer_issues
+for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+create policy "advertising campaigns owner access" on advertising_campaigns
 for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 insert into storage.buckets (id, name, public)
