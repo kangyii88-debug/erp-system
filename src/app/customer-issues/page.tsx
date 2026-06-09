@@ -5,6 +5,7 @@ import { AlertCircle, Boxes, Edit3, PackageX, Palette, Plus, Ruler, Trash2, Truc
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { AppShell } from "@/components/AppShell";
 import { CenterHero, CenterPanel, EmptyState, ExecutiveKpi, KpiGrid, MetricLine, ProgressBar, StatusPill } from "@/components/ManagementCenter";
+import { formatDatabaseError } from "@/lib/database-error";
 import { supabase } from "@/lib/supabase";
 
 type IssueCategory = "安装问题" | "质量问题" | "尺寸问题" | "颜色问题" | "物流问题" | "包装问题" | "功能问题" | "其它问题";
@@ -62,7 +63,7 @@ function CustomerIssuesContent() {
   async function loadIssues() {
     const { data, error } = await supabase.from("customer_issues").select("*").order("issue_date", { ascending: false }).order("created_at", { ascending: false });
     if (error) {
-      setMessage(error.message);
+      setMessage(formatDatabaseError(error.message, "customer_issues"));
       return;
     }
     setIssues((data ?? []) as CustomerIssue[]);
@@ -91,7 +92,7 @@ function CustomerIssuesContent() {
       : await supabase.from("customer_issues").insert({ user_id: auth.user.id, ...payload });
 
     if (result.error) {
-      setMessage(result.error.message);
+      setMessage(formatDatabaseError(result.error.message, "customer_issues"));
       return;
     }
     setForm(emptyForm);
@@ -103,7 +104,7 @@ function CustomerIssuesContent() {
 
   async function updateStatus(id: string, status: IssueStatus) {
     const { error } = await supabase.from("customer_issues").update({ status }).eq("id", id);
-    if (error) setMessage(error.message);
+    if (error) setMessage(formatDatabaseError(error.message, "customer_issues"));
     await loadIssues();
   }
 
@@ -111,7 +112,7 @@ function CustomerIssuesContent() {
     if (!window.confirm("确定删除这条客诉记录吗？")) return;
     const { error } = await supabase.from("customer_issues").delete().eq("id", id);
     if (error) {
-      setMessage(error.message);
+      setMessage(formatDatabaseError(error.message, "customer_issues"));
       return;
     }
     await loadIssues();

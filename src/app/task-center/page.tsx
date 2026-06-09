@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { AlertTriangle, CalendarCheck2, CheckCircle2, Clock3, Edit3, Flame, Plus, Trash2, TimerReset } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { CenterHero, CenterPanel, EmptyState, ExecutiveKpi, KpiGrid, MetricLine, StatusPill } from "@/components/ManagementCenter";
+import { formatDatabaseError } from "@/lib/database-error";
 import { supabase } from "@/lib/supabase";
 
 type TaskStatus = "待处理" | "进行中" | "已完成" | "已取消";
@@ -59,7 +60,7 @@ function TaskCenterContent() {
   async function loadTasks() {
     const { data, error } = await supabase.from("tasks").select("*").order("due_date", { ascending: true }).order("created_at", { ascending: false });
     if (error) {
-      setMessage(error.message);
+      setMessage(formatDatabaseError(error.message, "tasks"));
       return;
     }
     setTasks((data ?? []) as TaskRow[]);
@@ -85,7 +86,7 @@ function TaskCenterContent() {
       : await supabase.from("tasks").insert({ user_id: auth.user.id, ...payload });
 
     if (result.error) {
-      setMessage(result.error.message);
+      setMessage(formatDatabaseError(result.error.message, "tasks"));
       return;
     }
 
@@ -100,7 +101,7 @@ function TaskCenterContent() {
     setTasks((current) => current.map((task) => task.id === taskId ? { ...task, status } : task));
     const { error } = await supabase.from("tasks").update({ status }).eq("id", taskId);
     if (error) {
-      setMessage(error.message);
+      setMessage(formatDatabaseError(error.message, "tasks"));
       await loadTasks();
     }
   }
@@ -109,7 +110,7 @@ function TaskCenterContent() {
     if (!window.confirm("确定删除这个任务吗？")) return;
     const { error } = await supabase.from("tasks").delete().eq("id", taskId);
     if (error) {
-      setMessage(error.message);
+      setMessage(formatDatabaseError(error.message, "tasks"));
       return;
     }
     await loadTasks();

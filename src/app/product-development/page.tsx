@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { BadgeCheck, Beaker, Boxes, CircleOff, Edit3, FlaskConical, Lightbulb, Plus, Rocket, Trash2 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { CenterHero, CenterPanel, EmptyState, ExecutiveKpi, KpiGrid, MetricLine, ProgressBar, StatusPill } from "@/components/ManagementCenter";
+import { formatDatabaseError } from "@/lib/database-error";
 import { supabase } from "@/lib/supabase";
 
 type DevStatus = "待开发" | "询价中" | "打样中" | "测试中" | "优化中" | "待上架" | "已上线" | "已放弃";
@@ -75,7 +76,7 @@ function ProductDevelopmentContent() {
   async function loadProducts() {
     const { data, error } = await supabase.from("product_development").select("*").order("created_at", { ascending: false });
     if (error) {
-      setMessage(error.message);
+      setMessage(formatDatabaseError(error.message, "product_development"));
       return;
     }
     const rows = (data ?? []) as ProductDevRow[];
@@ -112,7 +113,7 @@ function ProductDevelopmentContent() {
       : await supabase.from("product_development").insert({ user_id: auth.user.id, ...payload });
 
     if (result.error) {
-      setMessage(result.error.message);
+      setMessage(formatDatabaseError(result.error.message, "product_development"));
       return;
     }
     setForm(emptyForm);
@@ -124,7 +125,7 @@ function ProductDevelopmentContent() {
 
   async function updateStatus(id: string, development_status: DevStatus) {
     const { error } = await supabase.from("product_development").update({ development_status }).eq("id", id);
-    if (error) setMessage(error.message);
+    if (error) setMessage(formatDatabaseError(error.message, "product_development"));
     await loadProducts();
   }
 
@@ -132,7 +133,7 @@ function ProductDevelopmentContent() {
     if (!window.confirm("确定删除这个产品开发项目吗？")) return;
     const { error } = await supabase.from("product_development").delete().eq("id", id);
     if (error) {
-      setMessage(error.message);
+      setMessage(formatDatabaseError(error.message, "product_development"));
       return;
     }
     await loadProducts();
