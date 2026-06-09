@@ -1672,7 +1672,7 @@ function SkuLifecycleCenter({
       .filter((row) => statusFilter === "all" || row.lifecycleStatus === statusFilter || row.status === statusFilter)
       .filter((row) => matchesDecisionSearch(row, search)),
     sortKey
-  ).slice(0, 18);
+  );
   const highRisk = rows.filter((row) => row.status === "danger").length;
   const stable = rows.filter((row) => row.lifecycleStatus === "stable").length;
   const slow = rows.filter((row) => row.lifecycleStatus === "slow").length;
