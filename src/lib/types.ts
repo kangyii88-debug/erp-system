@@ -128,3 +128,56 @@ export type CoupangSettlement = {
   created_at: string;
   updated_at?: string | null;
 };
+
+export type Task = {
+  id: string;
+  user_id: string;
+  task_name: string;
+  task_type: string;
+  priority: "P1 紧急" | "P2 重要" | "P3 普通" | "P4 低优先级";
+  owner: string;
+  due_date: string;
+  status: "待处理" | "进行中" | "已完成" | "已取消";
+  remark: string | null;
+  created_at: string;
+  updated_at?: string | null;
+};
+
+export type ProductDevelopment = {
+  id: string;
+  user_id: string;
+  product_name: string;
+  product_image_url: string | null;
+  product_category: string;
+  supplier: string | null;
+  purchase_cost: number;
+  expected_price: number;
+  expected_margin: number | null;
+  owner: string;
+  development_status: "待开发" | "询价中" | "打样中" | "测试中" | "优化中" | "待上架" | "已上线" | "已放弃";
+  expected_launch_date: string | null;
+  priority: "S级" | "A级" | "B级" | "C级";
+  market_potential_score: number;
+  competition_score: number;
+  supply_chain_score: number;
+  profit_score: number;
+  remark: string | null;
+  created_at: string;
+  updated_at?: string | null;
+};
+
+export type CustomerIssue = {
+  id: string;
+  user_id: string;
+  issue_date: string;
+  sku: string;
+  product_name: string;
+  issue_category: "安装问题" | "质量问题" | "尺寸问题" | "颜色问题" | "物流问题" | "包装问题" | "功能问题" | "其它问题";
+  issue_description: string;
+  solution: string | null;
+  owner: string;
+  status: "待处理" | "处理中" | "已解决" | "已关闭";
+  remark: string | null;
+  created_at: string;
+  updated_at?: string | null;
+};

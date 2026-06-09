@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { BarChart3, Boxes, ClipboardList, FileSpreadsheet, Landmark, LogOut, Package, ReceiptText, ShoppingCart, Warehouse } from "lucide-react";
+import { BarChart3, Boxes, ClipboardCheck, ClipboardList, FileSpreadsheet, Landmark, Lightbulb, LogOut, Package, ReceiptText, ShieldAlert, ShoppingCart, Warehouse } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { LanguageProvider, useLanguage } from "./LanguageProvider";
 
@@ -14,6 +14,9 @@ const navItems = [
   { href: "/sales", key: "nav.sales", icon: ShoppingCart },
   { href: "/purchases", key: "nav.purchases", icon: ClipboardList },
   { href: "/expenses", key: "nav.expenses", icon: ReceiptText },
+  { href: "/task-center", key: "nav.taskCenter", icon: ClipboardCheck },
+  { href: "/product-development", key: "nav.productDevelopment", icon: Lightbulb },
+  { href: "/customer-issues", key: "nav.customerIssues", icon: ShieldAlert },
   { href: "/settlements", key: "nav.settlements", icon: Landmark },
   { href: "/coupang-inbound", key: "nav.coupangInbound", icon: Warehouse },
   { href: "/import-export", key: "nav.importExport", icon: FileSpreadsheet }
