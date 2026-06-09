@@ -30,7 +30,9 @@ import {
   YAxis
 } from "recharts";
 import { AppShell } from "@/components/AppShell";
+import { useLanguage } from "@/components/LanguageProvider";
 import { supabase } from "@/lib/supabase";
+import type { Language } from "@/lib/types";
 
 type DatePreset = "today" | "yesterday" | "last7" | "last30" | "thisMonth" | "lastMonth" | "custom";
 type TrendWindow = "7d" | "30d" | "90d" | "year";
@@ -111,13 +113,200 @@ const emptyForm: FormState = {
   remark: ""
 };
 
-const rankingTabs: { key: RankingMetric; label: string }[] = [
-  { key: "roas", label: "TOP10 ROAS" },
-  { key: "ctr", label: "TOP10 CTR" },
-  { key: "conversion_rate", label: "TOP10 转化率" },
-  { key: "ad_profit", label: "TOP10 广告利润" },
-  { key: "ad_sales", label: "TOP10 广告销售额" }
-];
+const copy = {
+  zh: {
+    pageEyebrow: "广告日报中心",
+    title: "广告日报中心",
+    subtitle: "每天录入 Coupang 广告数据，自动分析广告花费、销售额、ROAS、CTR、转化率和利润贡献。",
+    newRecord: "新增广告日报",
+    editRecord: "编辑广告日报",
+    saveEdit: "保存修改",
+    createRecord: "创建日报",
+    saving: "保存中...",
+    cancel: "取消",
+    deleteConfirm: "确定删除这条广告日报吗？",
+    kpiSpend: "广告花费",
+    kpiSales: "广告销售额",
+    kpiRoas: "ROAS",
+    roasHelper: "广告销售额 ÷ 广告花费",
+    kpiCtr: "CTR",
+    ctrHelper: (clicks: string, impressions: string) => `${clicks} 点击 / ${impressions} 展示`,
+    kpiConversion: "转化率",
+    conversionHelper: "成交数 ÷ 点击量",
+    kpiOrders: "广告订单数",
+    kpiSalesCount: "广告成交数",
+    kpiProfit: "广告利润",
+    costRatio: "成本占比",
+    trendEyebrow: "广告趋势",
+    trendTitle: "广告趋势分析",
+    trendEmptyTitle: "暂无广告趋势数据",
+    trendEmptyText: "新增广告日报后，这里会自动生成花费、销售额、ROAS、CTR、转化率和利润趋势。",
+    skuEyebrow: "SKU 广告分析",
+    skuTitle: "广告 SKU 分析中心",
+    searchPlaceholder: "搜索 SKU / 产品名称",
+    allStatus: "全部状态",
+    exportExcel: "导出 Excel",
+    rankingEyebrow: "广告排行榜",
+    rankingTitle: "广告排行榜",
+    insightEyebrow: "经营洞察",
+    insightTitle: "广告经营洞察",
+    ledgerEyebrow: "日报记录",
+    ledgerTitle: "广告日报记录",
+    formNewEyebrow: "新增日报",
+    formEditEyebrow: "编辑日报",
+    autoRoas: "自动 ROAS",
+    adProfit: "广告利润",
+    fieldDate: "日期",
+    fieldCampaign: "广告名称",
+    fieldSku: "SKU",
+    fieldProduct: "产品名称",
+    fieldSpend: "广告花费",
+    fieldSales: "广告销售额",
+    fieldImpressions: "展示量",
+    fieldClicks: "点击量",
+    fieldCtr: "CTR %",
+    fieldSalesCount: "广告成交数量",
+    fieldOrderCount: "广告订单数",
+    fieldConversion: "转化率 %",
+    fieldRemark: "备注",
+    tableStatus: "状态",
+    emptySku: "暂无 SKU 广告数据",
+    rankingEmptyTitle: "暂无排行榜数据",
+    rankingEmptyText: "录入广告日报后，系统会自动生成 TOP10 排行榜。",
+    ledgerEmptyTitle: "当前范围暂无广告日报",
+    ledgerEmptyText: "点击新增广告日报，开始记录今日 Coupang 广告数据。",
+    emptyTitle: "暂无广告数据",
+    emptyText: "请点击新增广告日报，开始记录今日广告数据。",
+    edit: "编辑",
+    delete: "删除",
+    profit: "利润",
+    columns: ["日期", "广告名称", "SKU", "产品名称", "花费", "销售额", "展示", "点击", "CTR", "成交数", "订单数", "ROAS", "转化率", "操作"],
+    datePresets: { today: "今日", yesterday: "昨日", last7: "近7天", last30: "近30天", thisMonth: "本月", lastMonth: "上月", custom: "自定义" },
+    trendWindows: { "7d": "7天", "30d": "30天", "90d": "90天", year: "年度" },
+    statuses: { scale: "增加预算", keep: "维持预算", reduce: "降低预算", pause: "暂停观察" },
+    rankingTabs: { roas: "TOP10 ROAS", ctr: "TOP10 CTR", conversion_rate: "TOP10 转化率", ad_profit: "TOP10 广告利润", ad_sales: "TOP10 广告销售额" },
+    unnamedSku: "未填写SKU",
+    unnamedProduct: "未命名产品",
+    monthSuffix: "月",
+    insightWaitingTitle: "等待广告日报",
+    insightWaitingText: "录入广告日报后，系统会自动判断最佳 SKU、风险 SKU 和预算方向。",
+    bestSku: "最佳广告 SKU",
+    worstSku: "最差广告 SKU",
+    budgetAdvice: "预算建议",
+    efficiencyChange: "投放效率变化",
+    pauseCandidate: "暂停候选",
+    checkOptimization: "建议检查关键词、详情页和预算。",
+    noScale: "暂未发现明确适合加预算的 SKU，先维持观察。",
+    scaleAdvice: "且利润为正，建议继续增加预算。",
+    noComparison: "当前周期缺少对比数据。",
+    salesGrowthPrefix: "广告销售额较上一周期",
+    increased: "提升",
+    decreased: "下降",
+    pauseAdvice: "且利润为负，建议暂停或重建广告。",
+    noPause: "当前没有明显需要暂停的广告 SKU。",
+    tooltipSpend: "广告花费",
+    tooltipSales: "广告销售额",
+    tooltipProfit: "广告利润",
+    csvStatus: "状态"
+  },
+  ko: {
+    pageEyebrow: "광고 일보 센터",
+    title: "광고 일보 센터",
+    subtitle: "매일 Coupang 광고 데이터를 입력하면 광고비, 광고 매출, ROAS, CTR, 전환율과 이익 기여도를 자동 분석합니다.",
+    newRecord: "광고 일보 추가",
+    editRecord: "광고 일보 수정",
+    saveEdit: "수정 저장",
+    createRecord: "일보 생성",
+    saving: "저장 중...",
+    cancel: "취소",
+    deleteConfirm: "이 광고 일보를 삭제할까요?",
+    kpiSpend: "광고비",
+    kpiSales: "광고 매출",
+    kpiRoas: "ROAS",
+    roasHelper: "광고 매출 ÷ 광고비",
+    kpiCtr: "CTR",
+    ctrHelper: (clicks: string, impressions: string) => `${clicks} 클릭 / ${impressions} 노출`,
+    kpiConversion: "전환율",
+    conversionHelper: "광고 판매수 ÷ 클릭수",
+    kpiOrders: "광고 주문수",
+    kpiSalesCount: "광고 판매수",
+    kpiProfit: "광고 이익",
+    costRatio: "광고비 비중",
+    trendEyebrow: "광고 추세",
+    trendTitle: "광고 추세 분석",
+    trendEmptyTitle: "광고 추세 데이터 없음",
+    trendEmptyText: "광고 일보를 추가하면 광고비, 매출, ROAS, CTR, 전환율, 이익 추세가 자동 생성됩니다.",
+    skuEyebrow: "SKU 광고 분석",
+    skuTitle: "광고 SKU 분석 센터",
+    searchPlaceholder: "SKU / 상품명 검색",
+    allStatus: "전체 상태",
+    exportExcel: "엑셀 내보내기",
+    rankingEyebrow: "광고 순위",
+    rankingTitle: "광고 순위",
+    insightEyebrow: "운영 인사이트",
+    insightTitle: "광고 운영 인사이트",
+    ledgerEyebrow: "일보 기록",
+    ledgerTitle: "광고 일보 기록",
+    formNewEyebrow: "일보 추가",
+    formEditEyebrow: "일보 수정",
+    autoRoas: "자동 ROAS",
+    adProfit: "광고 이익",
+    fieldDate: "날짜",
+    fieldCampaign: "광고명",
+    fieldSku: "SKU",
+    fieldProduct: "상품명",
+    fieldSpend: "광고비",
+    fieldSales: "광고 매출",
+    fieldImpressions: "노출수",
+    fieldClicks: "클릭수",
+    fieldCtr: "CTR %",
+    fieldSalesCount: "광고 판매수",
+    fieldOrderCount: "광고 주문수",
+    fieldConversion: "전환율 %",
+    fieldRemark: "메모",
+    tableStatus: "상태",
+    emptySku: "SKU 광고 데이터가 없습니다",
+    rankingEmptyTitle: "순위 데이터가 없습니다",
+    rankingEmptyText: "광고 일보를 입력하면 TOP10 순위가 자동 생성됩니다.",
+    ledgerEmptyTitle: "선택 범위에 광고 일보가 없습니다",
+    ledgerEmptyText: "광고 일보를 추가해 오늘 Coupang 광고 데이터를 기록하세요.",
+    emptyTitle: "광고 데이터가 없습니다",
+    emptyText: "광고 일보 추가를 눌러 오늘 광고 데이터를 기록하세요.",
+    edit: "수정",
+    delete: "삭제",
+    profit: "이익",
+    columns: ["날짜", "광고명", "SKU", "상품명", "광고비", "매출", "노출", "클릭", "CTR", "판매수", "주문수", "ROAS", "전환율", "작업"],
+    datePresets: { today: "오늘", yesterday: "어제", last7: "최근 7일", last30: "최근 30일", thisMonth: "이번 달", lastMonth: "지난 달", custom: "직접 선택" },
+    trendWindows: { "7d": "7일", "30d": "30일", "90d": "90일", year: "연간" },
+    statuses: { scale: "예산 증액", keep: "예산 유지", reduce: "예산 축소", pause: "일시 중지" },
+    rankingTabs: { roas: "ROAS TOP10", ctr: "CTR TOP10", conversion_rate: "전환율 TOP10", ad_profit: "광고 이익 TOP10", ad_sales: "광고 매출 TOP10" },
+    unnamedSku: "SKU 미입력",
+    unnamedProduct: "상품명 없음",
+    monthSuffix: "월",
+    insightWaitingTitle: "광고 일보 대기",
+    insightWaitingText: "광고 일보를 입력하면 최적 SKU, 위험 SKU, 예산 방향을 자동 판단합니다.",
+    bestSku: "최고 광고 SKU",
+    worstSku: "최저 광고 SKU",
+    budgetAdvice: "예산 제안",
+    efficiencyChange: "집행 효율 변화",
+    pauseCandidate: "중지 후보",
+    checkOptimization: "키워드, 상세페이지, 예산을 점검하세요.",
+    noScale: "명확하게 증액할 SKU가 아직 없습니다. 우선 유지 관찰하세요.",
+    scaleAdvice: "이며 이익이 양수입니다. 예산 증액을 권장합니다.",
+    noComparison: "현재 기간은 비교 데이터가 부족합니다.",
+    salesGrowthPrefix: "광고 매출이 이전 기간 대비",
+    increased: "상승",
+    decreased: "하락",
+    pauseAdvice: "이며 이익이 음수입니다. 중지하거나 광고를 재구성하세요.",
+    noPause: "현재 명확한 중지 대상 SKU는 없습니다.",
+    tooltipSpend: "광고비",
+    tooltipSales: "광고 매출",
+    tooltipProfit: "광고 이익",
+    csvStatus: "상태"
+  }
+} satisfies Record<Language, any>;
+
+type PageCopy = typeof copy.zh;
 
 export default function AdvertisingPage() {
   return (
@@ -128,6 +317,8 @@ export default function AdvertisingPage() {
 }
 
 function AdvertisingDailyCenter() {
+  const { language } = useLanguage();
+  const c = copy[language];
   const [records, setRecords] = useState<DailyAdRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -186,7 +377,7 @@ function AdvertisingDailyCenter() {
   }
 
   async function deleteRecord(id: string) {
-    if (!window.confirm("确定删除这条广告日报吗？")) return;
+    if (!window.confirm(c.deleteConfirm)) return;
     const { error } = await supabase.from("advertising_daily_records").delete().eq("id", id);
     if (!error) await loadRecords();
   }
@@ -218,8 +409,8 @@ function AdvertisingDailyCenter() {
   const metrics = useMemo(() => buildMetrics(rangeRecords), [rangeRecords]);
   const comparisonMetrics = useMemo(() => buildMetrics(comparisonRecords), [comparisonRecords]);
   const trendRecords = useMemo(() => filterTrendRecords(records, trendWindow), [records, trendWindow]);
-  const trendData = useMemo(() => buildTrend(trendRecords, trendWindow), [trendRecords, trendWindow]);
-  const skuRows = useMemo(() => buildSkuRows(rangeRecords), [rangeRecords]);
+  const trendData = useMemo(() => buildTrend(trendRecords, trendWindow, c), [trendRecords, trendWindow, c]);
+  const skuRows = useMemo(() => buildSkuRows(rangeRecords, c), [rangeRecords, c]);
   const filteredSkuRows = useMemo(() => {
     const query = search.trim().toLowerCase();
     return sortSkuRows(
@@ -232,7 +423,8 @@ function AdvertisingDailyCenter() {
     );
   }, [skuRows, search, statusFilter, sort]);
   const rankingRows = useMemo(() => [...skuRows].sort((a, b) => Number(b[rankingMetric]) - Number(a[rankingMetric])).slice(0, 10), [skuRows, rankingMetric]);
-  const insights = useMemo(() => buildInsights(skuRows, metrics, comparisonMetrics), [skuRows, metrics, comparisonMetrics]);
+  const rankingTabs = useMemo(() => (Object.entries(c.rankingTabs) as Array<[RankingMetric, string]>).map(([key, label]) => ({ key, label })), [c]);
+  const insights = useMemo(() => buildInsights(skuRows, metrics, comparisonMetrics, c), [skuRows, metrics, comparisonMetrics, c]);
 
   return (
     <div className="space-y-6">
@@ -241,19 +433,19 @@ function AdvertisingDailyCenter() {
         <div className="pointer-events-none absolute -bottom-28 left-16 h-72 w-72 rounded-full bg-[#bca77a]/12 blur-3xl" />
         <div className="relative flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <div className="premium-section-eyebrow">Advertising Daily Center</div>
-            <h1 className="mt-3 text-4xl font-semibold tracking-tight text-ink dark:text-white md:text-5xl">广告日报中心</h1>
-            <p className="mt-3 max-w-2xl text-base text-muted dark:text-white/62">每天录入 Coupang 广告数据，自动分析广告花费、销售额、ROAS、CTR、转化率和利润贡献。</p>
+            <div className="premium-section-eyebrow">{c.pageEyebrow}</div>
+            <h1 className="mt-3 text-4xl font-semibold tracking-tight text-ink dark:text-white md:text-5xl">{c.title}</h1>
+            <p className="mt-3 max-w-2xl text-base text-muted dark:text-white/62">{c.subtitle}</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <button className="erp-button-primary inline-flex items-center gap-2 px-4 py-2 text-sm font-bold" onClick={() => { setForm(emptyForm); setEditingId(null); setShowForm(true); }}>
-              <Plus className="h-4 w-4" /> 新增广告日报
+              <Plus className="h-4 w-4" /> {c.newRecord}
             </button>
           </div>
         </div>
 
         <div className="relative mt-7 flex flex-wrap items-center gap-2">
-          <DatePresetBar value={preset} onChange={setPreset} />
+          <DatePresetBar value={preset} onChange={setPreset} c={c} />
           {preset === "custom" ? (
             <div className="flex items-center gap-2 rounded-2xl border border-line bg-white/72 p-2 shadow-soft dark:border-white/10 dark:bg-white/[0.06]">
               <input className="premium-input h-10 w-40" type="date" value={customStart} onChange={(event) => setCustomStart(event.target.value)} />
@@ -265,14 +457,14 @@ function AdvertisingDailyCenter() {
 
         {loading ? <SkeletonKpis /> : (
           <div className="relative mt-7 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <KpiCard icon={WalletCards} label="今日广告花费" value={won(metrics.ad_spend)} change={changeRate(metrics.ad_spend, comparisonMetrics.ad_spend)} />
-            <KpiCard icon={TrendingUp} label="今日广告销售额" value={won(metrics.ad_sales)} change={changeRate(metrics.ad_sales, comparisonMetrics.ad_sales)} />
-            <KpiCard icon={Target} label="ROAS" value={formatNumber(metrics.roas, 2)} helper="广告销售额 ÷ 广告花费" good={metrics.roas >= 4} />
-            <KpiCard icon={MousePointerClick} label="CTR" value={`${formatNumber(metrics.ctr, 2)}%`} helper={`${formatNumber(metrics.clicks, 0)} 点击 / ${formatNumber(metrics.impressions, 0)} 展示`} good={metrics.ctr >= 1} />
-            <KpiCard icon={BarChart3} label="转化率" value={`${formatNumber(metrics.conversion_rate, 2)}%`} helper="成交数 ÷ 点击量" good={metrics.conversion_rate >= 3} />
-            <KpiCard icon={CalendarDays} label="广告订单数" value={formatNumber(metrics.ad_order_count, 0)} />
-            <KpiCard icon={Sparkles} label="广告成交数" value={formatNumber(metrics.ad_sales_count, 0)} />
-            <KpiCard icon={metrics.ad_profit >= 0 ? TrendingUp : TrendingDown} label="广告利润" value={won(metrics.ad_profit)} helper={`成本占比 ${formatNumber(metrics.cost_ratio, 1)}%`} good={metrics.ad_profit >= 0} />
+            <KpiCard icon={WalletCards} label={c.kpiSpend} value={won(metrics.ad_spend)} change={changeRate(metrics.ad_spend, comparisonMetrics.ad_spend)} />
+            <KpiCard icon={TrendingUp} label={c.kpiSales} value={won(metrics.ad_sales)} change={changeRate(metrics.ad_sales, comparisonMetrics.ad_sales)} />
+            <KpiCard icon={Target} label={c.kpiRoas} value={formatNumber(metrics.roas, 2)} helper={c.roasHelper} good={metrics.roas >= 4} />
+            <KpiCard icon={MousePointerClick} label={c.kpiCtr} value={`${formatNumber(metrics.ctr, 2)}%`} helper={c.ctrHelper(formatNumber(metrics.clicks, 0), formatNumber(metrics.impressions, 0))} good={metrics.ctr >= 1} />
+            <KpiCard icon={BarChart3} label={c.kpiConversion} value={`${formatNumber(metrics.conversion_rate, 2)}%`} helper={c.conversionHelper} good={metrics.conversion_rate >= 3} />
+            <KpiCard icon={CalendarDays} label={c.kpiOrders} value={formatNumber(metrics.ad_order_count, 0)} />
+            <KpiCard icon={Sparkles} label={c.kpiSalesCount} value={formatNumber(metrics.ad_sales_count, 0)} />
+            <KpiCard icon={metrics.ad_profit >= 0 ? TrendingUp : TrendingDown} label={c.kpiProfit} value={won(metrics.ad_profit)} helper={`${c.costRatio} ${formatNumber(metrics.cost_ratio, 1)}%`} good={metrics.ad_profit >= 0} />
           </div>
         )}
       </section>
@@ -280,6 +472,7 @@ function AdvertisingDailyCenter() {
       {showForm ? (
         <DailyEntryForm
           form={form}
+          c={c}
           editing={Boolean(editingId)}
           saving={saving}
           onChange={setForm}
@@ -289,16 +482,16 @@ function AdvertisingDailyCenter() {
       ) : null}
 
       {!loading && records.length === 0 ? (
-        <EmptyState onCreate={() => { setForm(emptyForm); setEditingId(null); setShowForm(true); }} />
+        <EmptyState c={c} onCreate={() => { setForm(emptyForm); setEditingId(null); setShowForm(true); }} />
       ) : null}
 
       <section className="rounded-[28px] border border-line bg-card/90 p-5 shadow-card backdrop-blur dark:border-white/10 dark:bg-white/[0.04]">
         <div className="mb-5 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div>
-            <p className="premium-section-eyebrow">Ad Trend Intelligence</p>
-            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink dark:text-white">广告趋势分析</h2>
+            <p className="premium-section-eyebrow">{c.trendEyebrow}</p>
+            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink dark:text-white">{c.trendTitle}</h2>
           </div>
-          <Segmented value={trendWindow} options={[["7d", "7天"], ["30d", "30天"], ["90d", "90天"], ["year", "年度"]]} onChange={(value) => setTrendWindow(value as TrendWindow)} />
+          <Segmented value={trendWindow} options={[["7d", c.trendWindows["7d"]], ["30d", c.trendWindows["30d"]], ["90d", c.trendWindows["90d"]], ["year", c.trendWindows.year]]} onChange={(value) => setTrendWindow(value as TrendWindow)} />
         </div>
         {loading ? <SkeletonBlock /> : trendData.length ? (
           <div className="h-[360px]">
@@ -312,61 +505,61 @@ function AdvertisingDailyCenter() {
                 </defs>
                 <CartesianGrid stroke="rgba(197,201,189,0.55)" strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="label" tickLine={false} axisLine={false} />
-                <YAxis tickLine={false} axisLine={false} tickFormatter={(value) => compactWon(Number(value))} />
-                <Tooltip content={<TrendTooltip />} cursor={{ stroke: "rgba(23,72,63,0.28)" }} />
-                <Area type="monotone" dataKey="ad_sales" name="广告销售额" stroke="#17483f" strokeWidth={2.5} fill="url(#adDailySales)" animationDuration={650} />
-                <Line type="monotone" dataKey="ad_spend" name="广告花费" stroke="#b89b5e" strokeWidth={2.2} dot={false} animationDuration={700} />
-                <Line type="monotone" dataKey="roas" name="ROAS" stroke="#3577c9" strokeWidth={2.2} dot={false} animationDuration={750} />
-                <Line type="monotone" dataKey="ctr" name="CTR" stroke="#21a485" strokeWidth={1.8} dot={false} animationDuration={760} />
-                <Line type="monotone" dataKey="conversion_rate" name="转化率" stroke="#c65f5f" strokeWidth={1.8} dot={false} animationDuration={780} />
-                <Line type="monotone" dataKey="ad_profit" name="广告利润" stroke="#0d3932" strokeWidth={2} dot={false} animationDuration={800} />
+                <YAxis tickLine={false} axisLine={false} tickFormatter={(value) => compactWon(Number(value), language)} />
+                <Tooltip content={<TrendTooltip c={c} />} cursor={{ stroke: "rgba(23,72,63,0.28)" }} />
+                <Area type="monotone" dataKey="ad_sales" name={c.kpiSales} stroke="#17483f" strokeWidth={2.5} fill="url(#adDailySales)" animationDuration={650} />
+                <Line type="monotone" dataKey="ad_spend" name={c.kpiSpend} stroke="#b89b5e" strokeWidth={2.2} dot={false} animationDuration={700} />
+                <Line type="monotone" dataKey="roas" name={c.kpiRoas} stroke="#3577c9" strokeWidth={2.2} dot={false} animationDuration={750} />
+                <Line type="monotone" dataKey="ctr" name={c.kpiCtr} stroke="#21a485" strokeWidth={1.8} dot={false} animationDuration={760} />
+                <Line type="monotone" dataKey="conversion_rate" name={c.kpiConversion} stroke="#c65f5f" strokeWidth={1.8} dot={false} animationDuration={780} />
+                <Line type="monotone" dataKey="ad_profit" name={c.kpiProfit} stroke="#0d3932" strokeWidth={2} dot={false} animationDuration={800} />
               </AreaChart>
             </ResponsiveContainer>
           </div>
-        ) : <PanelEmpty title="暂无广告趋势数据" text="新增广告日报后，这里会自动生成花费、销售额、ROAS、CTR、转化率和利润趋势。" />}
+        ) : <PanelEmpty title={c.trendEmptyTitle} text={c.trendEmptyText} />}
       </section>
 
       <section className="rounded-[28px] border border-line bg-card/90 p-5 shadow-card backdrop-blur dark:border-white/10 dark:bg-white/[0.04]">
         <div className="mb-5 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div>
-            <p className="premium-section-eyebrow">SKU Advertising Intelligence</p>
-            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink dark:text-white">广告 SKU 分析中心</h2>
+            <p className="premium-section-eyebrow">{c.skuEyebrow}</p>
+            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink dark:text-white">{c.skuTitle}</h2>
           </div>
           <div className="flex flex-wrap gap-2">
             <label className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
-              <input className="premium-input h-10 w-64 pl-9" placeholder="搜索 SKU / 产品名称" value={search} onChange={(event) => setSearch(event.target.value)} />
+              <input className="premium-input h-10 w-64 pl-9" placeholder={c.searchPlaceholder} value={search} onChange={(event) => setSearch(event.target.value)} />
             </label>
             <select className="premium-input h-10 w-36" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
-              <option value="all">全部状态</option>
-              <option value="scale">增加预算</option>
-              <option value="keep">维持预算</option>
-              <option value="reduce">降低预算</option>
-              <option value="pause">暂停观察</option>
+              <option value="all">{c.allStatus}</option>
+              <option value="scale">{c.statuses.scale}</option>
+              <option value="keep">{c.statuses.keep}</option>
+              <option value="reduce">{c.statuses.reduce}</option>
+              <option value="pause">{c.statuses.pause}</option>
             </select>
-            <button className="erp-button-subtle inline-flex h-10 items-center gap-2 px-3 text-sm font-bold" onClick={() => exportSkuRows(filteredSkuRows)}>
-              <Download className="h-4 w-4" /> 导出Excel
+            <button className="erp-button-subtle inline-flex h-10 items-center gap-2 px-3 text-sm font-bold" onClick={() => exportSkuRows(filteredSkuRows, c)}>
+              <Download className="h-4 w-4" /> {c.exportExcel}
             </button>
           </div>
         </div>
-        <SkuTable rows={filteredSkuRows} sort={sort} onSort={setSort} />
+        <SkuTable c={c} rows={filteredSkuRows} sort={sort} onSort={setSort} />
       </section>
 
       <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
         <section className="rounded-[28px] border border-line bg-card/90 p-5 shadow-card backdrop-blur dark:border-white/10 dark:bg-white/[0.04]">
           <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
             <div>
-              <p className="premium-section-eyebrow">Advertising Ranking</p>
-              <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink dark:text-white">广告排行榜</h2>
+              <p className="premium-section-eyebrow">{c.rankingEyebrow}</p>
+              <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink dark:text-white">{c.rankingTitle}</h2>
             </div>
             <Segmented value={rankingMetric} options={rankingTabs.map((item) => [item.key, item.label])} onChange={(value) => setRankingMetric(value as RankingMetric)} />
           </div>
-          <RankingList rows={rankingRows} metric={rankingMetric} />
+          <RankingList c={c} rows={rankingRows} metric={rankingMetric} />
         </section>
 
         <section className="rounded-[28px] border border-line bg-card/90 p-5 shadow-card backdrop-blur dark:border-white/10 dark:bg-white/[0.04]">
-          <p className="premium-section-eyebrow">Business Insights</p>
-          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink dark:text-white">广告经营洞察</h2>
+          <p className="premium-section-eyebrow">{c.insightEyebrow}</p>
+          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink dark:text-white">{c.insightTitle}</h2>
           <div className="mt-5 grid gap-3">
             {insights.map((item) => (
               <InsightCard key={item.title} icon={item.icon} title={item.title} text={item.text} tone={item.tone} />
@@ -378,21 +571,22 @@ function AdvertisingDailyCenter() {
       <section className="rounded-[28px] border border-line bg-card/90 p-5 shadow-card backdrop-blur dark:border-white/10 dark:bg-white/[0.04]">
         <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
-            <p className="premium-section-eyebrow">Daily Ledger</p>
-            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink dark:text-white">广告日报记录</h2>
+            <p className="premium-section-eyebrow">{c.ledgerEyebrow}</p>
+            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink dark:text-white">{c.ledgerTitle}</h2>
           </div>
           <button className="erp-button-primary inline-flex items-center gap-2 px-4 py-2 text-sm font-bold" onClick={() => { setForm(emptyForm); setEditingId(null); setShowForm(true); }}>
-            <Plus className="h-4 w-4" /> 新增广告日报
+            <Plus className="h-4 w-4" /> {c.newRecord}
           </button>
         </div>
-        <RecordLedger records={rangeRecords} onEdit={startEdit} onDelete={deleteRecord} />
+        <RecordLedger c={c} records={rangeRecords} onEdit={startEdit} onDelete={deleteRecord} />
       </section>
     </div>
   );
 }
 
-function DailyEntryForm({ form, editing, saving, onChange, onSubmit, onCancel }: {
+function DailyEntryForm({ form, c, editing, saving, onChange, onSubmit, onCancel }: {
   form: FormState;
+  c: PageCopy;
   editing: boolean;
   saving: boolean;
   onChange: (form: FormState) => void;
@@ -404,34 +598,34 @@ function DailyEntryForm({ form, editing, saving, onChange, onSubmit, onCancel }:
     <section className="rounded-[28px] border border-line bg-card/95 p-5 shadow-card backdrop-blur">
       <div className="mb-5 flex items-start justify-between gap-3">
         <div>
-          <p className="premium-section-eyebrow">{editing ? "Edit Daily Record" : "New Daily Record"}</p>
-          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink">{editing ? "编辑广告日报" : "新增广告日报"}</h2>
+          <p className="premium-section-eyebrow">{editing ? c.formEditEyebrow : c.formNewEyebrow}</p>
+          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink">{editing ? c.editRecord : c.newRecord}</h2>
         </div>
         <div className="hidden gap-2 lg:grid lg:grid-cols-3">
-          <MiniCalc label="自动 ROAS" value={formatNumber(preview.roas, 2)} />
-          <MiniCalc label="广告利润" value={won(preview.ad_profit)} />
-          <MiniCalc label="成本占比" value={`${formatNumber(preview.cost_ratio, 1)}%`} />
+          <MiniCalc label={c.autoRoas} value={formatNumber(preview.roas, 2)} />
+          <MiniCalc label={c.adProfit} value={won(preview.ad_profit)} />
+          <MiniCalc label={c.costRatio} value={`${formatNumber(preview.cost_ratio, 1)}%`} />
         </div>
       </div>
       <form className="grid gap-4 lg:grid-cols-4" onSubmit={onSubmit}>
-        <Field label="日期"><input className="premium-input" type="date" required value={form.record_date} onChange={(event) => onChange({ ...form, record_date: event.target.value })} /></Field>
-        <Field label="广告名称"><input className="premium-input" required value={form.campaign_name} onChange={(event) => onChange({ ...form, campaign_name: event.target.value })} /></Field>
-        <Field label="SKU"><input className="premium-input font-mono" required value={form.sku} onChange={(event) => onChange({ ...form, sku: event.target.value })} /></Field>
-        <Field label="产品名称"><input className="premium-input" required value={form.product_name} onChange={(event) => onChange({ ...form, product_name: event.target.value })} /></Field>
-        <Field label="广告花费"><NumberInput value={form.ad_spend} onChange={(value) => onChange({ ...form, ad_spend: value })} /></Field>
-        <Field label="广告销售额"><NumberInput value={form.ad_sales} onChange={(value) => onChange({ ...form, ad_sales: value })} /></Field>
-        <Field label="展示量"><NumberInput value={form.impressions} onChange={(value) => onChange({ ...form, impressions: value })} /></Field>
-        <Field label="点击量"><NumberInput value={form.clicks} onChange={(value) => onChange({ ...form, clicks: value })} /></Field>
-        <Field label="CTR %"><NumberInput step="0.01" value={form.ctr} onChange={(value) => onChange({ ...form, ctr: value })} /></Field>
-        <Field label="广告成交数量"><NumberInput value={form.ad_sales_count} onChange={(value) => onChange({ ...form, ad_sales_count: value })} /></Field>
-        <Field label="广告订单数"><NumberInput value={form.ad_order_count} onChange={(value) => onChange({ ...form, ad_order_count: value })} /></Field>
-        <Field label="转化率 %"><NumberInput step="0.01" value={form.conversion_rate} onChange={(value) => onChange({ ...form, conversion_rate: value })} /></Field>
+        <Field label={c.fieldDate}><input className="premium-input" type="date" required value={form.record_date} onChange={(event) => onChange({ ...form, record_date: event.target.value })} /></Field>
+        <Field label={c.fieldCampaign}><input className="premium-input" required value={form.campaign_name} onChange={(event) => onChange({ ...form, campaign_name: event.target.value })} /></Field>
+        <Field label={c.fieldSku}><input className="premium-input font-mono" required value={form.sku} onChange={(event) => onChange({ ...form, sku: event.target.value })} /></Field>
+        <Field label={c.fieldProduct}><input className="premium-input" required value={form.product_name} onChange={(event) => onChange({ ...form, product_name: event.target.value })} /></Field>
+        <Field label={c.fieldSpend}><NumberInput value={form.ad_spend} onChange={(value) => onChange({ ...form, ad_spend: value })} /></Field>
+        <Field label={c.fieldSales}><NumberInput value={form.ad_sales} onChange={(value) => onChange({ ...form, ad_sales: value })} /></Field>
+        <Field label={c.fieldImpressions}><NumberInput value={form.impressions} onChange={(value) => onChange({ ...form, impressions: value })} /></Field>
+        <Field label={c.fieldClicks}><NumberInput value={form.clicks} onChange={(value) => onChange({ ...form, clicks: value })} /></Field>
+        <Field label={c.fieldCtr}><NumberInput step="0.01" value={form.ctr} onChange={(value) => onChange({ ...form, ctr: value })} /></Field>
+        <Field label={c.fieldSalesCount}><NumberInput value={form.ad_sales_count} onChange={(value) => onChange({ ...form, ad_sales_count: value })} /></Field>
+        <Field label={c.fieldOrderCount}><NumberInput value={form.ad_order_count} onChange={(value) => onChange({ ...form, ad_order_count: value })} /></Field>
+        <Field label={c.fieldConversion}><NumberInput step="0.01" value={form.conversion_rate} onChange={(value) => onChange({ ...form, conversion_rate: value })} /></Field>
         <div className="lg:col-span-4">
-          <Field label="备注"><input className="premium-input" value={form.remark} onChange={(event) => onChange({ ...form, remark: event.target.value })} /></Field>
+          <Field label={c.fieldRemark}><input className="premium-input" value={form.remark} onChange={(event) => onChange({ ...form, remark: event.target.value })} /></Field>
         </div>
         <div className="flex flex-wrap gap-2 lg:col-span-4">
-          <button className="erp-button-primary h-10 px-4 text-sm font-bold disabled:opacity-60" type="submit" disabled={saving}>{saving ? "保存中..." : editing ? "保存修改" : "创建日报"}</button>
-          <button className="erp-button-subtle h-10 px-4 text-sm font-bold" type="button" onClick={onCancel}>取消</button>
+          <button className="erp-button-primary h-10 px-4 text-sm font-bold disabled:opacity-60" type="submit" disabled={saving}>{saving ? c.saving : editing ? c.saveEdit : c.createRecord}</button>
+          <button className="erp-button-subtle h-10 px-4 text-sm font-bold" type="button" onClick={onCancel}>{c.cancel}</button>
         </div>
       </form>
     </section>
@@ -453,18 +647,18 @@ function KpiCard({ icon: Icon, label, value, helper, change, good = true }: { ic
   );
 }
 
-function SkuTable({ rows, sort, onSort }: { rows: SkuAgg[]; sort: { key: SortKey; dir: "asc" | "desc" }; onSort: (sort: { key: SortKey; dir: "asc" | "desc" }) => void }) {
+function SkuTable({ c, rows, sort, onSort }: { c: PageCopy; rows: SkuAgg[]; sort: { key: SortKey; dir: "asc" | "desc" }; onSort: (sort: { key: SortKey; dir: "asc" | "desc" }) => void }) {
   const columns: { key: SortKey; label: string; render: (row: SkuAgg) => ReactNode }[] = [
-    { key: "sku", label: "SKU", render: (row) => <span className="font-mono text-xs">{row.sku}</span> },
-    { key: "product_name", label: "产品名称", render: (row) => row.product_name },
-    { key: "ad_spend", label: "广告花费", render: (row) => won(row.ad_spend) },
-    { key: "ad_sales", label: "广告销售额", render: (row) => won(row.ad_sales) },
-    { key: "roas", label: "ROAS", render: (row) => formatNumber(row.roas, 2) },
-    { key: "ctr", label: "CTR", render: (row) => `${formatNumber(row.ctr, 2)}%` },
-    { key: "conversion_rate", label: "转化率", render: (row) => `${formatNumber(row.conversion_rate, 2)}%` },
-    { key: "ad_order_count", label: "订单数", render: (row) => formatNumber(row.ad_order_count, 0) },
-    { key: "ad_sales_count", label: "成交数", render: (row) => formatNumber(row.ad_sales_count, 0) },
-    { key: "ad_profit", label: "广告利润", render: (row) => <span className={row.ad_profit >= 0 ? "text-emerald-700" : "text-red-600"}>{won(row.ad_profit)}</span> }
+    { key: "sku", label: c.fieldSku, render: (row) => <span className="font-mono text-xs">{row.sku}</span> },
+    { key: "product_name", label: c.fieldProduct, render: (row) => row.product_name },
+    { key: "ad_spend", label: c.fieldSpend, render: (row) => won(row.ad_spend) },
+    { key: "ad_sales", label: c.fieldSales, render: (row) => won(row.ad_sales) },
+    { key: "roas", label: c.kpiRoas, render: (row) => formatNumber(row.roas, 2) },
+    { key: "ctr", label: c.kpiCtr, render: (row) => `${formatNumber(row.ctr, 2)}%` },
+    { key: "conversion_rate", label: c.kpiConversion, render: (row) => `${formatNumber(row.conversion_rate, 2)}%` },
+    { key: "ad_order_count", label: c.kpiOrders, render: (row) => formatNumber(row.ad_order_count, 0) },
+    { key: "ad_sales_count", label: c.kpiSalesCount, render: (row) => formatNumber(row.ad_sales_count, 0) },
+    { key: "ad_profit", label: c.kpiProfit, render: (row) => <span className={row.ad_profit >= 0 ? "text-emerald-700" : "text-red-600"}>{won(row.ad_profit)}</span> }
   ];
   return (
     <div className="overflow-x-auto rounded-2xl border border-line bg-white/70 dark:border-white/10 dark:bg-white/[0.03]">
@@ -476,18 +670,18 @@ function SkuTable({ rows, sort, onSort }: { rows: SkuAgg[]; sort: { key: SortKey
                 <button className="font-bold" onClick={() => onSort({ key: column.key, dir: sort.key === column.key && sort.dir === "desc" ? "asc" : "desc" })}>{column.label}</button>
               </th>
             ))}
-            <th className="px-4 py-3">状态</th>
+            <th className="px-4 py-3">{c.tableStatus}</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((row) => (
             <tr key={row.sku} className="border-t border-line/70 transition hover:bg-emerald-50/45 dark:border-white/10">
               {columns.map((column) => <td key={column.key} className="px-4 py-3 font-medium text-ink dark:text-white">{column.render(row)}</td>)}
-              <td className="px-4 py-3"><StatusBadge status={row.status} /></td>
+              <td className="px-4 py-3"><StatusBadge c={c} status={row.status} /></td>
             </tr>
           ))}
           {!rows.length ? (
-            <tr><td className="px-4 py-12 text-center text-sm font-semibold text-muted" colSpan={columns.length + 1}>暂无 SKU 广告数据</td></tr>
+            <tr><td className="px-4 py-12 text-center text-sm font-semibold text-muted" colSpan={columns.length + 1}>{c.emptySku}</td></tr>
           ) : null}
         </tbody>
       </table>
@@ -495,8 +689,8 @@ function SkuTable({ rows, sort, onSort }: { rows: SkuAgg[]; sort: { key: SortKey
   );
 }
 
-function RankingList({ rows, metric }: { rows: SkuAgg[]; metric: RankingMetric }) {
-  if (!rows.length) return <PanelEmpty title="暂无排行榜数据" text="录入广告日报后，系统会自动生成 TOP10 排行榜。" />;
+function RankingList({ c, rows, metric }: { c: PageCopy; rows: SkuAgg[]; metric: RankingMetric }) {
+  if (!rows.length) return <PanelEmpty title={c.rankingEmptyTitle} text={c.rankingEmptyText} />;
   return (
     <div className="space-y-3">
       {rows.map((row, index) => (
@@ -511,7 +705,7 @@ function RankingList({ rows, metric }: { rows: SkuAgg[]; metric: RankingMetric }
             </div>
             <div className="text-right">
               <div className="text-lg font-bold text-ink">{formatRankingValue(row, metric)}</div>
-              <div className="text-xs text-muted">利润 {won(row.ad_profit)}</div>
+              <div className="text-xs text-muted">{c.profit} {won(row.ad_profit)}</div>
             </div>
           </div>
         </div>
@@ -520,14 +714,14 @@ function RankingList({ rows, metric }: { rows: SkuAgg[]; metric: RankingMetric }
   );
 }
 
-function RecordLedger({ records, onEdit, onDelete }: { records: DailyAdRecord[]; onEdit: (record: DailyAdRecord) => void; onDelete: (id: string) => void }) {
-  if (!records.length) return <PanelEmpty title="当前范围暂无广告日报" text="点击新增广告日报，开始记录今日 Coupang 广告数据。" />;
+function RecordLedger({ c, records, onEdit, onDelete }: { c: PageCopy; records: DailyAdRecord[]; onEdit: (record: DailyAdRecord) => void; onDelete: (id: string) => void }) {
+  if (!records.length) return <PanelEmpty title={c.ledgerEmptyTitle} text={c.ledgerEmptyText} />;
   return (
     <div className="overflow-x-auto rounded-2xl border border-line bg-white/70">
       <table className="min-w-[1180px] w-full text-left text-sm">
         <thead className="bg-[#f7f5ed] text-xs uppercase tracking-[0.14em] text-muted">
           <tr>
-            {["日期", "广告名称", "SKU", "产品名称", "花费", "销售额", "展示", "点击", "CTR", "成交数", "订单数", "ROAS", "转化率", "操作"].map((item) => <th key={item} className="px-4 py-3">{item}</th>)}
+            {c.columns.map((item) => <th key={item} className="px-4 py-3">{item}</th>)}
           </tr>
         </thead>
         <tbody>
@@ -548,8 +742,8 @@ function RecordLedger({ records, onEdit, onDelete }: { records: DailyAdRecord[];
               <td className="px-4 py-3">{formatNumber(displayConversionRate(record), 2)}%</td>
               <td className="px-4 py-3">
                 <div className="flex gap-2">
-                  <button className="erp-button-subtle inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold" onClick={() => onEdit(record)}><Edit3 className="h-3.5 w-3.5" />编辑</button>
-                  <button className="erp-button-subtle inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold text-red-700" onClick={() => onDelete(record.id)}><Trash2 className="h-3.5 w-3.5" />删除</button>
+                  <button className="erp-button-subtle inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold" onClick={() => onEdit(record)}><Edit3 className="h-3.5 w-3.5" />{c.edit}</button>
+                  <button className="erp-button-subtle inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold text-red-700" onClick={() => onDelete(record.id)}><Trash2 className="h-3.5 w-3.5" />{c.delete}</button>
                 </div>
               </td>
             </tr>
@@ -560,15 +754,15 @@ function RecordLedger({ records, onEdit, onDelete }: { records: DailyAdRecord[];
   );
 }
 
-function DatePresetBar({ value, onChange }: { value: DatePreset; onChange: (value: DatePreset) => void }) {
+function DatePresetBar({ value, onChange, c }: { value: DatePreset; onChange: (value: DatePreset) => void; c: PageCopy }) {
   const options: { value: DatePreset; label: string }[] = [
-    { value: "today", label: "今日" },
-    { value: "yesterday", label: "昨日" },
-    { value: "last7", label: "近7天" },
-    { value: "last30", label: "近30天" },
-    { value: "thisMonth", label: "本月" },
-    { value: "lastMonth", label: "上月" },
-    { value: "custom", label: "自定义" }
+    { value: "today", label: c.datePresets.today },
+    { value: "yesterday", label: c.datePresets.yesterday },
+    { value: "last7", label: c.datePresets.last7 },
+    { value: "last30", label: c.datePresets.last30 },
+    { value: "thisMonth", label: c.datePresets.thisMonth },
+    { value: "lastMonth", label: c.datePresets.lastMonth },
+    { value: "custom", label: c.datePresets.custom }
   ];
   return <Segmented value={value} options={options.map((item) => [item.value, item.label])} onChange={(next) => onChange(next as DatePreset)} />;
 }
@@ -610,13 +804,13 @@ function InsightCard({ icon: Icon, title, text, tone }: { icon: LucideIcon; titl
   );
 }
 
-function EmptyState({ onCreate }: { onCreate: () => void }) {
+function EmptyState({ c, onCreate }: { c: PageCopy; onCreate: () => void }) {
   return (
     <section className="rounded-[28px] border border-dashed border-line bg-card/75 px-6 py-14 text-center shadow-card">
       <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-3xl bg-emerald-50 text-brand"><BarChart3 className="h-7 w-7" /></div>
-      <h2 className="mt-5 text-2xl font-semibold text-ink">暂无广告数据</h2>
-      <p className="mt-2 text-sm text-muted">请点击新增广告日报，开始记录今日广告数据。</p>
-      <button className="erp-button-primary mt-5 inline-flex items-center gap-2 px-4 py-2 text-sm font-bold" onClick={onCreate}><Plus className="h-4 w-4" /> 新增广告日报</button>
+      <h2 className="mt-5 text-2xl font-semibold text-ink">{c.emptyTitle}</h2>
+      <p className="mt-2 text-sm text-muted">{c.emptyText}</p>
+      <button className="erp-button-primary mt-5 inline-flex items-center gap-2 px-4 py-2 text-sm font-bold" onClick={onCreate}><Plus className="h-4 w-4" /> {c.newRecord}</button>
     </section>
   );
 }
@@ -625,29 +819,29 @@ function PanelEmpty({ title, text }: { title: string; text: string }) {
   return <div className="rounded-2xl border border-dashed border-line bg-white/55 px-4 py-12 text-center"><div className="font-semibold text-ink">{title}</div><p className="mt-2 text-sm text-muted">{text}</p></div>;
 }
 
-function StatusBadge({ status }: { status: SkuAgg["status"] }) {
+function StatusBadge({ c, status }: { c: PageCopy; status: SkuAgg["status"] }) {
   const map = {
-    scale: ["增加预算", "bg-emerald-50 text-emerald-700 border-emerald-100"],
-    keep: ["维持预算", "bg-blue-50 text-blue-700 border-blue-100"],
-    reduce: ["降低预算", "bg-amber-50 text-amber-700 border-amber-100"],
-    pause: ["暂停观察", "bg-red-50 text-red-700 border-red-100"]
+    scale: [c.statuses.scale, "bg-emerald-50 text-emerald-700 border-emerald-100"],
+    keep: [c.statuses.keep, "bg-blue-50 text-blue-700 border-blue-100"],
+    reduce: [c.statuses.reduce, "bg-amber-50 text-amber-700 border-amber-100"],
+    pause: [c.statuses.pause, "bg-red-50 text-red-700 border-red-100"]
   } as const;
   return <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-bold ${map[status][1]}`}>{map[status][0]}</span>;
 }
 
-function TrendTooltip({ active, payload }: { active?: boolean; payload?: Array<{ payload?: Metrics & { label: string; record_date: string } }> }) {
+function TrendTooltip({ active, payload, c }: { active?: boolean; payload?: Array<{ payload?: Metrics & { label: string; record_date: string } }>; c: PageCopy }) {
   if (!active || !payload?.length) return null;
   const point = payload[0]?.payload;
   if (!point) return null;
   return (
     <div className="rounded-2xl border border-line bg-card/95 p-4 text-sm shadow-lift backdrop-blur">
       <div className="mb-2 font-semibold text-ink">{point.label}</div>
-      <div>广告花费：{won(point.ad_spend)}</div>
-      <div>广告销售额：{won(point.ad_sales)}</div>
+      <div>{c.tooltipSpend}：{won(point.ad_spend)}</div>
+      <div>{c.tooltipSales}：{won(point.ad_sales)}</div>
       <div>ROAS：{formatNumber(point.roas, 2)}</div>
       <div>CTR：{formatNumber(point.ctr, 2)}%</div>
-      <div>转化率：{formatNumber(point.conversion_rate, 2)}%</div>
-      <div>广告利润：{won(point.ad_profit)}</div>
+      <div>{c.kpiConversion}：{formatNumber(point.conversion_rate, 2)}%</div>
+      <div>{c.tooltipProfit}：{won(point.ad_profit)}</div>
     </div>
   );
 }
@@ -706,10 +900,10 @@ function buildMetrics(rows: DailyAdRecord[]): Metrics {
   return base;
 }
 
-function buildSkuRows(rows: DailyAdRecord[]): SkuAgg[] {
+function buildSkuRows(rows: DailyAdRecord[], c: PageCopy): SkuAgg[] {
   const map = new Map<string, DailyAdRecord[]>();
   rows.forEach((row) => {
-    const key = row.sku || "未填写SKU";
+    const key = row.sku || c.unnamedSku;
     map.set(key, [...(map.get(key) ?? []), row]);
   });
   return Array.from(map.entries()).map(([sku, group]) => {
@@ -717,25 +911,25 @@ function buildSkuRows(rows: DailyAdRecord[]): SkuAgg[] {
     return {
       ...metrics,
       sku,
-      product_name: group[0]?.product_name || "未命名产品",
+      product_name: group[0]?.product_name || c.unnamedProduct,
       record_count: group.length,
       status: decisionStatus(metrics)
     };
   });
 }
 
-function buildTrend(rows: DailyAdRecord[], window: TrendWindow) {
+function buildTrend(rows: DailyAdRecord[], window: TrendWindow, c: PageCopy) {
   const map = new Map<string, DailyAdRecord[]>();
   rows.forEach((row) => {
     const key = window === "year" ? row.record_date.slice(0, 7) : row.record_date;
     map.set(key, [...(map.get(key) ?? []), row]);
   });
-  return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b)).map(([key, group]) => ({ record_date: key, label: window === "year" ? key.slice(5) + "月" : key.slice(5), ...buildMetrics(group) }));
+  return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b)).map(([key, group]) => ({ record_date: key, label: window === "year" ? key.slice(5) + c.monthSuffix : key.slice(5), ...buildMetrics(group) }));
 }
 
-function buildInsights(rows: SkuAgg[], metrics: Metrics, previous: Metrics) {
+function buildInsights(rows: SkuAgg[], metrics: Metrics, previous: Metrics, c: PageCopy) {
   if (!rows.length) {
-    return [{ icon: Sparkles, title: "等待广告日报", text: "录入广告日报后，系统会自动判断最佳 SKU、风险 SKU 和预算方向。", tone: "neutral" as const }];
+    return [{ icon: Sparkles, title: c.insightWaitingTitle, text: c.insightWaitingText, tone: "neutral" as const }];
   }
   const best = [...rows].sort((a, b) => b.roas - a.roas || b.ad_profit - a.ad_profit)[0];
   const worst = [...rows].sort((a, b) => a.roas - b.roas || a.ad_profit - b.ad_profit)[0];
@@ -743,11 +937,11 @@ function buildInsights(rows: SkuAgg[], metrics: Metrics, previous: Metrics) {
   const pause = rows.find((row) => row.status === "pause");
   const growth = changeRate(metrics.ad_sales, previous.ad_sales);
   return [
-    { icon: TrendingUp, title: "最佳广告 SKU", text: `${best.product_name} / ${best.sku}，ROAS ${formatNumber(best.roas, 2)}，广告利润 ${won(best.ad_profit)}。`, tone: "good" as const },
-    { icon: TrendingDown, title: "最差广告 SKU", text: `${worst.product_name} / ${worst.sku}，ROAS ${formatNumber(worst.roas, 2)}，建议检查关键词、详情页和预算。`, tone: worst.roas < 2 ? "risk" as const : "warn" as const },
-    { icon: Target, title: "预算建议", text: scale ? `${scale.sku} ROAS ${formatNumber(scale.roas, 2)} 且利润为正，建议继续增加预算。` : "暂未发现明确适合加预算的 SKU，先维持观察。", tone: scale ? "good" as const : "neutral" as const },
-    { icon: WalletCards, title: "投放效率变化", text: growth == null ? "当前周期缺少对比数据。" : `广告销售额较上一周期 ${growth >= 0 ? "提升" : "下降"} ${formatNumber(Math.abs(growth), 1)}%。`, tone: growth != null && growth < 0 ? "warn" as const : "good" as const },
-    { icon: Trash2, title: "暂停候选", text: pause ? `${pause.sku} ROAS ${formatNumber(pause.roas, 2)} 且利润为负，建议暂停或重建广告。` : "当前没有明显需要暂停的广告 SKU。", tone: pause ? "risk" as const : "neutral" as const }
+    { icon: TrendingUp, title: c.bestSku, text: `${best.product_name} / ${best.sku}, ROAS ${formatNumber(best.roas, 2)}, ${c.adProfit} ${won(best.ad_profit)}.`, tone: "good" as const },
+    { icon: TrendingDown, title: c.worstSku, text: `${worst.product_name} / ${worst.sku}, ROAS ${formatNumber(worst.roas, 2)}. ${c.checkOptimization}`, tone: worst.roas < 2 ? "risk" as const : "warn" as const },
+    { icon: Target, title: c.budgetAdvice, text: scale ? `${scale.sku} ROAS ${formatNumber(scale.roas, 2)} ${c.scaleAdvice}` : c.noScale, tone: scale ? "good" as const : "neutral" as const },
+    { icon: WalletCards, title: c.efficiencyChange, text: growth == null ? c.noComparison : `${c.salesGrowthPrefix} ${growth >= 0 ? c.increased : c.decreased} ${formatNumber(Math.abs(growth), 1)}%.`, tone: growth != null && growth < 0 ? "warn" as const : "good" as const },
+    { icon: Trash2, title: c.pauseCandidate, text: pause ? `${pause.sku} ROAS ${formatNumber(pause.roas, 2)} ${c.pauseAdvice}` : c.noPause, tone: pause ? "risk" as const : "neutral" as const }
   ];
 }
 
@@ -802,9 +996,10 @@ function dateRange(preset: DatePreset, customStart: string, customEnd: string) {
   return { start: customStart, end: customEnd };
 }
 
-function exportSkuRows(rows: SkuAgg[]) {
-  const headers = ["SKU", "产品名称", "广告花费", "广告销售额", "ROAS", "CTR", "转化率", "广告订单数", "广告成交数", "广告利润", "状态"];
-  const csv = [headers.join(","), ...rows.map((row) => [row.sku, row.product_name, row.ad_spend, row.ad_sales, row.roas, row.ctr, row.conversion_rate, row.ad_order_count, row.ad_sales_count, row.ad_profit, row.status].map(csvCell).join(","))].join("\n");
+function exportSkuRows(rows: SkuAgg[], c: PageCopy) {
+  const headers = [c.fieldSku, c.fieldProduct, c.fieldSpend, c.fieldSales, c.kpiRoas, c.kpiCtr, c.kpiConversion, c.fieldOrderCount, c.fieldSalesCount, c.adProfit, c.csvStatus];
+  const statusLabels = c.statuses;
+  const csv = [headers.join(","), ...rows.map((row) => [row.sku, row.product_name, row.ad_spend, row.ad_sales, row.roas, row.ctr, row.conversion_rate, row.ad_order_count, row.ad_sales_count, row.ad_profit, statusLabels[row.status]].map(csvCell).join(","))].join("\n");
   download(csv, `advertising-sku-${todayKst()}.csv`, "text/csv;charset=utf-8;");
 }
 
@@ -891,8 +1086,8 @@ function won(value: number) {
   return `₩${Math.round(Number(value ?? 0)).toLocaleString("ko-KR")}`;
 }
 
-function compactWon(value: number) {
-  if (Math.abs(value) >= 1000000) return `₩${Math.round(value / 10000).toLocaleString("ko-KR")}万`;
+function compactWon(value: number, language: Language = "zh") {
+  if (Math.abs(value) >= 1000000) return `₩${Math.round(value / 10000).toLocaleString("ko-KR")}${language === "ko" ? "만" : "万"}`;
   if (Math.abs(value) >= 1000) return `₩${Math.round(value / 1000).toLocaleString("ko-KR")}k`;
   return `₩${Math.round(value).toLocaleString("ko-KR")}`;
 }
