@@ -126,7 +126,7 @@ function LoginForm() {
             <HeroMetric icon={Radar} label={copy.metricRisk} value="7" trend={copy.online} />
           </div>
 
-          <div className="mt-5 max-w-[700px] rounded-[28px] border border-[#cdd8cf] bg-white/82 p-4 shadow-[0_28px_80px_rgba(23,33,29,0.12)] backdrop-blur-xl">
+          <div className="mt-5 max-w-[700px] rounded-[28px] border border-[#cdd8cf] bg-white/82 p-5 shadow-[0_28px_80px_rgba(23,33,29,0.12)] backdrop-blur-xl">
             <div className="mb-4 flex items-center justify-between gap-3">
               <h2 className="text-xl font-semibold tracking-tight text-[#102b27]">{copy.previewTitle}</h2>
               <span className="rounded-full border border-[#2d8169]/18 bg-[#e6f2ed] px-3 py-1 text-xs font-bold text-[#23614f]">{copy.online}</span>
@@ -138,7 +138,7 @@ function LoginForm() {
                   <span>{copy.chartLabel}</span>
                   <span>2026 Q2</span>
                 </div>
-                <div className="flex h-36 items-end gap-2">
+                <div className="flex h-52 items-end gap-2">
                   {[42, 58, 46, 72, 66, 88, 76, 94, 83, 100].map((height, index) => (
                     <div key={index} className="flex flex-1 items-end rounded-full bg-[#e5ebe4]">
                       <div
@@ -150,7 +150,7 @@ function LoginForm() {
                 </div>
               </div>
 
-              <div className="grid gap-3">
+              <div className="grid auto-rows-fr gap-3">
                 <SignalCard label={copy.signalRestock} value="P1 · 3 SKU" tone="risk" />
                 <SignalCard label={copy.signalProduct} value="6" tone="good" />
                 <SignalCard label={copy.signalIssue} value="42%" tone="watch" />
