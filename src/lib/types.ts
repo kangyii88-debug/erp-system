@@ -174,6 +174,7 @@ export type CustomerIssue = {
   product_name: string;
   issue_category: "安装问题" | "质量问题" | "尺寸问题" | "颜色问题" | "物流问题" | "包装问题" | "功能问题" | "其它问题";
   issue_description: string;
+  customer_original_text: string | null;
   solution: string | null;
   owner: string;
   status: "待处理" | "处理中" | "已解决" | "已关闭";

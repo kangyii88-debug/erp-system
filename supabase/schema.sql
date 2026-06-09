@@ -190,6 +190,7 @@ create table if not exists customer_issues (
   product_name text not null,
   issue_category text not null check (issue_category in ('安装问题', '质量问题', '尺寸问题', '颜色问题', '物流问题', '包装问题', '功能问题', '其它问题')),
   issue_description text not null,
+  customer_original_text text,
   solution text,
   owner text not null,
   status text not null default '待处理' check (status in ('待处理', '处理中', '已解决', '已关闭')),

@@ -3134,7 +3134,7 @@ function compare(current: number, previous: number) {
   return ((current - previous) / previous) * 100;
 }
 
-function sampleLabels(data: SalesPoint[]) {
+function selectChartLabels(data: SalesPoint[]) {
   if (data.length <= 12) return data;
   const step = Math.ceil(data.length / 12);
   return data.filter((_, index) => index % step === 0 || index === data.length - 1);
