@@ -342,41 +342,6 @@ function DashboardContent() {
           </div>
         </section>
 
-        <SkuMonthlySalesAnalysis
-          rows={filteredMonthlySkuRows}
-          allRows={monthlySkuRows}
-          previousYearRows={previousYearMonthlySkuRows}
-          replenishmentRows={replenishRows}
-          movements={rangeMovements}
-          metric={monthlySkuMetric}
-          colorFilter={monthlyColorFilter}
-          sizeFilter={monthlySizeFilter}
-          search={monthlySearch}
-          selectedYear={selectedYear}
-          anchorDate={anchorDate}
-          selectedRow={selectedMonthlySkuRow}
-          onMetricChange={setMonthlySkuMetric}
-          onColorChange={setMonthlyColorFilter}
-          onSizeChange={setMonthlySizeFilter}
-          onSearchChange={setMonthlySearch}
-          onSelectSku={setSelectedMonthlySku}
-        />
-
-        <section>
-          <Card>
-            <div className="mb-4 flex items-center justify-between">
-              <DashboardSectionTitle eyebrow={t("dashboard.section.reminders")} title={t("dashboard.section.remindersTitle")} />
-              <span className="rounded bg-panel px-3 py-1 text-sm font-semibold text-ink">{alerts.length} {t("unit.item")}</span>
-            </div>
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {alerts.map((alert) => (
-                <AlertPill key={alert.text} alert={alert} />
-              ))}
-              {!alerts.length ? <AlertPill alert={{ level: "success", text: t("dashboard.alert.allGood") }} /> : null}
-            </div>
-          </Card>
-        </section>
-
         <section className="grid gap-4">
           <Card>
             <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
@@ -420,6 +385,41 @@ function DashboardContent() {
               onYearChange={setSelectedYear}
               onCompareChange={setComparePreviousYear}
             />
+          </Card>
+        </section>
+
+        <SkuMonthlySalesAnalysis
+          rows={filteredMonthlySkuRows}
+          allRows={monthlySkuRows}
+          previousYearRows={previousYearMonthlySkuRows}
+          replenishmentRows={replenishRows}
+          movements={rangeMovements}
+          metric={monthlySkuMetric}
+          colorFilter={monthlyColorFilter}
+          sizeFilter={monthlySizeFilter}
+          search={monthlySearch}
+          selectedYear={selectedYear}
+          anchorDate={anchorDate}
+          selectedRow={selectedMonthlySkuRow}
+          onMetricChange={setMonthlySkuMetric}
+          onColorChange={setMonthlyColorFilter}
+          onSizeChange={setMonthlySizeFilter}
+          onSearchChange={setMonthlySearch}
+          onSelectSku={setSelectedMonthlySku}
+        />
+
+        <section>
+          <Card>
+            <div className="mb-4 flex items-center justify-between">
+              <DashboardSectionTitle eyebrow={t("dashboard.section.reminders")} title={t("dashboard.section.remindersTitle")} />
+              <span className="rounded bg-panel px-3 py-1 text-sm font-semibold text-ink">{alerts.length} {t("unit.item")}</span>
+            </div>
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {alerts.map((alert) => (
+                <AlertPill key={alert.text} alert={alert} />
+              ))}
+              {!alerts.length ? <AlertPill alert={{ level: "success", text: t("dashboard.alert.allGood") }} /> : null}
+            </div>
           </Card>
         </section>
 
