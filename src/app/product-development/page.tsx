@@ -307,8 +307,8 @@ function ProductForm({ form, editing, onChange, onSubmit, onCancel }: { form: ty
         <Field label="国际运费"><input className="premium-input" type="number" min="0" value={form.international_shipping_cost} onChange={(event) => onChange({ ...form, international_shipping_cost: event.target.value })} /></Field>
         <Field label="Coupang 入仓运费"><input className="premium-input" type="number" min="0" value={form.coupang_inbound_shipping_cost} onChange={(event) => onChange({ ...form, coupang_inbound_shipping_cost: event.target.value })} /></Field>
         <Field label="广告费用"><input className="premium-input" type="number" min="0" value={form.ad_cost} onChange={(event) => onChange({ ...form, ad_cost: event.target.value })} /></Field>
-        <Field label="预计净利润"><div className="premium-input flex items-center bg-white/55 font-semibold text-ink">{won(previewProfit)}</div></Field>
-        <Field label="预计利润率"><div className="premium-input flex items-center bg-white/55 font-semibold text-ink">{previewMargin.toFixed(1)}%</div></Field>
+        <Field label="预计净利润"><div className="premium-input flex h-10 items-center px-3 py-2 font-semibold text-ink">{won(previewProfit)}</div></Field>
+        <Field label="预计利润率"><div className="premium-input flex h-10 items-center px-3 py-2 font-semibold text-ink">{previewMargin.toFixed(1)}%</div></Field>
         <Field label="开发负责人"><input className="premium-input" required value={form.owner} onChange={(event) => onChange({ ...form, owner: event.target.value })} /></Field>
         <Field label="开发状态"><Select value={form.development_status} options={statusOptions} onChange={(value) => onChange({ ...form, development_status: value as DevStatus })} /></Field>
         <Field label="产品优先级"><Select value={form.priority} options={priorityOptions} onChange={(value) => onChange({ ...form, priority: value as ProductPriority })} /></Field>
