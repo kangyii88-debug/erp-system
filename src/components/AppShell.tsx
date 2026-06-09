@@ -17,7 +17,7 @@ const navItems = [
   { href: "/expenses", key: "nav.expenses", icon: ReceiptText },
   { href: "/task-center", key: "nav.taskCenter", icon: ClipboardCheck, label: { zh: "待办中心", ko: "업무 센터" } },
   { href: "/product-development", key: "nav.productDevelopment", icon: Lightbulb, label: { zh: "产品开发中心", ko: "상품 개발 센터" } },
-  { href: "/customer-issues", key: "nav.customerIssues", icon: ShieldAlert, label: { zh: "客诉问题库", ko: "고객 이슈 센터" } },
+  { href: "/customer-issues", key: "nav.customerIssues", icon: ShieldAlert, label: { zh: "客诉问题库", ko: "고객 리뷰 센터" } },
   { href: "/settlements", key: "nav.settlements", icon: Landmark },
   { href: "/coupang-inbound", key: "nav.coupangInbound", icon: Warehouse }
 ] as const;
