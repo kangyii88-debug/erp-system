@@ -15,9 +15,9 @@ const navItems = [
   { href: "/advertising", key: "nav.advertising", icon: Megaphone },
   { href: "/purchases", key: "nav.purchases", icon: ClipboardList },
   { href: "/expenses", key: "nav.expenses", icon: ReceiptText },
-  { href: "/task-center", key: "nav.taskCenter", icon: ClipboardCheck },
-  { href: "/product-development", key: "nav.productDevelopment", icon: Lightbulb },
-  { href: "/customer-issues", key: "nav.customerIssues", icon: ShieldAlert },
+  { href: "/task-center", key: "nav.taskCenter", icon: ClipboardCheck, label: { zh: "待办中心", ko: "업무 센터" } },
+  { href: "/product-development", key: "nav.productDevelopment", icon: Lightbulb, label: { zh: "产品开发中心", ko: "상품 개발 센터" } },
+  { href: "/customer-issues", key: "nav.customerIssues", icon: ShieldAlert, label: { zh: "客诉问题库", ko: "고객 이슈 센터" } },
   { href: "/settlements", key: "nav.settlements", icon: Landmark },
   { href: "/coupang-inbound", key: "nav.coupangInbound", icon: Warehouse }
 ] as const;
@@ -71,7 +71,7 @@ function ProtectedShell({ children }: { children: React.ReactNode }) {
                 }`}
               >
                 <Icon size={17} className={active ? "text-[#dce7dc]" : "text-white/55 group-hover:text-[#dce7dc]"} />
-                {t(item.key)}
+                {"label" in item ? item.label[language] : t(item.key)}
               </Link>
             );
           })}
@@ -84,7 +84,7 @@ function ProtectedShell({ children }: { children: React.ReactNode }) {
             <div className="flex gap-2 overflow-x-auto lg:hidden">
               {navItems.map((item) => (
                 <Link key={item.href} href={item.href} className="erp-chip whitespace-nowrap px-3 py-2 text-xs font-semibold">
-                  {t(item.key)}
+                  {"label" in item ? item.label[language] : t(item.key)}
                 </Link>
               ))}
             </div>
