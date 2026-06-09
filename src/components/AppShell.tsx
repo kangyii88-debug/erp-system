@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { BarChart3, Boxes, ClipboardCheck, ClipboardList, FileSpreadsheet, Landmark, Lightbulb, LogOut, Package, ReceiptText, ShieldAlert, ShoppingCart, Warehouse } from "lucide-react";
+import { BarChart3, Boxes, ClipboardCheck, ClipboardList, Landmark, Lightbulb, LogOut, Package, ReceiptText, ShieldAlert, ShoppingCart, Warehouse } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { LanguageProvider, useLanguage } from "./LanguageProvider";
 
@@ -18,8 +18,7 @@ const navItems = [
   { href: "/product-development", key: "nav.productDevelopment", icon: Lightbulb },
   { href: "/customer-issues", key: "nav.customerIssues", icon: ShieldAlert },
   { href: "/settlements", key: "nav.settlements", icon: Landmark },
-  { href: "/coupang-inbound", key: "nav.coupangInbound", icon: Warehouse },
-  { href: "/import-export", key: "nav.importExport", icon: FileSpreadsheet }
+  { href: "/coupang-inbound", key: "nav.coupangInbound", icon: Warehouse }
 ] as const;
 
 export function AppShell({ children }: { children: React.ReactNode }) {
