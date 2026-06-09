@@ -153,6 +153,10 @@ export type ProductDevelopment = {
   purchase_cost: number;
   expected_price: number;
   expected_margin: number | null;
+  platform_fee_rate: number | null;
+  international_shipping_cost: number | null;
+  coupang_inbound_shipping_cost: number | null;
+  ad_cost: number | null;
   owner: string;
   development_status: "待开发" | "询价中" | "打样中" | "测试中" | "优化中" | "待上架" | "已上线" | "已放弃";
   expected_launch_date: string | null;

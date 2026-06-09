@@ -5,6 +5,7 @@ import { BadgeCheck, Beaker, Boxes, CircleOff, Edit3, FlaskConical, Lightbulb, P
 import { AppShell } from "@/components/AppShell";
 import { CenterHero, CenterPanel, EmptyState, ExecutiveKpi, KpiGrid, MetricLine, ProgressBar, StatusPill } from "@/components/ManagementCenter";
 import { formatDatabaseError } from "@/lib/database-error";
+import { profitMargin, unitProfit } from "@/lib/profit";
 import { supabase } from "@/lib/supabase";
 
 type DevStatus = "待开发" | "询价中" | "打样中" | "测试中" | "优化中" | "待上架" | "已上线" | "已放弃";
@@ -18,6 +19,10 @@ type ProductDevRow = {
   purchase_cost: number;
   expected_price: number;
   expected_margin: number | null;
+  platform_fee_rate: number | null;
+  international_shipping_cost: number | null;
+  coupang_inbound_shipping_cost: number | null;
+  ad_cost: number | null;
   owner: string;
   development_status: DevStatus;
   expected_launch_date: string | null;
@@ -39,6 +44,10 @@ const emptyForm = {
   supplier: "",
   purchase_cost: "0",
   expected_price: "0",
+  platform_fee_rate: "11.6",
+  international_shipping_cost: "0",
+  coupang_inbound_shipping_cost: "0",
+  ad_cost: "0",
   owner: "",
   development_status: "待开发" as DevStatus,
   expected_launch_date: "",
@@ -91,7 +100,11 @@ function ProductDevelopmentContent() {
       supplier: form.supplier.trim() || null,
       purchase_cost: Number(form.purchase_cost || 0),
       expected_price: Number(form.expected_price || 0),
-      expected_margin: calculateMargin(Number(form.purchase_cost || 0), Number(form.expected_price || 0)),
+      expected_margin: calculateProductMargin(form),
+      platform_fee_rate: Number(form.platform_fee_rate || 11.6),
+      international_shipping_cost: Number(form.international_shipping_cost || 0),
+      coupang_inbound_shipping_cost: Number(form.coupang_inbound_shipping_cost || 0),
+      ad_cost: Number(form.ad_cost || 0),
       owner: form.owner.trim(),
       development_status: form.development_status,
       expected_launch_date: form.expected_launch_date || null,
@@ -142,6 +155,10 @@ function ProductDevelopmentContent() {
       supplier: item.supplier ?? "",
       purchase_cost: String(item.purchase_cost ?? 0),
       expected_price: String(item.expected_price ?? 0),
+      platform_fee_rate: String(item.platform_fee_rate ?? 11.6),
+      international_shipping_cost: String(item.international_shipping_cost ?? 0),
+      coupang_inbound_shipping_cost: String(item.coupang_inbound_shipping_cost ?? 0),
+      ad_cost: String(item.ad_cost ?? 0),
       owner: item.owner,
       development_status: item.development_status,
       expected_launch_date: item.expected_launch_date ?? "",
@@ -245,6 +262,8 @@ function ProductDevelopmentContent() {
                     <div className="mt-5 grid grid-cols-2 gap-3">
                       <DarkMetric label="预计成本" value={won(selected.purchase_cost)} />
                       <DarkMetric label="预计售价" value={won(selected.expected_price)} />
+                      <DarkMetric label="平台服务费" value={won(platformFeeAmount(selected))} />
+                      <DarkMetric label="总附加成本" value={won(extraCost(selected))} />
                       <DarkMetric label="预计利润" value={won(expectedProfit(selected))} />
                       <DarkMetric label="预计利润率" value={`${expectedMargin(selected).toFixed(1)}%`} />
                     </div>
@@ -273,9 +292,8 @@ function ProductDevelopmentContent() {
 }
 
 function ProductForm({ form, editing, onChange, onSubmit, onCancel }: { form: typeof emptyForm; editing: boolean; onChange: (form: typeof emptyForm) => void; onSubmit: (event: FormEvent) => void; onCancel: () => void }) {
-  const previewCost = Number(form.purchase_cost || 0);
-  const previewPrice = Number(form.expected_price || 0);
-  const previewMargin = calculateMargin(previewCost, previewPrice);
+  const previewProfit = calculateProductProfit(form);
+  const previewMargin = calculateProductMargin(form);
 
   return (
     <CenterPanel eyebrow={editing ? "Edit Project" : "New Project"} title={editing ? "编辑产品项目" : "新增产品项目"}>
@@ -285,6 +303,11 @@ function ProductForm({ form, editing, onChange, onSubmit, onCancel }: { form: ty
         <Field label="供应商"><input className="premium-input" value={form.supplier} onChange={(event) => onChange({ ...form, supplier: event.target.value })} /></Field>
         <Field label="采购成本"><input className="premium-input" type="number" min="0" value={form.purchase_cost} onChange={(event) => onChange({ ...form, purchase_cost: event.target.value })} /></Field>
         <Field label="预计售价"><input className="premium-input" type="number" min="0" value={form.expected_price} onChange={(event) => onChange({ ...form, expected_price: event.target.value })} /></Field>
+        <Field label="平台服务费 %"><input className="premium-input" type="number" min="0" step="0.1" value={form.platform_fee_rate} onChange={(event) => onChange({ ...form, platform_fee_rate: event.target.value })} /></Field>
+        <Field label="国际运费"><input className="premium-input" type="number" min="0" value={form.international_shipping_cost} onChange={(event) => onChange({ ...form, international_shipping_cost: event.target.value })} /></Field>
+        <Field label="Coupang 入仓运费"><input className="premium-input" type="number" min="0" value={form.coupang_inbound_shipping_cost} onChange={(event) => onChange({ ...form, coupang_inbound_shipping_cost: event.target.value })} /></Field>
+        <Field label="广告费用"><input className="premium-input" type="number" min="0" value={form.ad_cost} onChange={(event) => onChange({ ...form, ad_cost: event.target.value })} /></Field>
+        <Field label="预计净利润"><div className="premium-input flex items-center bg-white/55 font-semibold text-ink">{won(previewProfit)}</div></Field>
         <Field label="预计利润率"><div className="premium-input flex items-center bg-white/55 font-semibold text-ink">{previewMargin.toFixed(1)}%</div></Field>
         <Field label="开发负责人"><input className="premium-input" required value={form.owner} onChange={(event) => onChange({ ...form, owner: event.target.value })} /></Field>
         <Field label="开发状态"><Select value={form.development_status} options={statusOptions} onChange={(value) => onChange({ ...form, development_status: value as DevStatus })} /></Field>
@@ -340,19 +363,58 @@ function DarkMetric({ label, value }: { label: string; value: string }) {
 }
 
 function expectedProfit(item: ProductDevRow) {
-  return Number(item.expected_price || 0) - Number(item.purchase_cost || 0);
+  return unitProfit(toProfitProduct(item));
 }
 
 function expectedMargin(item: ProductDevRow) {
-  return calculateMargin(item.purchase_cost, item.expected_price);
+  return profitMargin(toProfitProduct(item), expectedProfit(item));
 }
 
 function totalScore(item: ProductDevRow) {
   return Math.round(item.market_potential_score || 0);
 }
 
-function calculateMargin(cost: number, price: number) {
-  return price > 0 ? ((price - cost) / price) * 100 : 0;
+function calculateProductProfit(form: typeof emptyForm) {
+  return unitProfit({
+    purchase_price: Number(form.purchase_cost || 0),
+    sale_price: Number(form.expected_price || 0),
+    platform_fee_rate: Number(form.platform_fee_rate || 11.6),
+    international_shipping_cost: Number(form.international_shipping_cost || 0),
+    coupang_inbound_shipping_cost: Number(form.coupang_inbound_shipping_cost || 0),
+    ad_cost: Number(form.ad_cost || 0)
+  });
+}
+
+function calculateProductMargin(form: typeof emptyForm) {
+  const product = {
+    purchase_price: Number(form.purchase_cost || 0),
+    sale_price: Number(form.expected_price || 0),
+    platform_fee_rate: Number(form.platform_fee_rate || 11.6),
+    international_shipping_cost: Number(form.international_shipping_cost || 0),
+    coupang_inbound_shipping_cost: Number(form.coupang_inbound_shipping_cost || 0),
+    ad_cost: Number(form.ad_cost || 0)
+  };
+
+  return profitMargin(product, unitProfit(product));
+}
+
+function toProfitProduct(item: ProductDevRow) {
+  return {
+    purchase_price: Number(item.purchase_cost || 0),
+    sale_price: Number(item.expected_price || 0),
+    platform_fee_rate: Number(item.platform_fee_rate ?? 11.6),
+    international_shipping_cost: Number(item.international_shipping_cost ?? 0),
+    coupang_inbound_shipping_cost: Number(item.coupang_inbound_shipping_cost ?? 0),
+    ad_cost: Number(item.ad_cost ?? 0)
+  };
+}
+
+function platformFeeAmount(item: ProductDevRow) {
+  return Number(item.expected_price || 0) * (Number(item.platform_fee_rate ?? 11.6) / 100);
+}
+
+function extraCost(item: ProductDevRow) {
+  return Number(item.international_shipping_cost ?? 0) + Number(item.coupang_inbound_shipping_cost ?? 0) + Number(item.ad_cost ?? 0);
 }
 
 function priorityTone(priority: ProductPriority) {

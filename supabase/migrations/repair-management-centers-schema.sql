@@ -32,6 +32,10 @@ create table if not exists product_development (
   purchase_cost numeric(12, 2) not null default 0,
   expected_price numeric(12, 2) not null default 0,
   expected_margin numeric(8, 2),
+  platform_fee_rate numeric(5, 2) not null default 11.6,
+  international_shipping_cost numeric(12, 2) not null default 0,
+  coupang_inbound_shipping_cost numeric(12, 2) not null default 0,
+  ad_cost numeric(12, 2) not null default 0,
   owner text not null,
   development_status text not null default U&'\5F85\5F00\53D1' check (development_status in (U&'\5F85\5F00\53D1', U&'\8BE2\4EF7\4E2D', U&'\6253\6837\4E2D', U&'\6D4B\8BD5\4E2D', U&'\4F18\5316\4E2D', U&'\5F85\4E0A\67B6', U&'\5DF2\4E0A\7EBF', U&'\5DF2\653E\5F03')),
   expected_launch_date date,
@@ -63,6 +67,10 @@ create table if not exists customer_issues (
 );
 
 alter table customer_issues add column if not exists customer_original_text text;
+alter table product_development add column if not exists platform_fee_rate numeric(5, 2) not null default 11.6;
+alter table product_development add column if not exists international_shipping_cost numeric(12, 2) not null default 0;
+alter table product_development add column if not exists coupang_inbound_shipping_cost numeric(12, 2) not null default 0;
+alter table product_development add column if not exists ad_cost numeric(12, 2) not null default 0;
 
 create index if not exists tasks_user_due_status_idx on tasks (user_id, due_date, status);
 create index if not exists product_development_user_status_idx on product_development (user_id, development_status, priority);
