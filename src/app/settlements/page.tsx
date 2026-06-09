@@ -3,7 +3,6 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
-  BarChart3,
   ChevronLeft,
   ChevronRight,
   CreditCard,
@@ -208,39 +207,36 @@ function SettlementCenter() {
 
   return (
     <>
-      <section className="premium-dashboard-panel relative mb-5 overflow-hidden rounded-[30px] p-6 md:p-8">
-        <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-[#bca77a]/20 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-24 -left-16 h-72 w-72 rounded-full bg-brand/10 blur-3xl" />
-        <div className="relative flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
+      <section className="premium-dashboard-panel mb-4 overflow-hidden rounded-2xl p-5 md:p-6">
+        <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
           <div>
             <div className="premium-section-eyebrow">
               <Landmark className="h-3.5 w-3.5" />
               Coupang Settlement Center
             </div>
-            <h1 className="mt-3 text-4xl font-semibold tracking-tight text-ink">{copy.title}</h1>
+            <h1 className="mt-3 text-3xl font-semibold tracking-tight text-ink">{copy.title}</h1>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">{copy.subtitle}</p>
           </div>
-          <div className="rounded-3xl border border-white/70 bg-white/72 p-5 text-right shadow-soft">
-            <div className="text-xs font-bold uppercase tracking-[0.18em] text-muted">{copy.finalPayment}</div>
-            <div className="premium-number mt-2 text-4xl font-semibold tabular-nums text-brand">{formatCurrency(currentMetrics.final_payment_amount)}</div>
-            <div className="mt-2 text-xs font-semibold text-muted">{copy.independentNotice}</div>
+          <div className="grid min-w-full gap-3 sm:grid-cols-3 xl:min-w-[560px]">
+            <MiniCalc label={copy.actualSales} value={formatCurrency(currentMetrics.actual_sales_amount)} />
+            <MiniCalc label={copy.salesBase} value={formatCurrency(salesBaseAmount(currentMetrics))} />
+            <MiniCalc label={copy.finalPayment} value={formatCurrency(currentMetrics.final_payment_amount)} featured />
           </div>
         </div>
       </section>
 
-      <section className="mb-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-9">
+      <section className="mb-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
         <SettlementKpi icon={Wallet} label={copy.salesAmount} value={formatCurrency(currentMetrics.sales_amount)} helper={copy.thisMonth} />
         <SettlementKpi icon={XCircle} label={copy.cancelAmount} value={formatCurrency(currentMetrics.cancel_amount)} helper={formatPercent(currentMetrics.cancel_rate)} tone="red" />
-        <SettlementKpi icon={BarChart3} label={copy.salesBase} value={formatCurrency(salesBaseAmount(currentMetrics))} helper={copy.afterFeeCoupon} />
         <SettlementKpi icon={CreditCard} label={copy.salesFee} value={formatCurrency(currentMetrics.sales_fee)} helper={formatPercent(currentMetrics.fee_rate)} tone="yellow" />
         <SettlementKpi icon={ReceiptText} label={copy.sellerCoupon} value={formatCurrency(currentMetrics.seller_coupon)} helper={copy.deduction} tone="slate" />
         <SettlementKpi icon={Megaphone} label={copy.adFee} value={formatCurrency(currentMetrics.ad_fee)} helper={formatPercent(currentMetrics.ad_rate)} tone="red" />
         <SettlementKpi icon={MilkIcon} label={copy.milkRunFee} value={formatCurrency(currentMetrics.milk_run_fee)} helper={copy.logistics} tone="yellow" />
         <SettlementKpi icon={ShieldCheck} label={copy.compensation} value={formatCurrency(currentMetrics.inventory_loss_compensation)} helper={copy.addBack} tone="green" />
-        <SettlementKpi icon={Landmark} label={copy.finalPayment} value={formatCurrency(currentMetrics.final_payment_amount)} helper={copy.platformPaysYou} tone="green" />
+        <SettlementKpi icon={Landmark} label={copy.paymentRate} value={formatPercent(currentMetrics.payment_rate)} helper={copy.platformPaysYou} tone="green" />
       </section>
 
-      <section className="mb-5 grid gap-4 xl:grid-cols-[1.1fr_1fr]">
+      <section className="mb-4 grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(360px,0.65fr)]">
         <SettlementEntry
           form={form}
           copy={copy}
@@ -260,7 +256,7 @@ function SettlementCenter() {
 
       <MonthlySettlementLedger records={filtered} copy={copy} formatCurrency={formatCurrency} onEdit={startEdit} onDelete={deleteRecord} />
 
-      <section className="premium-dashboard-panel rounded-[28px] p-5 md:p-6">
+      <section className="premium-dashboard-panel rounded-2xl p-5 md:p-6">
         <div className="mb-5 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div>
             <div className="premium-section-eyebrow">Settlement Detail</div>
@@ -365,21 +361,25 @@ function SettlementCenter() {
 
 function SettlementKpi({ icon: Icon, label, value, helper, tone = "green" }: { icon: LucideIcon; label: string; value: string; helper: string; tone?: "green" | "red" | "yellow" | "slate" }) {
   const toneClass = {
-    green: "from-brand/12 text-brand",
-    red: "from-red-500/12 text-red-700",
-    yellow: "from-[#bca77a]/20 text-[#8a6834]",
-    slate: "from-slate-500/12 text-slate-600"
+    green: "bg-emerald-50 text-brand",
+    red: "bg-red-50 text-red-700",
+    yellow: "bg-yellow-50 text-[#8a6834]",
+    slate: "bg-slate-100 text-slate-600"
   }[tone];
   return (
-    <div className="premium-dashboard-card rounded-[24px] p-4 transition duration-300">
-      <div className="flex items-start justify-between gap-3">
-        <div className={`rounded-2xl bg-gradient-to-br ${toneClass} to-white p-3 shadow-sm`}>
-          <Icon className="h-5 w-5" />
+    <div className="premium-dashboard-card p-4 transition duration-200">
+      <div className="flex items-start gap-3">
+        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${toneClass}`}>
+          <Icon className="h-4 w-4" />
         </div>
-        <span className="rounded-full border border-white/70 bg-white/72 px-2.5 py-1 text-[11px] font-bold text-muted shadow-sm">{helper}</span>
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-xs font-semibold text-muted">{label}</div>
+          <div className="premium-number mt-1 text-xl font-semibold tabular-nums text-ink">{value}</div>
+        </div>
       </div>
-      <div className="mt-4 text-xs font-semibold text-muted">{label}</div>
-      <div className="premium-number mt-2 text-xl font-semibold tabular-nums text-ink">{value}</div>
+      <div className="mt-3 inline-flex max-w-full rounded-full border border-line bg-white/70 px-2.5 py-1 text-[11px] font-bold text-muted">
+        <span className="truncate">{helper}</span>
+      </div>
     </div>
   );
 }
@@ -411,61 +411,85 @@ function SettlementEntry({
   formatCurrency: (value: number) => string;
   message: string;
 }) {
-  const fields: Array<[keyof SettlementForm, string]> = [
+  const primaryFields: Array<[keyof SettlementForm, string]> = [
     ["sales_amount", copy.salesAmount],
     ["cancel_amount", copy.cancelAmount],
     ["sales_fee", copy.salesFee],
-    ["seller_coupon", copy.sellerCoupon],
+    ["seller_coupon", copy.sellerCoupon]
+  ];
+  const costFields: Array<[keyof SettlementForm, string]> = [
     ["milk_run_fee", copy.milkRunFee],
     ["ad_fee", copy.adFee],
     ["settlement_deduction", copy.settlementDeduction],
-    ["fulfillment_fee", copy.fulfillmentFee],
+    ["fulfillment_fee", copy.fulfillmentFee]
+  ];
+  const adjustmentFields: Array<[keyof SettlementForm, string]> = [
     ["inventory_loss_compensation", copy.compensation]
   ];
   return (
-    <div className="premium-dashboard-panel rounded-[28px] p-5">
-      <div className="mb-5 flex items-center justify-between gap-3">
+    <div className="premium-dashboard-panel rounded-2xl p-5 md:p-6">
+      <div className="mb-5 flex items-center justify-between gap-3 border-b border-line/70 pb-4">
         <div>
           <div className="premium-section-eyebrow">Settlement Entry</div>
           <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink">{editing ? copy.editTitle : copy.entryTitle}</h2>
         </div>
         {editing ? <button className="rounded-xl border border-line bg-white/80 px-3 py-2 text-xs font-semibold text-muted" onClick={onCancel}>{copy.cancel}</button> : null}
       </div>
-      <form onSubmit={onSubmit} className="grid gap-3 md:grid-cols-2">
-        <Field label={copy.salesMonth}><input type="month" value={form.sales_month} onChange={(event) => onFormChange({ ...form, sales_month: event.target.value })} required /></Field>
-        <Field label={copy.settlementMonth}><input type="month" value={form.settlement_month} onChange={(event) => onFormChange({ ...form, settlement_month: event.target.value })} required /></Field>
-        {fields.map(([key, label]) => (
-          <Field key={key} label={label}>
-            <input className="text-right tabular-nums" type="number" min={key === "seller_coupon" ? undefined : "0"} value={form[key]} onChange={(event) => onFormChange({ ...form, [key]: event.target.value })} />
+      <form onSubmit={onSubmit} className="grid gap-5">
+        <div className="grid gap-3 md:grid-cols-2">
+          <Field label={copy.salesMonth}><input type="month" value={form.sales_month} onChange={(event) => onFormChange({ ...form, sales_month: event.target.value })} required /></Field>
+          <Field label={copy.settlementMonth}><input type="month" value={form.settlement_month} onChange={(event) => onFormChange({ ...form, settlement_month: event.target.value })} required /></Field>
+        </div>
+        <FormGroup title={copy.salesBase}>
+          {primaryFields.map(([key, label]) => (
+            <Field key={key} label={label}>
+              <input className="text-right tabular-nums" type="number" min={key === "seller_coupon" ? undefined : "0"} value={form[key]} onChange={(event) => onFormChange({ ...form, [key]: event.target.value })} />
+            </Field>
+          ))}
+        </FormGroup>
+        <FormGroup title={copy.additionalDeduction}>
+          {costFields.map(([key, label]) => (
+            <Field key={key} label={label}>
+              <input className="text-right tabular-nums" type="number" min="0" value={form[key]} onChange={(event) => onFormChange({ ...form, [key]: event.target.value })} />
+            </Field>
+          ))}
+        </FormGroup>
+        <FormGroup title={copy.compensation}>
+          {adjustmentFields.map(([key, label]) => (
+            <Field key={key} label={label}>
+              <input className="text-right tabular-nums" type="number" min="0" value={form[key]} onChange={(event) => onFormChange({ ...form, [key]: event.target.value })} />
+            </Field>
+          ))}
+          <Field label={copy.finalPaymentInput}>
+            <input className="text-right tabular-nums font-semibold text-brand" type="text" value={formatCurrency(preview.finalPaymentAmount)} readOnly />
           </Field>
-        ))}
-        <Field label={copy.finalPaymentInput}>
-          <input className="text-right tabular-nums font-semibold text-brand" type="text" value={formatCurrency(preview.finalPaymentAmount)} readOnly />
-        </Field>
-        <Field label={copy.attachment}>
-          <label className="flex min-h-10 cursor-pointer items-center gap-2 rounded-xl border border-line bg-white/80 px-3 py-2 text-sm font-semibold text-muted transition hover:border-brand/30 hover:text-brand">
-            <Paperclip className="h-4 w-4" />
-            <span className="truncate">{attachmentFile?.name || (form.attachment_url ? copy.attachmentSaved : copy.uploadHint)}</span>
-            <input className="hidden" type="file" accept="image/*,.pdf,.xls,.xlsx,.csv" onChange={(event) => onFileChange(event.target.files?.[0] ?? null)} />
-          </label>
-        </Field>
-        <Field label={copy.remark}><textarea className="min-h-20" value={form.remark} onChange={(event) => onFormChange({ ...form, remark: event.target.value })} /></Field>
-        <div className="md:col-span-2 grid gap-3 rounded-2xl border border-white/70 bg-white/70 p-4 md:grid-cols-5">
+        </FormGroup>
+        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(260px,0.45fr)]">
+          <Field label={copy.attachment}>
+            <label className="flex min-h-10 cursor-pointer items-center gap-2 rounded-xl border border-line bg-white/80 px-3 py-2 text-sm font-semibold text-muted transition hover:border-brand/30 hover:text-brand">
+              <Paperclip className="h-4 w-4" />
+              <span className="truncate">{attachmentFile?.name || (form.attachment_url ? copy.attachmentSaved : copy.uploadHint)}</span>
+              <input className="hidden" type="file" accept="image/*,.pdf,.xls,.xlsx,.csv" onChange={(event) => onFileChange(event.target.files?.[0] ?? null)} />
+            </label>
+          </Field>
+          <Field label={copy.remark}><textarea className="min-h-10" value={form.remark} onChange={(event) => onFormChange({ ...form, remark: event.target.value })} /></Field>
+        </div>
+        <div className="grid gap-3 rounded-2xl border border-line/70 bg-white/60 p-3 md:grid-cols-5">
           <MiniCalc label={copy.actualSales} value={formatCurrency(preview.actualSalesAmount)} />
           <MiniCalc label={copy.salesBase} value={formatCurrency(preview.salesBaseAmount)} />
           <MiniCalc label={copy.additionalDeduction} value={formatCurrency(preview.additionalDeduction)} />
           <MiniCalc label={copy.compensation} value={formatCurrency(preview.inventoryLossCompensation)} />
-          <MiniCalc label={copy.autoFinalPayment} value={formatCurrency(preview.finalPaymentAmount)} />
+          <MiniCalc label={copy.autoFinalPayment} value={formatCurrency(preview.finalPaymentAmount)} featured />
         </div>
-        <div className="md:col-span-2 rounded-2xl border border-brand/10 bg-brand/5 px-4 py-3 text-xs font-semibold leading-6 text-brand">
+        <div className="rounded-xl border border-brand/10 bg-brand/5 px-4 py-3 text-xs font-semibold leading-6 text-brand">
           {copy.formulaHint}
         </div>
         {message ? (
-          <div className={`md:col-span-2 rounded-2xl border px-4 py-3 text-sm font-semibold leading-6 ${message === copy.saved ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-red-200 bg-red-50 text-red-700"}`}>
+          <div className={`rounded-xl border px-4 py-3 text-sm font-semibold leading-6 ${message === copy.saved ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-red-200 bg-red-50 text-red-700"}`}>
             {message}
           </div>
         ) : null}
-        <button disabled={saving} className="md:col-span-2 rounded-xl bg-gradient-to-br from-brand to-brand-strong px-4 py-3 text-sm font-semibold text-white shadow-soft transition hover:-translate-y-0.5 hover:shadow-lift disabled:cursor-not-allowed disabled:opacity-65">
+        <button disabled={saving} className="rounded-xl bg-brand px-4 py-3 text-sm font-semibold text-white shadow-soft transition hover:bg-[#0f342f] disabled:cursor-not-allowed disabled:opacity-65">
           <span className="inline-flex items-center justify-center gap-2">
             <Save className="h-4 w-4" />
             {saving ? copy.saving : editing ? copy.update : copy.save}
@@ -476,29 +500,45 @@ function SettlementEntry({
   );
 }
 
-function MiniCalc({ label, value }: { label: string; value: string }) {
+function FormGroup({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-2xl border border-line bg-white/80 p-3">
+    <div className="rounded-2xl border border-line/70 bg-white/45 p-3">
+      <div className="mb-3 text-xs font-bold text-muted">{title}</div>
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">{children}</div>
+    </div>
+  );
+}
+
+function MiniCalc({ label, value, featured = false }: { label: string; value: string; featured?: boolean }) {
+  return (
+    <div className={`rounded-xl border p-3 ${featured ? "border-brand/20 bg-brand/5" : "border-line bg-white/80"}`}>
       <div className="text-xs font-semibold text-muted">{label}</div>
-      <div className="premium-number mt-2 text-lg font-semibold tabular-nums text-ink">{value}</div>
+      <div className={`premium-number mt-2 text-lg font-semibold tabular-nums ${featured ? "text-brand" : "text-ink"}`}>{value}</div>
     </div>
   );
 }
 
 function BusinessInsights({ insights, copy }: { insights: string[]; copy: SettlementCopy }) {
   return (
-    <div className="premium-dashboard-panel rounded-[28px] p-5">
-      <div className="premium-section-eyebrow">Business Insights</div>
-      <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink">{copy.insights}</h2>
-      <div className="mt-5 space-y-3">
-        {insights.map((insight) => (
-          <div key={insight} className="flex gap-3 rounded-2xl border border-white/70 bg-white/72 p-4 text-sm font-medium leading-6 text-ink shadow-sm">
-            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[#8a6834]" />
-            <span>{insight}</span>
+    <aside className="premium-dashboard-panel rounded-2xl p-5 md:p-6">
+      <div className="border-b border-line/70 pb-4">
+        <div className="premium-section-eyebrow">Business Insights</div>
+        <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink">{copy.insights}</h2>
+      </div>
+      <div className="mt-4 divide-y divide-line/70">
+        {insights.map((insight, index) => (
+          <div key={insight} className="flex gap-3 py-4 text-sm font-medium leading-6 text-ink">
+            <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-yellow-50 text-[#8a6834]">
+              <AlertTriangle className="h-4 w-4" />
+            </div>
+            <span>
+              <span className="mr-2 font-semibold text-muted">{String(index + 1).padStart(2, "0")}</span>
+              {insight}
+            </span>
           </div>
         ))}
       </div>
-    </div>
+    </aside>
   );
 }
 
@@ -517,8 +557,8 @@ function MonthlySettlementLedger({
 }) {
   const groups = groupBySettlementMonth(records);
   return (
-    <section className="premium-dashboard-panel mb-5 rounded-[28px] p-5 md:p-6">
-      <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+    <section className="premium-dashboard-panel mb-4 rounded-2xl p-5 md:p-6">
+      <div className="mb-5 flex flex-col gap-2 border-b border-line/70 pb-4 md:flex-row md:items-end md:justify-between">
         <div>
           <div className="premium-section-eyebrow">Monthly Settlement Ledger</div>
           <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink">{copy.monthlyLedgerTitle}</h2>
@@ -526,41 +566,46 @@ function MonthlySettlementLedger({
         <span className="rounded-full border border-white/70 bg-white/75 px-3 py-1.5 text-xs font-bold text-muted shadow-sm">{copy.monthlyLedgerCount(records.length)}</span>
       </div>
       {groups.length ? (
-        <div className="grid gap-4">
+        <div className="divide-y divide-line/70">
           {groups.map((group) => (
-            <div key={group.month} className="rounded-3xl border border-white/70 bg-white/72 p-4 shadow-[0_16px_42px_rgba(31,44,38,0.06)]">
-              <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <div className="text-xs font-bold uppercase tracking-[0.16em] text-muted">{copy.settlementMonth}</div>
-                  <div className="mt-1 text-xl font-semibold text-ink">{formatMonthLabel(group.month)}</div>
-                </div>
-                <div className="grid gap-2 text-right sm:grid-cols-3">
-                  <MiniCalc label={copy.salesAmount} value={formatCurrency(group.sales)} />
-                  <MiniCalc label={copy.finalPayment} value={formatCurrency(group.payment)} />
-                  <MiniCalc label={copy.monthlyRecords} value={String(group.records.length)} />
-                </div>
-              </div>
-              <div className="grid gap-3">
-                {group.records.map((record) => (
-                  <div key={record.id} className="grid gap-3 rounded-2xl border border-line bg-[#fbfbf7]/80 p-4 md:grid-cols-[1fr_1fr_1fr_auto] md:items-center">
-                    <div>
-                      <div className="text-xs font-bold text-muted">{copy.salesMonth}</div>
-                      <div className="mt-1 font-semibold text-ink">{formatMonthLabel(monthInputValue(record.sales_month ?? record.settlement_month))}</div>
-                    </div>
-                    <div className="text-left md:text-right">
-                      <div className="text-xs font-bold text-muted">{copy.actualSales}</div>
-                      <div className="mt-1 font-semibold tabular-nums text-ink">{formatCurrency(record.actual_sales_amount)}</div>
-                    </div>
-                    <div className="text-left md:text-right">
-                      <div className="text-xs font-bold text-muted">{copy.finalPayment}</div>
-                      <div className="mt-1 font-semibold tabular-nums text-brand">{formatCurrency(record.final_payment_amount)}</div>
-                    </div>
-                    <div className="flex gap-2 md:justify-end">
-                      <IconButton label={copy.edit} icon={Edit3} onClick={() => onEdit(record)} />
-                      <IconButton label={copy.delete} icon={Trash2} danger onClick={() => onDelete(record.id)} />
-                    </div>
+            <div key={group.month} className="py-4 first:pt-0 last:pb-0">
+              <div className="grid gap-4 lg:grid-cols-[180px_minmax(0,1fr)]">
+                <div className="flex items-start justify-between gap-3 lg:block">
+                  <div>
+                    <div className="text-xs font-bold uppercase tracking-[0.16em] text-muted">{copy.settlementMonth}</div>
+                    <div className="mt-1 text-xl font-semibold text-ink">{formatMonthLabel(group.month)}</div>
                   </div>
-                ))}
+                  <span className="mt-1 rounded-full border border-line bg-white/70 px-2.5 py-1 text-xs font-bold text-muted lg:mt-4 lg:inline-flex">{copy.monthlyLedgerCount(group.records.length)}</span>
+                </div>
+                <div className="grid gap-3">
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <MiniCalc label={copy.salesAmount} value={formatCurrency(group.sales)} />
+                    <MiniCalc label={copy.finalPayment} value={formatCurrency(group.payment)} featured />
+                    <MiniCalc label={copy.monthlyRecords} value={String(group.records.length)} />
+                  </div>
+                  <div className="overflow-hidden rounded-xl border border-line bg-white/60">
+                    {group.records.map((record) => (
+                      <div key={record.id} className="grid gap-3 border-b border-line/70 p-3 last:border-b-0 md:grid-cols-[1fr_1fr_1fr_auto] md:items-center">
+                        <div>
+                          <div className="text-xs font-bold text-muted">{copy.salesMonth}</div>
+                          <div className="mt-1 font-semibold text-ink">{formatMonthLabel(monthInputValue(record.sales_month ?? record.settlement_month))}</div>
+                        </div>
+                        <div className="text-left md:text-right">
+                          <div className="text-xs font-bold text-muted">{copy.actualSales}</div>
+                          <div className="mt-1 font-semibold tabular-nums text-ink">{formatCurrency(record.actual_sales_amount)}</div>
+                        </div>
+                        <div className="text-left md:text-right">
+                          <div className="text-xs font-bold text-muted">{copy.finalPayment}</div>
+                          <div className="mt-1 font-semibold tabular-nums text-brand">{formatCurrency(record.final_payment_amount)}</div>
+                        </div>
+                        <div className="flex gap-2 md:justify-end">
+                          <IconButton label={copy.edit} icon={Edit3} onClick={() => onEdit(record)} />
+                          <IconButton label={copy.delete} icon={Trash2} danger onClick={() => onDelete(record.id)} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
           ))}
