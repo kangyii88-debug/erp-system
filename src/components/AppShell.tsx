@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { BarChart3, Boxes, ClipboardCheck, ClipboardList, Landmark, Lightbulb, LogOut, Megaphone, Package, ReceiptText, ShieldAlert, ShoppingCart, Warehouse } from "lucide-react";
+import { BarChart3, Boxes, ClipboardCheck, ClipboardList, Landmark, Lightbulb, LogOut, Megaphone, Package, ReceiptText, Scale, ShieldAlert, ShoppingCart, Warehouse } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { LanguageProvider, useLanguage } from "./LanguageProvider";
 
@@ -19,6 +19,7 @@ const navItems = [
   { href: "/product-development", key: "nav.productDevelopment", icon: Lightbulb, label: { zh: "产品开发中心", ko: "상품 개발 센터" } },
   { href: "/customer-issues", key: "nav.customerIssues", icon: ShieldAlert, label: { zh: "客诉问题库", ko: "고객 리뷰 센터" } },
   { href: "/settlements", key: "nav.settlements", icon: Landmark },
+  { href: "/tax-compliance", key: "nav.taxCompliance", icon: Scale, label: { zh: "税务与经营合规中心", ko: "세무 및 경영 컴플라이언스 센터" } },
   { href: "/coupang-inbound", key: "nav.coupangInbound", icon: Warehouse }
 ] as const;
 

@@ -229,5 +229,6 @@
   "purchase.cancelEdit": "取消编辑",
   "purchase.deleteConfirm": "确定要删除这条采购单吗？删除后无法恢复。",
   "purchase.empty": "暂无采购单数据",
-  "nav.advertising": "广告分析中心"
+  "nav.advertising": "广告分析中心",
+  "nav.taxCompliance": "税务与经营合规中心"
 }
