@@ -106,16 +106,16 @@ function LoginForm() {
       <div className="absolute inset-0 bg-[linear-gradient(rgba(23,72,63,0.055)_1px,transparent_1px),linear-gradient(90deg,rgba(23,72,63,0.055)_1px,transparent_1px)] bg-[size:64px_64px]" />
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(42,128,103,0.16),transparent_26rem),radial-gradient(circle_at_82%_20%,rgba(188,167,122,0.20),transparent_28rem),linear-gradient(135deg,#f9faf5_0%,#edf2ec_48%,#e7eee8_100%)]" />
 
-      <section className="relative mx-auto grid min-h-screen w-full max-w-7xl items-center gap-10 px-5 py-8 lg:grid-cols-[1.04fr_0.96fr] lg:px-8">
+      <section className="relative mx-auto grid min-h-screen w-full max-w-7xl items-start gap-10 px-5 py-10 lg:grid-cols-[1.04fr_0.96fr] lg:px-8 xl:py-14">
         <div className="mx-auto w-full max-w-[760px] lg:mx-0">
           <div className="inline-flex items-center gap-2 rounded-full border border-[#17483f]/16 bg-white/78 px-3 py-1.5 text-xs font-bold tracking-[0.12em] text-[#17483f] shadow-[0_12px_30px_rgba(23,33,29,0.06)] backdrop-blur-xl">
             <ShieldCheck className="h-3.5 w-3.5" />
             {copy.eyebrow}
           </div>
 
-          <h1 className="mt-6 text-5xl font-semibold leading-[1.02] tracking-tight text-[#102b27] md:text-6xl xl:text-7xl">
-            {copy.titleMain}
-            <span className="block text-[#2d8169]">{copy.titleAccent}</span>
+          <h1 className="mt-6 text-5xl font-semibold leading-[1.08] tracking-tight text-[#102b27] md:text-6xl xl:text-[4.35rem]">
+            <span className="block">{copy.titleMain}</span>
+            <span className="mt-1 block text-[#2d8169]">{copy.titleAccent}</span>
           </h1>
           <p className="mt-5 max-w-2xl text-base font-medium leading-7 text-[#4d5d56]">{copy.subtitle}</p>
 
@@ -158,7 +158,7 @@ function LoginForm() {
           </div>
         </div>
 
-        <section className="mx-auto w-full max-w-[480px] rounded-[32px] border border-[#c9d3cb] bg-white/70 p-3 shadow-[0_34px_90px_rgba(23,33,29,0.14)] backdrop-blur-xl lg:mx-0 lg:justify-self-end">
+        <section className="mx-auto w-full max-w-[480px] rounded-[32px] border border-[#c9d3cb] bg-white/70 p-3 shadow-[0_34px_90px_rgba(23,33,29,0.14)] backdrop-blur-xl lg:mx-0 lg:mt-[13.25rem] lg:justify-self-end xl:mt-[13.6rem]">
           <div className="rounded-[26px] border border-white bg-[#fffdf8] p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]">
             <div className="mb-7 grid grid-cols-[1fr_auto] items-start gap-4">
               <div className="flex min-w-0 items-center gap-3">
