@@ -686,7 +686,7 @@ function calculatedRecordFromForm(form: SettlementForm): CoupangSettlement {
 }
 
 function salesBaseAmount(record: CoupangSettlement) {
-  return Number(record.actual_sales_amount ?? 0) - Number(record.sales_fee ?? 0) - Number(record.seller_coupon ?? 0);
+  return Number(record.actual_sales_amount ?? 0) - Number(record.sales_fee ?? 0) - coupangCouponAmount(record.seller_coupon);
 }
 
 function currentMonthRecord(records: CoupangSettlement[]) {
@@ -770,7 +770,7 @@ function amount(value: string | number | null | undefined) {
 
 function coupangCouponAmount(value: string | number | null | undefined) {
   const numeric = Number(value ?? 0) || 0;
-  return numeric === 0 ? 0 : -Math.abs(numeric);
+  return Math.abs(numeric);
 }
 
 function rate(numerator: number, denominator: number) {
