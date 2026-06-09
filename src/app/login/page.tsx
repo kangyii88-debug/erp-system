@@ -45,7 +45,7 @@ const loginCopy = {
   ko: {
     eyebrow: "운영 관리 시스템",
     titleMain: "Coupang ERP",
-    titleAccent: "운영 콘솔",
+    titleAccent: "경영관리 시스템",
     subtitle: "재고, 이익, 발주, 신상품 개발, 고객 이슈를 하나의 명확한 운영 입구로 모읍니다.",
     metricProfit: "30일 이익",
     metricHealth: "건강 SKU",
@@ -79,7 +79,7 @@ function LoginForm() {
   const router = useRouter();
   const { language, setLanguage, t } = useLanguage();
   const copy = loginCopy[language];
-  const titleAccentClass = language === "ko" ? "text-[3.55rem] leading-[1.02] xl:text-[3.75rem]" : "text-[3.75rem] leading-[1.02] xl:text-[3.95rem]";
+  const titleAccentClass = language === "ko" ? "text-[2.95rem] leading-[1.1] xl:text-[3.2rem]" : "text-[3.25rem] leading-[1.06] xl:text-[3.55rem]";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
@@ -114,19 +114,19 @@ function LoginForm() {
             {copy.eyebrow}
           </div>
 
-          <h1 className="mt-7 tracking-tight text-[#102b27]">
-            <span className="block text-[4.05rem] font-semibold leading-[0.95] xl:text-[4.35rem]">{copy.titleMain}</span>
-            <span className={`mt-3 block font-semibold text-[#2d8169] ${titleAccentClass}`}>{copy.titleAccent}</span>
+          <h1 className="mt-6 tracking-tight text-[#102b27]">
+            <span className="block text-[3.85rem] font-semibold leading-[0.98] xl:text-[4.08rem]">{copy.titleMain}</span>
+            <span className={`mt-2 block font-semibold text-[#2d8169] ${titleAccentClass}`}>{copy.titleAccent}</span>
           </h1>
-          <p className="mt-6 max-w-2xl text-base font-medium leading-7 text-[#4d5d56]">{copy.subtitle}</p>
+          <p className="mt-5 max-w-[690px] text-base font-medium leading-7 text-[#4d5d56]">{copy.subtitle}</p>
 
-          <div className="mt-9 grid max-w-3xl gap-3 sm:grid-cols-3">
+          <div className="mt-8 grid max-w-[700px] gap-3 sm:grid-cols-3">
             <HeroMetric icon={TrendingUp} label={copy.metricProfit} value="₩18.6M" trend="+24.8%" />
             <HeroMetric icon={PackageCheck} label={copy.metricHealth} value="86%" trend={copy.online} />
             <HeroMetric icon={Radar} label={copy.metricRisk} value="7" trend={copy.online} />
           </div>
 
-          <div className="mt-5 max-w-3xl rounded-[28px] border border-[#cdd8cf] bg-white/82 p-4 shadow-[0_28px_80px_rgba(23,33,29,0.12)] backdrop-blur-xl">
+          <div className="mt-5 max-w-[700px] rounded-[28px] border border-[#cdd8cf] bg-white/82 p-4 shadow-[0_28px_80px_rgba(23,33,29,0.12)] backdrop-blur-xl">
             <div className="mb-4 flex items-center justify-between gap-3">
               <h2 className="text-xl font-semibold tracking-tight text-[#102b27]">{copy.previewTitle}</h2>
               <span className="rounded-full border border-[#2d8169]/18 bg-[#e6f2ed] px-3 py-1 text-xs font-bold text-[#23614f]">{copy.online}</span>
@@ -159,7 +159,7 @@ function LoginForm() {
           </div>
         </div>
 
-        <section className="mx-auto w-full max-w-[480px] rounded-[32px] border border-[#c9d3cb] bg-white/70 p-3 shadow-[0_34px_90px_rgba(23,33,29,0.14)] backdrop-blur-xl lg:mx-0 lg:mt-[16.25rem] lg:justify-self-end xl:mt-[16.6rem]">
+        <section className="mx-auto w-full max-w-[480px] rounded-[32px] border border-[#c9d3cb] bg-white/70 p-3 shadow-[0_34px_90px_rgba(23,33,29,0.14)] backdrop-blur-xl lg:mx-0 lg:mt-[15.9rem] lg:justify-self-end xl:mt-[16.15rem]">
           <div className="rounded-[26px] border border-white bg-[#fffdf8] p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]">
             <div className="mb-7 grid grid-cols-[1fr_auto] items-start gap-4">
               <div className="flex min-w-0 items-center gap-3">
