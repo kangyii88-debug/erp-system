@@ -79,6 +79,7 @@ function LoginForm() {
   const router = useRouter();
   const { language, setLanguage, t } = useLanguage();
   const copy = loginCopy[language];
+  const titleAccentClass = language === "ko" ? "text-[3.55rem] leading-[1.02] xl:text-[3.75rem]" : "text-[3.75rem] leading-[1.02] xl:text-[3.95rem]";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
@@ -108,16 +109,16 @@ function LoginForm() {
 
       <section className="relative mx-auto grid min-h-screen w-full max-w-7xl items-start gap-10 px-5 py-10 lg:grid-cols-[1.04fr_0.96fr] lg:px-8 xl:py-14">
         <div className="mx-auto w-full max-w-[760px] lg:mx-0">
-          <div className="inline-flex items-center gap-2 rounded-full border border-[#17483f]/16 bg-white/78 px-3 py-1.5 text-xs font-bold tracking-[0.12em] text-[#17483f] shadow-[0_12px_30px_rgba(23,33,29,0.06)] backdrop-blur-xl">
+          <div className="inline-flex items-center gap-2 rounded-full border border-[#17483f]/16 bg-white/78 px-3 py-1.5 text-xs font-bold tracking-[0.08em] text-[#17483f] shadow-[0_12px_30px_rgba(23,33,29,0.06)] backdrop-blur-xl">
             <ShieldCheck className="h-3.5 w-3.5" />
             {copy.eyebrow}
           </div>
 
-          <h1 className="mt-6 text-5xl font-semibold leading-[1.08] tracking-tight text-[#102b27] md:text-6xl xl:text-[4.35rem]">
-            <span className="block">{copy.titleMain}</span>
-            <span className="mt-1 block text-[#2d8169]">{copy.titleAccent}</span>
+          <h1 className="mt-7 tracking-tight text-[#102b27]">
+            <span className="block text-[4.05rem] font-semibold leading-[0.95] xl:text-[4.35rem]">{copy.titleMain}</span>
+            <span className={`mt-3 block font-semibold text-[#2d8169] ${titleAccentClass}`}>{copy.titleAccent}</span>
           </h1>
-          <p className="mt-5 max-w-2xl text-base font-medium leading-7 text-[#4d5d56]">{copy.subtitle}</p>
+          <p className="mt-6 max-w-2xl text-base font-medium leading-7 text-[#4d5d56]">{copy.subtitle}</p>
 
           <div className="mt-9 grid max-w-3xl gap-3 sm:grid-cols-3">
             <HeroMetric icon={TrendingUp} label={copy.metricProfit} value="₩18.6M" trend="+24.8%" />
@@ -158,7 +159,7 @@ function LoginForm() {
           </div>
         </div>
 
-        <section className="mx-auto w-full max-w-[480px] rounded-[32px] border border-[#c9d3cb] bg-white/70 p-3 shadow-[0_34px_90px_rgba(23,33,29,0.14)] backdrop-blur-xl lg:mx-0 lg:mt-[13.25rem] lg:justify-self-end xl:mt-[13.6rem]">
+        <section className="mx-auto w-full max-w-[480px] rounded-[32px] border border-[#c9d3cb] bg-white/70 p-3 shadow-[0_34px_90px_rgba(23,33,29,0.14)] backdrop-blur-xl lg:mx-0 lg:mt-[16.25rem] lg:justify-self-end xl:mt-[16.6rem]">
           <div className="rounded-[26px] border border-white bg-[#fffdf8] p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]">
             <div className="mb-7 grid grid-cols-[1fr_auto] items-start gap-4">
               <div className="flex min-w-0 items-center gap-3">
