@@ -6,30 +6,23 @@ import {
   ArrowDownUp,
   BadgeCheck,
   BarChart3,
-  ChevronDown,
-  ChevronUp,
   Copy,
   Download,
   Edit3,
   ExternalLink,
   Eye,
-  FileSpreadsheet,
   Filter,
   Flame,
   Gauge,
-  Layers3,
   PackagePlus,
   PackageSearch,
   Plus,
   RotateCcw,
   Search,
   ShieldCheck,
-  ShoppingBag,
   Sparkles,
   Star,
-  Target,
   Trash2,
-  TrendingUp,
   Upload,
   X
 } from "lucide-react";
@@ -845,7 +838,6 @@ function CompetitorProductsContent() {
   const [selected, setSelected] = useState<CompetitorItem | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [filters, setFilters] = useState<Filters>(emptyFilters);
-  const [advanced, setAdvanced] = useState(true);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({ key: "score", dir: "desc" });
   const [page, setPage] = useState(1);
@@ -926,7 +918,6 @@ function CompetitorProductsContent() {
   const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
   const pageRows = sorted.slice((page - 1) * pageSize, page * pageSize);
   const top10 = useMemo(() => [...rows].sort(topSort).slice(0, 10), [rows]);
-  const testRows = rows.filter((row) => row.testRecommended || row.status === "ready_test" || row.status === "tested");
   const weeklyRows = rows.filter((row) => daysAgo(row.collectedAt) <= 7);
   const lastWeekRows = rows.filter((row) => daysAgo(row.collectedAt) > 7 && daysAgo(row.collectedAt) <= 14);
   const stats = {
@@ -940,13 +931,9 @@ function CompetitorProductsContent() {
     change: lastWeekRows.length ? ((weeklyRows.length - lastWeekRows.length) / lastWeekRows.length) * 100 : weeklyRows.length ? 100 : 0
   };
 
-  const funnel = [
-    { label: c.funnel.captured, value: rows.length, base: rows.length, icon: PackageSearch },
-    { label: c.funnel.screened, value: rows.filter((row) => row.recommendationScore >= 5).length, base: rows.length, icon: Filter },
-    { label: c.funnel.lowRisk, value: stats.lowRisk, base: rows.length, icon: ShieldCheck },
-    { label: c.funnel.testable, value: rows.filter((row) => row.testRecommended || row.status === "ready_test").length, base: rows.length, icon: Target },
-    { label: c.funnel.top, value: rows.filter((row) => row.recommendationScore >= 8 && row.kcRiskLevel === "low").length, base: rows.length, icon: Sparkles }
-  ];
+  const testCandidateCount = rows.filter((row) => (row.testRecommended || row.recommendationScore >= 8) && row.status !== "eliminated").length;
+  const reviewNeededCount = rows.filter((row) => row.estimatedProfitRate < 20 || row.competitionLevel === "high" || (row.rating > 0 && row.rating < 4.3)).length;
+  const riskBlockedCount = rows.filter((row) => row.kcRiskLevel === "high" || row.volumeLevel === "large" || row.weightLevel === "heavy").length;
 
   const warnings = [
     { key: "kc", label: c.warnings.kc, count: rows.filter((row) => row.kcRiskLevel === "high").length, onClick: () => setFilters({ ...emptyFilters, kcRiskLevel: "high" }) },
@@ -1115,7 +1102,6 @@ function CompetitorProductsContent() {
             <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">{c.subtitle}</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button className="erp-button-subtle inline-flex items-center gap-2 px-4 py-2 text-sm font-bold" onClick={() => exportRows("csv")}><Download size={16} />{c.filter.exportCsv}</button>
             <button className="erp-button-primary inline-flex items-center gap-2 px-4 py-2 text-sm font-bold" onClick={() => openCreate("quick")}><PackagePlus size={16} />{c.quick}</button>
           </div>
         </div>
@@ -1123,72 +1109,75 @@ function CompetitorProductsContent() {
 
       {message ? <div className="rounded-2xl border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm font-semibold text-yellow-800">{message}</div> : null}
 
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <KpiCard icon={PackageSearch} label={c.kpi.total} value={stats.total.toLocaleString()} trend={`${c.kpi.weekly} ${stats.weekly}`} meta={`${c.kpi.change} ${percent(stats.change)}`} />
         <KpiCard icon={BadgeCheck} label={c.kpi.candidates} value={stats.candidates.toLocaleString()} trend={language === "zh" ? "推荐指数 ≥ 7" : "추천 지수 ≥ 7"} meta={`${language === "zh" ? "转化率" : "전환율"} ${percent(ratio(stats.candidates, stats.total))}`} />
-        <KpiCard icon={TrendingUp} label={c.kpi.highSales} value={stats.highSales.toLocaleString()} trend={language === "zh" ? "月销量 ≥ 300" : "월판매 ≥ 300"} meta={`${language === "zh" ? "占比" : "비중"} ${percent(ratio(stats.highSales, stats.total))}`} />
         <KpiCard icon={ShieldCheck} label={c.kpi.lowRisk} value={stats.lowRisk.toLocaleString()} trend={language === "zh" ? "KC 低风险 + 轻小件" : "KC 저위험 + 소형"} meta={`${language === "zh" ? "占比" : "비중"} ${percent(ratio(stats.lowRisk, stats.total))}`} />
-        <KpiCard icon={ShoppingBag} label={c.kpi.avgPrice} value={won(stats.avgPrice)} trend={c.kpi.weekly} meta={`${weeklyRows.length} ${c.items}`} />
         <KpiCard icon={Flame} label={c.kpi.topScore} value={stats.topScore.toFixed(1)} trend={c.kpi.scoreTrend} meta={scoreText(stats.topScore, c)} />
       </div>
 
-      <Panel title={c.modules.funnel} icon={Layers3}>
-        <div className="grid gap-3 md:grid-cols-5">
-          {funnel.map((node, index) => (
-            <FunnelNode key={node.label} icon={node.icon} label={node.label} value={node.value} rate={ratio(node.value, node.base)} active={index === funnel.length - 1} />
-          ))}
+      <Panel title={language === "zh" ? "今天先看这三类" : "오늘 먼저 볼 3가지"} icon={Sparkles}>
+        <div className="grid gap-3 lg:grid-cols-3">
+          <DecisionCard
+            icon={BadgeCheck}
+            title={language === "zh" ? "可以小批量测试" : "소량 테스트 가능"}
+            value={testCandidateCount}
+            description={language === "zh" ? "推荐指数高，且没有被淘汰。优先看这些。" : "추천 지수가 높고 제외되지 않은 상품입니다."}
+            action={language === "zh" ? "筛出可测款" : "테스트 상품 보기"}
+            tone="good"
+            onClick={() => { setFilters({ ...emptyFilters, testRecommended: "yes" }); setPage(1); }}
+          />
+          <DecisionCard
+            icon={AlertTriangle}
+            title={language === "zh" ? "需要再复查" : "재검토 필요"}
+            value={reviewNeededCount}
+            description={language === "zh" ? "低利润、高竞争或评分偏低。先确认别盲测。" : "낮은 이익률, 높은 경쟁, 낮은 평점 상품입니다."}
+            action={language === "zh" ? "查看复查项" : "재검토 상품 보기"}
+            tone="watch"
+            onClick={() => { setFilters({ ...emptyFilters, profitSpace: "low" }); setPage(1); }}
+          />
+          <DecisionCard
+            icon={ShieldCheck}
+            title={language === "zh" ? "高风险先拦截" : "고위험 먼저 차단"}
+            value={riskBlockedCount}
+            description={language === "zh" ? "KC 高风险、大体积或重货。没有把握先别做。" : "KC 고위험, 대형, 중량 상품입니다."}
+            action={language === "zh" ? "查看风险品" : "리스크 상품 보기"}
+            tone="risk"
+            onClick={() => { setFilters({ ...emptyFilters, kcRiskLevel: "high" }); setPage(1); }}
+          />
         </div>
       </Panel>
 
-      <Panel title={c.filter.title} icon={Filter}>
-        <div className="grid gap-3 lg:grid-cols-[2fr_repeat(3,1fr)_auto]">
+      <Panel title={language === "zh" ? "常用筛选" : "자주 쓰는 필터"} icon={Filter}>
+        <div className="grid gap-3 lg:grid-cols-[2fr_repeat(5,1fr)]">
           <Input icon={Search} placeholder={c.filter.search} value={filters.search} onChange={(value) => setFilters({ ...filters, search: value })} />
           <Select value={filters.category} allLabel={c.filter.category} options={categories} onChange={(value) => setFilters({ ...filters, category: value })} />
           <Select value={filters.status} allLabel={c.filter.status} options={statusOptions} labelMap={c.status} onChange={(value) => setFilters({ ...filters, status: value })} />
-          <Select value={filters.rocketType} allLabel={c.filter.rocket} options={rocketOptions} labelMap={c.rocket} onChange={(value) => setFilters({ ...filters, rocketType: value })} />
-          <button className="erp-button-subtle inline-flex items-center justify-center gap-2 px-3 py-2 text-sm font-bold" onClick={() => setAdvanced((value) => !value)}>
-            {advanced ? <ChevronUp size={16} /> : <ChevronDown size={16} />}{advanced ? c.filter.advancedClose : c.filter.advancedOpen}
-          </button>
+          <Select value={filters.kcRiskLevel} allLabel={c.filter.kc} options={levelOptions} labelMap={c.risk} onChange={(value) => setFilters({ ...filters, kcRiskLevel: value })} />
+          <Select value={filters.profitSpace} allLabel={c.filter.profit} options={levelOptions} labelMap={c.profitSpace} onChange={(value) => setFilters({ ...filters, profitSpace: value })} />
+          <Select value={filters.testRecommended} allLabel={c.filter.test} options={["yes", "no"]} labelMap={{ yes: c.yes, no: c.no }} onChange={(value) => setFilters({ ...filters, testRecommended: value })} />
         </div>
-        {advanced ? (
-          <div className="mt-3 grid gap-3 md:grid-cols-3 xl:grid-cols-6">
-            <Input placeholder={c.filter.minPrice} type="number" value={filters.minPrice} onChange={(value) => setFilters({ ...filters, minPrice: value })} />
-            <Input placeholder={c.filter.maxPrice} type="number" value={filters.maxPrice} onChange={(value) => setFilters({ ...filters, maxPrice: value })} />
-            <Input placeholder={c.filter.minSales} type="number" value={filters.minSales} onChange={(value) => setFilters({ ...filters, minSales: value })} />
-            <Input placeholder={c.filter.maxSales} type="number" value={filters.maxSales} onChange={(value) => setFilters({ ...filters, maxSales: value })} />
-            <Input placeholder={c.filter.minReviews} type="number" value={filters.minReviews} onChange={(value) => setFilters({ ...filters, minReviews: value })} />
-            <Input placeholder={c.filter.maxReviews} type="number" value={filters.maxReviews} onChange={(value) => setFilters({ ...filters, maxReviews: value })} />
-            <Input placeholder={c.filter.minRating} type="number" value={filters.minRating} onChange={(value) => setFilters({ ...filters, minRating: value })} />
-            <Input placeholder={c.filter.maxRating} type="number" value={filters.maxRating} onChange={(value) => setFilters({ ...filters, maxRating: value })} />
-            <Select value={filters.kcRiskLevel} allLabel={c.filter.kc} options={levelOptions} labelMap={c.risk} onChange={(value) => setFilters({ ...filters, kcRiskLevel: value })} />
-            <Select value={filters.volumeLevel} allLabel={c.filter.volume} options={volumeOptions} labelMap={c.volume} onChange={(value) => setFilters({ ...filters, volumeLevel: value })} />
-            <Select value={filters.weightLevel} allLabel={c.filter.weight} options={weightOptions} labelMap={c.weight} onChange={(value) => setFilters({ ...filters, weightLevel: value })} />
-            <Select value={filters.competitionLevel} allLabel={c.filter.competition} options={levelOptions} labelMap={c.risk} onChange={(value) => setFilters({ ...filters, competitionLevel: value })} />
-            <Select value={filters.profitSpace} allLabel={c.filter.profit} options={levelOptions} labelMap={c.profitSpace} onChange={(value) => setFilters({ ...filters, profitSpace: value })} />
-            <Select value={filters.testRecommended} allLabel={c.filter.test} options={["yes", "no"]} labelMap={{ yes: c.yes, no: c.no }} onChange={(value) => setFilters({ ...filters, testRecommended: value })} />
-            <Input placeholder={c.filter.start} type="date" value={filters.startDate} onChange={(value) => setFilters({ ...filters, startDate: value })} />
-            <Input placeholder={c.filter.end} type="date" value={filters.endDate} onChange={(value) => setFilters({ ...filters, endDate: value })} />
-          </div>
-        ) : null}
         <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-wrap gap-2">
             <button className="erp-button-subtle inline-flex items-center gap-2 px-3 py-2 text-sm font-bold" onClick={() => { setFilters(emptyFilters); setPage(1); }}><RotateCcw size={15} />{c.filter.reset}</button>
-            <button className="erp-button-subtle inline-flex items-center gap-2 px-3 py-2 text-sm font-bold" onClick={() => exportRows("xls")}><FileSpreadsheet size={15} />{c.filter.exportExcel}</button>
+            <button className="erp-button-subtle inline-flex items-center gap-2 px-3 py-2 text-sm font-bold" onClick={() => exportRows("csv")}><Download size={15} />{c.filter.exportCsv}</button>
             <button className="erp-button-primary inline-flex items-center gap-2 px-3 py-2 text-sm font-bold" onClick={() => openCreate("create")}><Plus size={15} />{c.add}</button>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="erp-chip px-3 py-2 text-xs font-bold">{c.selected} {selectedIds.length} {c.items}</span>
-            <button className="erp-button-subtle px-3 py-2 text-sm font-bold disabled:opacity-40" disabled={!selectedIds.length} onClick={() => batchUpdate({ status: "key_product", product_status: "key_competitor", priority: "high", follow_priority: "high" })}>{c.filter.batchMark}</button>
-            <button className="erp-button-subtle px-3 py-2 text-sm font-bold disabled:opacity-40" disabled={!selectedIds.length} onClick={() => batchUpdate({ test_recommended: true, worth_following: true, status: "ready_test", product_status: "best_reference", test_status: "pending" })}>{c.filter.batchTest}</button>
-            <button className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-bold text-red-700 disabled:opacity-40" disabled={!selectedIds.length} onClick={batchDelete}>{c.filter.batchDelete}</button>
-          </div>
+          {selectedIds.length ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="erp-chip px-3 py-2 text-xs font-bold">{c.selected} {selectedIds.length} {c.items}</span>
+              <button className="erp-button-subtle px-3 py-2 text-sm font-bold" onClick={() => batchUpdate({ status: "key_product", product_status: "key_competitor", priority: "high", follow_priority: "high" })}>{c.filter.batchMark}</button>
+              <button className="erp-button-subtle px-3 py-2 text-sm font-bold" onClick={() => batchUpdate({ test_recommended: true, worth_following: true, status: "ready_test", product_status: "best_reference", test_status: "pending" })}>{c.filter.batchTest}</button>
+              <button className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-bold text-red-700" onClick={batchDelete}>{c.filter.batchDelete}</button>
+            </div>
+          ) : null}
         </div>
       </Panel>
 
       <div className="grid gap-5 xl:grid-cols-[1.25fr_0.75fr]">
-        <Panel title={c.modules.top10} icon={Flame}>
+        <Panel title={language === "zh" ? "优先看这些商品" : "먼저 볼 상품"} icon={Flame}>
           <div className="grid gap-2">
-            {top10.map((row, index) => (
+            {top10.slice(0, 5).map((row, index) => (
               <button key={row.id} className="group grid grid-cols-[42px_1fr_auto] items-center gap-3 rounded-2xl border border-line bg-white/72 px-3 py-2 text-left hover:border-[#17483f]/30 hover:bg-[#eef5f0]" onClick={() => openView(row)}>
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#123c35] text-sm font-black text-white">#{index + 1}</div>
                 <div className="min-w-0">
@@ -1201,56 +1190,17 @@ function CompetitorProductsContent() {
           </div>
         </Panel>
 
-        <Panel title={c.modules.warnings} icon={AlertTriangle}>
+        <Panel title={language === "zh" ? "需要避开的风险" : "피해야 할 리스크"} icon={AlertTriangle}>
           <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
-            {warnings.map((item) => (
+            {warnings.filter((item) => item.count > 0).length ? warnings.filter((item) => item.count > 0).slice(0, 5).map((item) => (
               <button key={item.key} className="group flex items-center justify-between rounded-2xl border border-line bg-white/72 px-3 py-3 text-left hover:border-red-200 hover:bg-red-50" onClick={() => { item.onClick(); setPage(1); }}>
                 <span className="text-sm font-bold text-ink">{item.label}</span>
                 <span className={`rounded-full px-2.5 py-1 text-xs font-black ${item.count ? "bg-red-50 text-red-700" : "bg-emerald-50 text-emerald-700"}`}>{item.count}</span>
               </button>
-            ))}
+            )) : <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-5 text-sm font-bold text-emerald-700">{language === "zh" ? "当前没有明显高风险商品。" : "현재 뚜렷한 고위험 상품이 없습니다."}</div>}
           </div>
         </Panel>
       </div>
-
-      <Panel title={c.modules.testList} icon={Target}>
-        {testRows.length ? (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[980px] text-sm">
-              <thead className="text-left text-xs uppercase tracking-[0.08em] text-muted">
-                <tr>
-                  <th className="px-3 py-2">{c.fields.productNameKr}</th>
-                  <th className="px-3 py-2">{c.fields.score}</th>
-                  <th className="px-3 py-2">{c.fields.testQty}</th>
-                  <th className="px-3 py-2">{c.fields.targetPrice}</th>
-                  <th className="px-3 py-2">{c.fields.profitRate}</th>
-                  <th className="px-3 py-2">{language === "zh" ? "测试状态" : "테스트 상태"}</th>
-                  <th className="px-3 py-2">{c.fields.owner}</th>
-                  <th className="px-3 py-2">{c.fields.launchDate}</th>
-                  <th className="px-3 py-2">{c.fields.notes}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {testRows.slice(0, 6).map((row) => (
-                  <tr key={row.id} className="premium-table-row cursor-pointer" onClick={() => openView(row)}>
-                    <td className="px-3 py-3 font-bold text-ink">{row.productNameKr}</td>
-                    <td className="px-3 py-3"><ScoreBadge score={row.recommendationScore} c={c} /></td>
-                    <td className="px-3 py-3 tabular-nums">{row.suggestedTestQuantity || "-"}</td>
-                    <td className="px-3 py-3 tabular-nums">{won(row.targetPrice || row.currentPrice)}</td>
-                    <td className="px-3 py-3 tabular-nums font-bold">{percent(row.estimatedProfitRate)}</td>
-                    <td className="px-3 py-3"><Tag>{c.testStatus[row.testStatus as keyof typeof c.testStatus] ?? row.testStatus}</Tag></td>
-                    <td className="px-3 py-3">{row.testOwner || "-"}</td>
-                    <td className="px-3 py-3">{row.plannedLaunchDate || "-"}</td>
-                    <td className="px-3 py-3 text-muted">{row.notes || "-"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="rounded-2xl border border-dashed border-line bg-white/55 px-4 py-7 text-center text-sm font-semibold text-muted">{c.empty}</div>
-        )}
-      </Panel>
 
       <Panel title={c.modules.table} icon={BarChart3}>
         {loading ? <Skeleton /> : pageRows.length ? (
@@ -1665,15 +1615,25 @@ function KpiCard({ icon: Icon, label, value, trend, meta }: { icon: LucideIcon; 
   );
 }
 
-function FunnelNode({ icon: Icon, label, value, rate, active }: { icon: LucideIcon; label: string; value: number; rate: number; active: boolean }) {
+function DecisionCard({ icon: Icon, title, value, description, action, tone, onClick }: { icon: LucideIcon; title: string; value: number; description: string; action: string; tone: "good" | "watch" | "risk"; onClick: () => void }) {
+  const toneStyle =
+    tone === "good"
+      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+      : tone === "watch"
+        ? "border-yellow-200 bg-yellow-50 text-yellow-800"
+        : "border-red-200 bg-red-50 text-red-700";
   return (
-    <div className={`relative overflow-hidden rounded-2xl border p-4 ${active ? "border-[#17483f]/30 bg-[#e8f1ed]" : "border-line bg-white/72"}`}>
-      <Icon className="h-5 w-5 text-[#17483f]" />
-      <div className="mt-3 text-xs font-bold text-muted">{label}</div>
-      <div className="mt-1 text-2xl font-black text-ink">{value.toLocaleString()}</div>
-      <div className="mt-3 h-2 overflow-hidden rounded-full bg-white"><div className="h-full rounded-full bg-[#17483f]" style={{ width: `${clamp(rate, 0, 100)}%` }} /></div>
-      <div className="mt-1 text-xs font-bold text-muted">{percent(rate)}</div>
-    </div>
+    <button type="button" className="group rounded-2xl border border-line bg-white/76 p-4 text-left shadow-card hover:border-[#17483f]/30 hover:bg-[#f8fbf8]" onClick={onClick}>
+      <div className="flex items-start justify-between gap-3">
+        <div className={`flex h-10 w-10 items-center justify-center rounded-xl border ${toneStyle}`}>
+          <Icon size={18} />
+        </div>
+        <div className="text-3xl font-black tabular-nums text-ink">{value.toLocaleString()}</div>
+      </div>
+      <div className="mt-3 text-base font-black text-ink">{title}</div>
+      <p className="mt-1 min-h-10 text-sm leading-5 text-muted">{description}</p>
+      <div className="mt-3 text-xs font-black text-[#17483f] group-hover:underline">{action}</div>
+    </button>
   );
 }
 
