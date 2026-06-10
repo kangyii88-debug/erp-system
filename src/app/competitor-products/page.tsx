@@ -839,6 +839,7 @@ function CompetitorProductsContent() {
   const [rows, setRows] = useState<CompetitorItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
+  const [drawerMessage, setDrawerMessage] = useState("");
   const [toast, setToast] = useState("");
   const [drawer, setDrawer] = useState<DrawerMode>(null);
   const [selected, setSelected] = useState<CompetitorItem | null>(null);
@@ -960,36 +961,43 @@ function CompetitorProductsContent() {
   const openCreate = (mode: "create" | "quick") => {
     setSelected(null);
     setForm(emptyForm);
+    setDrawerMessage("");
     setDrawer(mode);
   };
 
   const openView = (row: CompetitorItem) => {
     setSelected(row);
     setForm(formFromItem(row));
+    setDrawerMessage("");
     setDrawer("view");
   };
 
   const openEdit = (row: CompetitorItem) => {
     setSelected(row);
     setForm(formFromItem(row));
+    setDrawerMessage("");
     setDrawer("edit");
   };
 
   const duplicate = (row: CompetitorItem) => {
     setSelected(null);
     setForm({ ...formFromItem(row), productNameKr: `${row.productNameKr} Copy`, coupangProductId: "" });
+    setDrawerMessage("");
     setDrawer("create");
   };
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
+    setDrawerMessage("");
     if (!form.coupangUrl.trim() || !form.productNameKr.trim()) {
       setMessage(c.required);
+      setDrawerMessage(c.required);
       return;
     }
     const { data } = await supabase.auth.getUser();
     if (!data.user) {
       setMessage("Missing user session");
+      setDrawerMessage("Missing user session");
       return;
     }
     const item = itemFromForm(form);
@@ -998,7 +1006,9 @@ function CompetitorProductsContent() {
       ? await supabase.from("competitor_product_library").update(payload).eq("id", selected.id)
       : await supabase.from("competitor_product_library").insert(payload);
     if (result.error) {
-      setMessage(result.error.message.includes("column") ? c.databaseHint : result.error.message);
+      const errorMessage = result.error.message.includes("column") ? c.databaseHint : result.error.message;
+      setMessage(errorMessage);
+      setDrawerMessage(errorMessage);
       return;
     }
     setDrawer(null);
@@ -1033,10 +1043,11 @@ function CompetitorProductsContent() {
     const { error } = await supabase.from("competitor_product_library").update(patch).eq("id", id);
     if (error) {
       setMessage(error.message);
-      return;
+      return false;
     }
     setToast(c.batchDone);
     await loadRows();
+    return true;
   };
 
   const batchDelete = async () => {
@@ -1350,7 +1361,18 @@ function CompetitorProductsContent() {
       </Panel>
 
       {drawer ? (
-        <Drawer c={c} language={language} mode={drawer} form={form} setForm={setForm} selected={selected} onClose={() => setDrawer(null)} onSubmit={submit} onPatch={(patch) => selected ? patchOne(selected.id, patch) : undefined} />
+        <Drawer
+          c={c}
+          language={language}
+          mode={drawer}
+          form={form}
+          setForm={setForm}
+          selected={selected}
+          message={drawerMessage}
+          onClose={() => setDrawer(null)}
+          onSubmit={submit}
+          onPatch={(patch) => selected ? patchOne(selected.id, patch) : undefined}
+        />
       ) : null}
     </div>
   );
@@ -1392,18 +1414,42 @@ function stop(event: MouseEvent) {
   event.stopPropagation();
 }
 
-function Drawer({ c, language, mode, form, setForm, selected, onClose, onSubmit, onPatch }: { c: CopyText; language: "zh" | "ko"; mode: DrawerMode; form: FormState; setForm: (form: FormState) => void; selected: CompetitorItem | null; onClose: () => void; onSubmit: (event: FormEvent) => void; onPatch: (patch: RawRow) => void }) {
+function Drawer({
+  c,
+  language,
+  mode,
+  form,
+  setForm,
+  selected,
+  message,
+  onClose,
+  onSubmit,
+  onPatch
+}: {
+  c: CopyText;
+  language: "zh" | "ko";
+  mode: DrawerMode;
+  form: FormState;
+  setForm: (form: FormState) => void;
+  selected: CompetitorItem | null;
+  message: string;
+  onClose: () => void;
+  onSubmit: (event: FormEvent) => void;
+  onPatch: (patch: RawRow) => Promise<boolean | void> | boolean | void;
+}) {
   const readOnly = mode === "view";
   const quick = mode === "quick";
   const item = itemFromForm(form);
   const title = mode === "view" ? c.view : mode === "edit" ? c.edit : quick ? c.quick : c.add;
   const [uploadingImage, setUploadingImage] = useState(false);
   const [imageUploadMessage, setImageUploadMessage] = useState("");
+  const [imageUploadTone, setImageUploadTone] = useState<"error" | "success">("error");
 
   const handleImageUpload = async (file: File | null) => {
     if (!file) return;
     setUploadingImage(true);
     setImageUploadMessage("");
+    setImageUploadTone("error");
     const { data } = await supabase.auth.getUser();
     if (!data.user) {
       setUploadingImage(false);
@@ -1413,10 +1459,27 @@ function Drawer({ c, language, mode, form, setForm, selected, onClose, onSubmit,
     const uploaded = await uploadProductImage(data.user.id, file);
     setUploadingImage(false);
     if (uploaded.error || !uploaded.url) {
+      setImageUploadTone("error");
       setImageUploadMessage(productImageUploadMessage(uploaded.error || "Upload failed", language));
       return;
     }
     setForm({ ...form, imageUrl: uploaded.url });
+    if (selected?.id) {
+      const saved = await onPatch({
+        image_url: uploaded.url,
+        main_image_url: uploaded.url
+      });
+      if (saved === false) {
+        const fallbackSaved = await onPatch({ main_image_url: uploaded.url });
+        if (fallbackSaved === false) {
+          setImageUploadTone("error");
+          setImageUploadMessage(language === "zh" ? "图片已上传，但没有写入商品记录。请确认已执行字段升级 SQL。" : "이미지는 업로드되었지만 상품 기록에 저장되지 않았습니다. 필드 업그레이드 SQL 실행 여부를 확인하세요.");
+          return;
+        }
+      }
+      setImageUploadTone("success");
+      setImageUploadMessage(language === "zh" ? "图片已上传并保存到当前商品。" : "이미지가 업로드되어 현재 상품에 저장되었습니다.");
+    }
   };
 
   return (
@@ -1431,6 +1494,8 @@ function Drawer({ c, language, mode, form, setForm, selected, onClose, onSubmit,
         </div>
 
         {readOnly && selected ? <QuickAnalysis c={c} language={language} row={selected} onPatch={onPatch} /> : null}
+
+        {message ? <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{message}</div> : null}
 
         {!readOnly ? (
           <>
@@ -1448,6 +1513,7 @@ function Drawer({ c, language, mode, form, setForm, selected, onClose, onSubmit,
                 readOnly={readOnly}
                 uploading={uploadingImage}
                 message={imageUploadMessage}
+                messageTone={imageUploadTone}
                 onChange={(value) => setForm({ ...form, imageUrl: value })}
                 onFile={handleImageUpload}
                 className="md:col-span-2"
@@ -1517,7 +1583,7 @@ function Drawer({ c, language, mode, form, setForm, selected, onClose, onSubmit,
   );
 }
 
-function QuickAnalysis({ c, language, row, onPatch }: { c: CopyText; language: "zh" | "ko"; row: CompetitorItem; onPatch: (patch: RawRow) => void }) {
+function QuickAnalysis({ c, language, row, onPatch }: { c: CopyText; language: "zh" | "ko"; row: CompetitorItem; onPatch: (patch: RawRow) => Promise<boolean | void> | boolean | void }) {
   return (
     <div className="space-y-5">
       <div className="grid gap-4 rounded-[24px] border border-line bg-white/80 p-4 shadow-card md:grid-cols-[180px_1fr]">
@@ -1628,6 +1694,7 @@ function ImageUploadField({
   readOnly = false,
   uploading = false,
   message = "",
+  messageTone = "error",
   onChange,
   onFile,
   className = ""
@@ -1640,6 +1707,7 @@ function ImageUploadField({
   readOnly?: boolean;
   uploading?: boolean;
   message?: string;
+  messageTone?: "error" | "success";
   onChange: (value: string) => void;
   onFile: (file: File | null) => void;
   className?: string;
@@ -1671,7 +1739,7 @@ function ImageUploadField({
               </button>
             ) : null}
           </div>
-          {message ? <p className="text-xs font-semibold text-red-700">{message}</p> : null}
+          {message ? <p className={`text-xs font-semibold ${messageTone === "success" ? "text-emerald-700" : "text-red-700"}`}>{message}</p> : null}
         </div>
       </div>
     </div>
