@@ -30,6 +30,7 @@ import {
   Target,
   Trash2,
   TrendingUp,
+  Upload,
   X
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -166,6 +167,7 @@ type Filters = {
 
 const today = () => new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
 const pageSize = 10;
+const PRODUCT_IMAGE_BUCKET = "competitor-product-images";
 
 const levelOptions: RiskLevel[] = ["low", "medium", "high"];
 const volumeOptions: VolumeLevel[] = ["small", "medium", "large"];
@@ -797,6 +799,32 @@ function payloadFromItem(item: CompetitorItem, userId: string) {
   };
 }
 
+async function uploadProductImage(userId: string, file: File) {
+  if (!file.type.startsWith("image/")) return { error: "Only image files are supported", url: null };
+  const extension = file.name.split(".").pop()?.toLowerCase() || file.type.split("/").pop() || "jpg";
+  const safeName = file.name.replace(/[^\w.\-]+/g, "_");
+  const path = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2)}-${safeName || `product.${extension}`}`;
+  const { error } = await supabase.storage.from(PRODUCT_IMAGE_BUCKET).upload(path, file, {
+    cacheControl: "3600",
+    upsert: false
+  });
+  if (error) return { error: error.message, url: null };
+  const { data } = supabase.storage.from(PRODUCT_IMAGE_BUCKET).getPublicUrl(path);
+  return { error: null, url: data.publicUrl };
+}
+
+function productImageUploadMessage(message: string, language: "zh" | "ko") {
+  if (message.toLowerCase().includes("bucket")) {
+    return language === "zh"
+      ? "图片没有上传成功：Supabase Storage 缺少 competitor-product-images 存储桶。请执行 supabase/migrations/create-competitor-product-images-bucket.sql。"
+      : "이미지를 업로드하지 못했습니다. Supabase Storage에 competitor-product-images 버킷이 없습니다. supabase/migrations/create-competitor-product-images-bucket.sql을 실행하세요.";
+  }
+  if (message === "Only image files are supported") {
+    return language === "zh" ? "请上传 JPG、PNG、WebP 等图片文件。" : "JPG, PNG, WebP 같은 이미지 파일만 업로드하세요.";
+  }
+  return message;
+}
+
 export default function CompetitorProductsPage() {
   return (
     <AppShell>
@@ -1369,6 +1397,27 @@ function Drawer({ c, language, mode, form, setForm, selected, onClose, onSubmit,
   const quick = mode === "quick";
   const item = itemFromForm(form);
   const title = mode === "view" ? c.view : mode === "edit" ? c.edit : quick ? c.quick : c.add;
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [imageUploadMessage, setImageUploadMessage] = useState("");
+
+  const handleImageUpload = async (file: File | null) => {
+    if (!file) return;
+    setUploadingImage(true);
+    setImageUploadMessage("");
+    const { data } = await supabase.auth.getUser();
+    if (!data.user) {
+      setUploadingImage(false);
+      setImageUploadMessage(language === "zh" ? "请先登录后再上传图片。" : "이미지를 업로드하려면 먼저 로그인하세요.");
+      return;
+    }
+    const uploaded = await uploadProductImage(data.user.id, file);
+    setUploadingImage(false);
+    if (uploaded.error || !uploaded.url) {
+      setImageUploadMessage(productImageUploadMessage(uploaded.error || "Upload failed", language));
+      return;
+    }
+    setForm({ ...form, imageUrl: uploaded.url });
+  };
 
   return (
     <div className="fixed inset-0 z-40 flex justify-end bg-[#071512]/45 backdrop-blur-sm" onClick={onClose}>
@@ -1390,7 +1439,19 @@ function Drawer({ c, language, mode, form, setForm, selected, onClose, onSubmit,
               <Field label={c.fields.productNameKr} value={form.productNameKr} required readOnly={readOnly} onChange={(value) => setForm({ ...form, productNameKr: value })} />
               <Field label={c.fields.productNameCn} value={form.productNameCn} readOnly={readOnly} onChange={(value) => setForm({ ...form, productNameCn: value })} />
               <Field label={c.fields.productId} value={form.coupangProductId} readOnly={readOnly} onChange={(value) => setForm({ ...form, coupangProductId: value })} />
-              <Field label={c.fields.image} value={form.imageUrl} readOnly={readOnly} onChange={(value) => setForm({ ...form, imageUrl: value })} className="md:col-span-2" />
+              <ImageUploadField
+                label={c.fields.image}
+                uploadLabel={language === "zh" ? "上传图片" : "이미지 업로드"}
+                uploadingLabel={language === "zh" ? "上传中..." : "업로드 중..."}
+                clearLabel={language === "zh" ? "清除图片" : "이미지 지우기"}
+                value={form.imageUrl}
+                readOnly={readOnly}
+                uploading={uploadingImage}
+                message={imageUploadMessage}
+                onChange={(value) => setForm({ ...form, imageUrl: value })}
+                onFile={handleImageUpload}
+                className="md:col-span-2"
+              />
               <Field label={c.fields.category} value={form.category} readOnly={readOnly} onChange={(value) => setForm({ ...form, category: value })} />
               <Field label={c.fields.brand} value={form.brand} readOnly={readOnly} onChange={(value) => setForm({ ...form, brand: value })} />
               <Field label={c.fields.store} value={form.storeName} readOnly={readOnly} onChange={(value) => setForm({ ...form, storeName: value })} />
@@ -1556,6 +1617,65 @@ function FormSection({ title, children }: { title: string; children: React.React
 
 function Field({ label, value, onChange, type = "text", required = false, readOnly = false, className = "" }: { label: string; value: string; onChange: (value: string) => void; type?: "text" | "number" | "date"; required?: boolean; readOnly?: boolean; className?: string }) {
   return <label className={className}><span className="mb-1 block text-xs font-bold text-muted">{label}{required ? " *" : ""}</span><input className="w-full" type={type} min={type === "number" ? "0" : undefined} step={type === "number" ? "0.01" : undefined} value={value} required={required} disabled={readOnly} onChange={(event) => onChange(event.target.value)} /></label>;
+}
+
+function ImageUploadField({
+  label,
+  uploadLabel,
+  uploadingLabel,
+  clearLabel,
+  value,
+  readOnly = false,
+  uploading = false,
+  message = "",
+  onChange,
+  onFile,
+  className = ""
+}: {
+  label: string;
+  uploadLabel: string;
+  uploadingLabel: string;
+  clearLabel: string;
+  value: string;
+  readOnly?: boolean;
+  uploading?: boolean;
+  message?: string;
+  onChange: (value: string) => void;
+  onFile: (file: File | null) => void;
+  className?: string;
+}) {
+  return (
+    <div className={className}>
+      <span className="mb-1 block text-xs font-bold text-muted">{label}</span>
+      <div className="grid gap-3 rounded-2xl border border-line bg-white/70 p-3 md:grid-cols-[96px_1fr]">
+        <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-2xl border border-line bg-[#f4f6f1]">
+          {value ? <img className="h-full w-full object-cover" src={value} alt="" /> : <PackageSearch className="h-8 w-8 text-muted" />}
+        </div>
+        <div className="min-w-0 space-y-2">
+          <input className="w-full" value={value} disabled={readOnly} onChange={(event) => onChange(event.target.value)} placeholder="https://..." />
+          <div className="flex flex-wrap items-center gap-2">
+            <label className={`erp-button-subtle inline-flex cursor-pointer items-center gap-2 px-3 py-2 text-sm font-bold ${readOnly || uploading ? "pointer-events-none opacity-50" : ""}`}>
+              <Upload size={15} />
+              {uploading ? uploadingLabel : uploadLabel}
+              <input
+                className="hidden"
+                type="file"
+                accept="image/*"
+                disabled={readOnly || uploading}
+                onChange={(event) => onFile(event.target.files?.[0] ?? null)}
+              />
+            </label>
+            {value ? (
+              <button type="button" className="erp-button-subtle px-3 py-2 text-sm font-bold" disabled={readOnly || uploading} onClick={() => onChange("")}>
+                {clearLabel}
+              </button>
+            ) : null}
+          </div>
+          {message ? <p className="text-xs font-semibold text-red-700">{message}</p> : null}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function TextArea({ label, value, onChange, readOnly = false, className = "" }: { label: string; value: string; onChange: (value: string) => void; readOnly?: boolean; className?: string }) {
