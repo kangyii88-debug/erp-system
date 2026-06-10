@@ -1174,7 +1174,7 @@ function CompetitorProductsContent() {
         </div>
       </Panel>
 
-      <div className="grid gap-5 xl:grid-cols-[1.25fr_0.75fr]">
+      <div className="hidden">
         <Panel title={language === "zh" ? "优先看这些商品" : "먼저 볼 상품"} icon={Flame}>
           <div className="grid gap-2">
             {top10.slice(0, 5).map((row, index) => (
@@ -1304,8 +1304,18 @@ function CompetitorProductsContent() {
         ) : (
           <div className="rounded-3xl border border-dashed border-line bg-white/50 px-6 py-14 text-center">
             <PackageSearch className="mx-auto h-12 w-12 text-[#17483f]" />
-            <p className="mt-4 text-lg font-bold text-ink">{c.empty}</p>
-            <button className="mt-5 erp-button-primary inline-flex items-center gap-2 px-4 py-2 font-bold" onClick={() => openCreate("quick")}><Plus size={16} />{c.quick}</button>
+            <p className="mt-4 text-lg font-bold text-ink">
+              {rows.length && !sorted.length
+                ? (language === "zh" ? "当前筛选没有结果，商品还在。清空筛选就能看到全部产品。" : "현재 필터 결과가 없습니다. 필터를 초기화하면 전체 상품을 볼 수 있습니다.")
+                : c.empty}
+            </p>
+            {rows.length && !sorted.length ? (
+              <button className="mt-5 erp-button-primary inline-flex items-center gap-2 px-4 py-2 font-bold" onClick={() => { setFilters(emptyFilters); setPage(1); }}>
+                <RotateCcw size={16} />{c.filter.reset}
+              </button>
+            ) : (
+              <button className="mt-5 erp-button-primary inline-flex items-center gap-2 px-4 py-2 font-bold" onClick={() => openCreate("quick")}><Plus size={16} />{c.quick}</button>
+            )}
           </div>
         )}
       </Panel>
