@@ -66,8 +66,6 @@ function PurchasesContent() {
   const productMap = useMemo(() => new Map(products.map((product) => [product.id, product])), [products]);
   const analytics = useMemo(() => buildPurchaseAnalytics(orders, productMap), [orders, productMap]);
   const health = purchaseHealth(analytics, copy);
-  const insights = buildProcurementInsights(orders, products, analytics, copy, formatNumber, formatCurrency);
-
   useEffect(() => {
     load();
   }, []);
@@ -194,17 +192,6 @@ function PurchasesContent() {
         <ProcurementKpi icon={PackageCheck} label={copy.expectedArrivalQty} value={formatNumber(analytics.expectedArrivalQty)} tag={copy.inboundReady} tone="green" />
       </section>
 
-      <section className="mb-5 grid gap-4 xl:grid-cols-[1.2fr_1fr_1fr]">
-        <FinancialPanel analytics={analytics} copy={copy} formatCurrency={formatCurrency} />
-        <StatusDonut title={copy.productionOverview} data={productionDonutData(orders, copy)} />
-        <StatusDonut title={copy.shippingOverview} data={shippingDonutData(orders, copy)} />
-      </section>
-
-      <section className="mb-5 grid gap-4 xl:grid-cols-[1fr_1fr]">
-        <ArrivalCenter analytics={analytics} copy={copy} formatNumber={formatNumber} />
-        <InsightPanel insights={insights} copy={copy} />
-      </section>
-
       <section className="premium-dashboard-panel mb-5 rounded-[28px] p-5 md:p-6">
         <div className="mb-5 flex items-center justify-between gap-3">
           <div>
@@ -257,18 +244,16 @@ function PurchasesContent() {
 
         <div className="overflow-hidden rounded-2xl border border-white/65 bg-white/76 shadow-[0_18px_48px_rgba(31,44,38,0.06)] backdrop-blur">
           <div className="overflow-x-auto">
-            <table className="min-w-[1320px] w-full border-collapse text-sm">
+            <table className="min-w-[1120px] w-full border-collapse text-sm">
               <thead className="sticky top-0 z-20 bg-[#f3f5ee]/95 backdrop-blur-xl">
                 <tr>
-                  <PurchaseTh>{t("common.sku")}</PurchaseTh>
-                  <PurchaseTh>{t("common.productName")}</PurchaseTh>
+                  <PurchaseTh>{copy.productInfo}</PurchaseTh>
                   <PurchaseTh>{t("common.factory")}</PurchaseTh>
                   <PurchaseTh align="right">{t("common.quantity")}</PurchaseTh>
                   <PurchaseTh align="right">{copy.amount}</PurchaseTh>
                   <PurchaseTh>{t("purchase.productionStatus")}</PurchaseTh>
                   <PurchaseTh>{t("purchase.shippingStatus")}</PurchaseTh>
                   <PurchaseTh>{t("purchase.eta")}</PurchaseTh>
-                  <PurchaseTh>{copy.timeline}</PurchaseTh>
                   <PurchaseTh>{t("common.memo")}</PurchaseTh>
                   <PurchaseTh align="right">{t("common.actions")}</PurchaseTh>
                 </tr>
@@ -278,9 +263,8 @@ function PurchasesContent() {
                   const product = productMap.get(order.product_id);
                   const amount = orderAmount(order, product);
                   return (
-                    <tr key={order.id} className="group transition hover:bg-[#eef3ed]/65">
-                      <PurchaseTd mono>{order.products?.sku}</PurchaseTd>
-                      <PurchaseTd>{order.products?.name}</PurchaseTd>
+                    <tr key={order.id} className="group transition odd:bg-white/45 hover:bg-[#eef3ed]/80">
+                      <PurchaseTd><PurchaseProductCell order={order} copy={copy} /></PurchaseTd>
                       <PurchaseTd>{order.factory_name}</PurchaseTd>
                       <PurchaseTd align="right">{formatNumber(order.quantity)}</PurchaseTd>
                       <PurchaseTd align="right" strong>{formatCurrency(amount)}</PurchaseTd>
@@ -291,7 +275,6 @@ function PurchasesContent() {
                         <InlineStatusSelect value={order.shipping_status} options={shippingStatuses} label={(status) => shippingStatusLabel(status, t)} tone={(status) => shippingTone(status)} onChange={(value) => updateOrder(order.id, { shipping_status: value })} />
                       </PurchaseTd>
                       <PurchaseTd>{order.expected_arrival_date ? formatDate(`${order.expected_arrival_date}T12:00:00`) : "-"}</PurchaseTd>
-                      <PurchaseTd><PurchaseTimeline order={order} copy={copy} /></PurchaseTd>
                       <PurchaseTd>{order.memo || "-"}</PurchaseTd>
                       <PurchaseTd align="right">
                         <div className="flex min-w-[92px] justify-end gap-2">
@@ -304,7 +287,7 @@ function PurchasesContent() {
                 })}
                 {!orders.length ? (
                   <tr>
-                    <td colSpan={11} className="border-b border-line px-4 py-10 text-center text-sm text-muted">
+                    <td colSpan={9} className="border-b border-line px-4 py-10 text-center text-sm text-muted">
                       {t("purchase.empty")}
                     </td>
                   </tr>
@@ -456,6 +439,27 @@ function InlineStatusSelect<T extends string>({ value, options, label, tone, onC
   );
 }
 
+function PurchaseProductCell({ order, copy }: { order: PurchaseOrderWithProduct; copy: PurchaseCopy }) {
+  const sku = order.products?.sku || "-";
+  const name = order.products?.name || "-";
+  const stock = currentStock(order.products);
+  return (
+    <div className="min-w-[360px] max-w-[520px]">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="rounded-lg border border-[#17483f]/15 bg-[#e8f1ed] px-2.5 py-1 font-mono text-[11px] font-black tracking-[0.02em] text-[#17483f]">
+          {sku}
+        </span>
+        <span className="rounded-full border border-line bg-white/80 px-2.5 py-1 text-[11px] font-bold text-muted">
+          {copy.stock} {stock}
+        </span>
+      </div>
+      <div className="mt-2 line-clamp-2 text-sm font-semibold leading-5 text-ink">
+        {name}
+      </div>
+    </div>
+  );
+}
+
 function PurchaseTimeline({ order, copy }: { order: PurchaseOrder; copy: PurchaseCopy }) {
   const steps = [
     { label: copy.created, done: true },
@@ -575,8 +579,8 @@ function orderAmount(order: PurchaseOrderWithProduct | PurchaseOrder, product?: 
   return safeQty(order.quantity) * money(productPrice);
 }
 
-function currentStock(product: ProductWithStock) {
-  const balance = product.inventory_balances;
+function currentStock(product?: Pick<ProductWithStock, "inventory_balances"> | null) {
+  const balance = product?.inventory_balances;
   if (Array.isArray(balance)) return Number(balance[0]?.current_stock ?? 0);
   return Number(balance?.current_stock ?? 0);
 }
@@ -695,6 +699,8 @@ function purchaseCopy(language: Language) {
       editTitle: "구매 수정",
       saving: "저장 중",
       orderTable: "구매 주문 관리",
+      productInfo: "상품 정보",
+      stock: "재고",
       amount: "금액",
       timeline: "진행 타임라인",
       created: "생성",
@@ -752,6 +758,8 @@ function purchaseCopy(language: Language) {
     editTitle: "编辑采购计划",
     saving: "保存中",
     orderTable: "采购订单管理",
+    productInfo: "商品信息",
+    stock: "库存",
     amount: "金额",
     timeline: "采购时间轴",
     created: "创建",
