@@ -1,15 +1,3 @@
-alter type movement_type add value if not exists 'purchase';
-alter type movement_type add value if not exists 'return_resell';
-alter type movement_type add value if not exists 'damaged';
-alter type movement_type add value if not exists 'lost';
-alter type movement_type add value if not exists 'adjustment';
-
-alter table stock_movements
-  drop constraint if exists stock_movements_quantity_check;
-
-alter table stock_movements
-  add constraint stock_movements_quantity_check check (quantity <> 0);
-
 create or replace function apply_stock_movement()
 returns trigger language plpgsql as $$
 declare
@@ -17,8 +5,8 @@ declare
 begin
   signed_qty := case
     when new.type::text in ('purchase', 'inbound', 'adjustment') then new.quantity
-    when new.type::text in ('sale', 'outbound', 'damaged', 'lost', 'loss') then -new.quantity
     when new.type::text in ('return_resell', 'return_inbound') then new.quantity
+    when new.type::text in ('sale', 'outbound', 'damaged', 'lost', 'loss') then -new.quantity
     else 0
   end;
 
@@ -38,3 +26,24 @@ begin
   return new;
 end;
 $$;
+
+insert into inventory_balances (product_id, current_stock, updated_at)
+select
+  product_id,
+  greatest(
+    0,
+    coalesce(sum(
+      case
+        when type::text in ('purchase', 'inbound', 'adjustment') then quantity
+        when type::text in ('return_resell', 'return_inbound') then quantity
+        when type::text in ('sale', 'outbound', 'damaged', 'lost', 'loss') then -quantity
+        else 0
+      end
+    ), 0)
+  )::integer as current_stock,
+  now() as updated_at
+from stock_movements
+group by product_id
+on conflict (product_id) do update
+  set current_stock = excluded.current_stock,
+      updated_at = now();

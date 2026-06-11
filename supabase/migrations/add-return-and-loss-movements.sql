@@ -13,7 +13,7 @@ begin
   signed_qty := case
     when new.type::text in ('purchase', 'inbound', 'adjustment') then new.quantity
     when new.type::text in ('sale', 'outbound', 'damaged', 'lost', 'loss') then -new.quantity
-    when new.type::text in ('return_resell', 'return_inbound') then 0
+    when new.type::text in ('return_resell', 'return_inbound') then new.quantity
     else 0
   end;
 

@@ -55,6 +55,7 @@ export function signedInventoryQuantity(movement: InventoryMovementLike) {
 
   if (type === "purchase") return quantity;
   if (type === "sale") return -quantity;
+  if (type === "return_resell") return quantity;
   if (type === "loss") return -quantity;
   if (type === "adjustment") return rawQuantity;
   return 0;
@@ -76,7 +77,7 @@ export function calculateInventoryMetrics(movements: InventoryMovementLike[] = [
   }
 
   metrics.effectiveSales = metrics.salesRawTotal;
-  metrics.availableInventory = metrics.purchaseInbound - metrics.salesRawTotal - metrics.lossDefectMissing + metrics.inventoryAdjustment;
+  metrics.availableInventory = metrics.purchaseInbound - metrics.salesRawTotal + metrics.returnInboundSaleable - metrics.lossDefectMissing + metrics.inventoryAdjustment;
 
   return metrics;
 }

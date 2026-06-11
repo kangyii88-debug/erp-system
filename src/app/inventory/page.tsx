@@ -195,8 +195,8 @@ function adjustmentMemoRequiredMessage(language: Language) {
 
 function returnResellNotice(language: Language) {
   return language === "ko"
-    ? "이 유형은 반품 상품의 재판매 가능 상태를 기록하는 용도이며 현재 재고 수량에는 영향을 주지 않습니다."
-    : "该类型仅用于记录退货商品重新上架情况，不会影响当前库存数量。";
+    ? "반품 상품이 다시 판매 가능한 상태로 입고되며 현재 재고에 수량이 다시 더해집니다."
+    : "退货商品重新入库且可再次销售，会把数量加回当前可售库存。";
 }
 
 function adjustmentDetailLabels(language: Language) {
@@ -723,7 +723,7 @@ function InventoryFlowCard({ metrics, labels, language }: { metrics: ReturnType<
   const items = [
     { label: labels.totalInbound, value: metrics.inbound, sign: "+", tone: "text-[#1e5a4e] bg-[#1e5a4e]/8" },
     { label: labels.totalSalesOut, value: metrics.salesOut, sign: "-", tone: "text-[#406a7a] bg-[#406a7a]/8" },
-    { label: labels.returnRestock, value: metrics.returnInbound, sign: "record", tone: "text-[#48596f] bg-[#48596f]/8" },
+    { label: labels.returnRestock, value: metrics.returnInbound, sign: "+", tone: "text-teal-700 bg-teal-50" },
     { label: labels.totalLoss, value: metrics.loss, sign: "-", tone: "text-[#9a3f3f] bg-[#9a3f3f]/8" },
     { label: adjustmentLabelText, value: Math.abs(adjustment), sign: adjustmentSign, tone: "text-blue-700 bg-blue-50" }
   ];
@@ -746,6 +746,8 @@ function InventoryFlowCard({ metrics, labels, language }: { metrics: ReturnType<
         <FormulaPill label={labels.totalInbound} value={metrics.inbound} tone="text-[#1e5a4e] bg-[#1e5a4e]/8" />
         <FormulaOperator value="-" />
         <FormulaPill label={labels.totalSalesOut} value={metrics.salesOut} tone="text-[#406a7a] bg-[#406a7a]/8" />
+        <FormulaOperator value="+" />
+        <FormulaPill label={labels.returnRestock} value={metrics.returnInbound} tone="text-teal-700 bg-teal-50" />
         <FormulaOperator value="-" />
         <FormulaPill label={labels.totalLoss} value={metrics.loss} tone="text-[#9a3f3f] bg-[#9a3f3f]/8" />
         <FormulaOperator value={adjustmentSign} />
@@ -1051,7 +1053,7 @@ function HistoryRow({
   const absQuantity = Math.abs(safeQuantity(movement.quantity));
   const adjustmentLabels = adjustmentDetailLabels(language);
   const memoText = stripSystemMemo(movement.memo);
-  const recordOnly = movement.actionType === "return_resell";
+  const recordOnly = false;
 
   return (
     <tr className={`group transition hover:bg-[#f7f4ec] ${highlighted ? "bg-emerald-50/70" : "bg-card/70"}`}>
@@ -1187,7 +1189,7 @@ function calculateMetrics(products: ProductWithStock[], movements: StockMovement
   const returnInbound = movements.filter((movement) => actionTypeOf(movement) === "return_resell").reduce((sum, movement) => sum + safeQuantity(movement.quantity), 0);
   const loss = movements.filter((movement) => actionTypeOf(movement) === "damaged" || actionTypeOf(movement) === "lost").reduce((sum, movement) => sum + safeQuantity(movement.quantity), 0);
   const adjustment = movements.filter((movement) => movement.type === "adjustment").reduce((sum, movement) => sum + safeQuantity(movement.quantity), 0);
-  const flowResult = inbound - salesOut - loss + adjustment;
+  const flowResult = inbound - salesOut + returnInbound - loss + adjustment;
 
   return {
     saleable: flowResult,
@@ -1254,7 +1256,7 @@ function dbTypeForAction(type: InventoryActionType): StockMovement["type"] {
 
 function signedQuantity(type: StockMovement["type"], quantity: number) {
   const safe = safeQuantity(quantity);
-  if (type === "return_resell" || type === "return_inbound") return 0;
+  if (type === "return_resell" || type === "return_inbound") return safe;
   if (type === "purchase" || type === "inbound" || type === "adjustment") return safe;
   return -safe;
 }
@@ -1262,7 +1264,7 @@ function signedQuantity(type: StockMovement["type"], quantity: number) {
 function signedMovementQuantity(movement: StockMovement) {
   const safe = safeQuantity(movement.quantity);
   const actionType = actionTypeOf(movement);
-  if (actionType === "return_resell") return 0;
+  if (actionType === "return_resell") return safe;
   if (actionType === "purchase" || actionType === "adjustment") return safe;
   return -safe;
 }
