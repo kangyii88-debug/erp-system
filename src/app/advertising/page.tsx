@@ -90,6 +90,11 @@ type Metrics = {
   clicks: number;
 };
 
+type TrendRow = Metrics & {
+  record_date: string;
+  label: string;
+};
+
 type SkuAgg = Metrics & {
   sku: string;
   product_name: string;
@@ -141,6 +146,11 @@ const copy = {
     trendTitle: "广告趋势分析",
     trendEmptyTitle: "暂无广告趋势数据",
     trendEmptyText: "新增广告日报后，这里会自动生成花费、转化销售额、广告收益率、点击率、转化率和利润趋势。",
+    reportTableTitle: "期间广告数据报表",
+    reportPeriod: "期间",
+    reportCpc: "点击费用",
+    reportTotalSales: "总销售额",
+    reportTotal: "总计",
     skuEyebrow: "SKU 广告分析",
     skuTitle: "广告 SKU 分析中心",
     searchPlaceholder: "搜索 SKU / 产品名称",
@@ -236,6 +246,11 @@ const copy = {
     trendTitle: "광고 추세 분석",
     trendEmptyTitle: "광고 추세 데이터 없음",
     trendEmptyText: "광고 일보를 추가하면 광고비, 매출, ROAS, CTR, 전환율, 이익 추세가 자동 생성됩니다.",
+    reportTableTitle: "기간별 광고 성과표",
+    reportPeriod: "기간",
+    reportCpc: "클릭 비용",
+    reportTotalSales: "전체 매출",
+    reportTotal: "전체",
     skuEyebrow: "SKU 광고 분석",
     skuTitle: "광고 SKU 분석 센터",
     searchPlaceholder: "SKU / 상품명 검색",
@@ -410,6 +425,7 @@ function AdvertisingDailyCenter() {
   const comparisonMetrics = useMemo(() => buildMetrics(comparisonRecords), [comparisonRecords]);
   const trendRecords = useMemo(() => filterTrendRecords(records, trendWindow), [records, trendWindow]);
   const trendData = useMemo(() => buildTrend(trendRecords, trendWindow, c), [trendRecords, trendWindow, c]);
+  const trendTotal = useMemo(() => buildMetrics(trendRecords), [trendRecords]);
   const skuRows = useMemo(() => buildSkuRows(rangeRecords, c), [rangeRecords, c]);
   const filteredSkuRows = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -494,27 +510,30 @@ function AdvertisingDailyCenter() {
           <Segmented value={trendWindow} options={[["7d", c.trendWindows["7d"]], ["30d", c.trendWindows["30d"]], ["90d", c.trendWindows["90d"]], ["year", c.trendWindows.year]]} onChange={(value) => setTrendWindow(value as TrendWindow)} />
         </div>
         {loading ? <SkeletonBlock /> : trendData.length ? (
-          <div className="h-[360px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={trendData}>
-                <defs>
-                  <linearGradient id="adDailySales" x1="0" x2="0" y1="0" y2="1">
-                    <stop offset="0%" stopColor="#17483f" stopOpacity={0.22} />
-                    <stop offset="100%" stopColor="#17483f" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid stroke="rgba(197,201,189,0.55)" strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="label" tickLine={false} axisLine={false} />
-                <YAxis tickLine={false} axisLine={false} tickFormatter={(value) => compactWon(Number(value), language)} />
-                <Tooltip content={<TrendTooltip c={c} />} cursor={{ stroke: "rgba(23,72,63,0.28)" }} />
-                <Area type="monotone" dataKey="ad_sales" name={c.kpiSales} stroke="#17483f" strokeWidth={2.5} fill="url(#adDailySales)" animationDuration={650} />
-                <Line type="monotone" dataKey="ad_spend" name={c.kpiSpend} stroke="#b89b5e" strokeWidth={2.2} dot={false} animationDuration={700} />
-                <Line type="monotone" dataKey="roas" name={c.kpiRoas} stroke="#3577c9" strokeWidth={2.2} dot={false} animationDuration={750} />
-                <Line type="monotone" dataKey="ctr" name={c.kpiCtr} stroke="#21a485" strokeWidth={1.8} dot={false} animationDuration={760} />
-                <Line type="monotone" dataKey="conversion_rate" name={c.kpiConversion} stroke="#c65f5f" strokeWidth={1.8} dot={false} animationDuration={780} />
-                <Line type="monotone" dataKey="ad_profit" name={c.kpiProfit} stroke="#0d3932" strokeWidth={2} dot={false} animationDuration={800} />
-              </AreaChart>
-            </ResponsiveContainer>
+          <div className="space-y-5">
+            <div className="h-[260px] rounded-2xl border border-line bg-white/55 p-3">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={trendData}>
+                  <defs>
+                    <linearGradient id="adDailySales" x1="0" x2="0" y1="0" y2="1">
+                      <stop offset="0%" stopColor="#17483f" stopOpacity={0.22} />
+                      <stop offset="100%" stopColor="#17483f" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid stroke="rgba(197,201,189,0.55)" strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="label" tickLine={false} axisLine={false} />
+                  <YAxis tickLine={false} axisLine={false} tickFormatter={(value) => compactWon(Number(value), language)} />
+                  <Tooltip content={<TrendTooltip c={c} />} cursor={{ stroke: "rgba(23,72,63,0.28)" }} />
+                  <Area type="monotone" dataKey="ad_sales" name={c.kpiSales} stroke="#17483f" strokeWidth={2.5} fill="url(#adDailySales)" animationDuration={650} />
+                  <Line type="monotone" dataKey="ad_spend" name={c.kpiSpend} stroke="#b89b5e" strokeWidth={2.2} dot={false} animationDuration={700} />
+                  <Line type="monotone" dataKey="roas" name={c.kpiRoas} stroke="#3577c9" strokeWidth={2.2} dot={false} animationDuration={750} />
+                  <Line type="monotone" dataKey="ctr" name={c.kpiCtr} stroke="#21a485" strokeWidth={1.8} dot={false} animationDuration={760} />
+                  <Line type="monotone" dataKey="conversion_rate" name={c.kpiConversion} stroke="#c65f5f" strokeWidth={1.8} dot={false} animationDuration={780} />
+                  <Line type="monotone" dataKey="ad_profit" name={c.kpiProfit} stroke="#0d3932" strokeWidth={2} dot={false} animationDuration={800} />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+            <TrendReportTable c={c} rows={trendData} total={trendTotal} window={trendWindow} />
           </div>
         ) : <PanelEmpty title={c.trendEmptyTitle} text={c.trendEmptyText} />}
       </section>
@@ -847,6 +866,72 @@ function StatusBadge({ c, status }: { c: PageCopy; status: SkuAgg["status"] }) {
   return <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-bold ${map[status][1]}`}>{map[status][0]}</span>;
 }
 
+function TrendReportTable({ c, rows, total, window }: { c: PageCopy; rows: TrendRow[]; total: Metrics; window: TrendWindow }) {
+  const columns = [
+    c.reportPeriod,
+    c.fieldImpressions,
+    c.fieldClicks,
+    c.fieldCtr,
+    c.reportCpc,
+    c.fieldOrderCount,
+    c.fieldSalesCount,
+    c.fieldConversion,
+    c.fieldSpend,
+    c.fieldSales,
+    c.reportTotalSales,
+    c.kpiRoas
+  ];
+
+  return (
+    <div className="overflow-hidden rounded-2xl border border-line bg-white/72">
+      <div className="flex items-center justify-between border-b border-line/70 bg-[#f7f5ed] px-4 py-3">
+        <h3 className="text-sm font-bold text-ink">{c.reportTableTitle}</h3>
+        <span className="text-xs font-semibold text-muted">{rows.length} rows</span>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="min-w-[1320px] w-full text-right text-sm">
+          <thead className="bg-white/80 text-xs uppercase tracking-[0.12em] text-muted">
+            <tr>
+              {columns.map((column, index) => (
+                <th key={column} className={`px-4 py-3 ${index === 0 ? "text-left" : ""}`}>{column}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => <TrendReportRow key={row.record_date} c={c} row={row} window={window} />)}
+            <TrendReportRow c={c} row={{ ...total, record_date: "total", label: c.reportTotal }} window={window} isTotal />
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function TrendReportRow({ c, row, window, isTotal = false }: { c: PageCopy; row: TrendRow; window: TrendWindow; isTotal?: boolean }) {
+  const cpc = row.clicks > 0 ? row.ad_spend / row.clicks : 0;
+  const cells = [
+    { value: isTotal ? c.reportTotal : formatReportPeriod(row.record_date, window), align: "left" },
+    { value: formatNumber(row.impressions, 0) },
+    { value: formatNumber(row.clicks, 0) },
+    { value: `${formatNumber(row.ctr, 2)}%` },
+    { value: won(cpc) },
+    { value: formatNumber(row.ad_order_count, 0) },
+    { value: formatNumber(row.ad_sales_count, 0) },
+    { value: `${formatNumber(row.conversion_rate, 2)}%` },
+    { value: won(row.ad_spend) },
+    { value: won(row.ad_sales) },
+    { value: won(row.ad_sales) },
+    { value: `${formatNumber(row.roas * 100, 2)}%` }
+  ];
+
+  return (
+    <tr className={`border-t border-line/70 tabular-nums ${isTotal ? "bg-emerald-50/55 font-bold text-ink" : "transition hover:bg-emerald-50/35"}`}>
+      {cells.map((cell, index) => (
+        <td key={`${row.record_date}-${index}`} className={`px-4 py-3 ${cell.align === "left" ? "text-left font-semibold text-ink" : ""}`}>{cell.value}</td>
+      ))}
+    </tr>
+  );
+}
 function TrendTooltip({ active, payload, c }: { active?: boolean; payload?: Array<{ payload?: Metrics & { label: string; record_date: string } }>; c: PageCopy }) {
   if (!active || !payload?.length) return null;
   const point = payload[0]?.payload;
@@ -936,7 +1021,7 @@ function buildSkuRows(rows: DailyAdRecord[], c: PageCopy): SkuAgg[] {
   });
 }
 
-function buildTrend(rows: DailyAdRecord[], window: TrendWindow, c: PageCopy) {
+function buildTrend(rows: DailyAdRecord[], window: TrendWindow, c: PageCopy): TrendRow[] {
   const map = new Map<string, DailyAdRecord[]>();
   rows.forEach((row) => {
     const key = window === "year" ? row.record_date.slice(0, 7) : row.record_date;
@@ -1114,6 +1199,11 @@ function formatNumber(value: number, digits = 1) {
   return Number(value ?? 0).toLocaleString("ko-KR", { maximumFractionDigits: digits, minimumFractionDigits: digits > 0 ? digits : 0 });
 }
 
+function formatReportPeriod(date: string, window: TrendWindow) {
+  if (date === "total") return date;
+  if (window === "year" || date.length === 7) return date.replace("-", "/");
+  return formatDate(date);
+}
 function formatDate(date: string) {
   return date.replaceAll("-", "/");
 }
