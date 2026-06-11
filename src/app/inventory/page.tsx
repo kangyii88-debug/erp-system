@@ -112,7 +112,10 @@ const copy = {
     category: "品类",
     categoryTotal: "品类库存",
     category4lk: "百褶帘系列",
-    categoryBld: "蜂巢帘系列"
+    categoryBld: "蜂巢帘系列",
+    filteredTotal: "筛选总数",
+    matchedRecords: "匹配记录",
+    quantityTotal: "数量合计"
   },
   ko: {
     pageTitle: "재고 관리",
@@ -177,7 +180,10 @@ const copy = {
     category: "품목",
     categoryTotal: "품목 재고",
     category4lk: "주름 커튼 시리즈",
-    categoryBld: "허니콤 블라인드 시리즈"
+    categoryBld: "허니콤 블라인드 시리즈",
+    filteredTotal: "필터 합계",
+    matchedRecords: "일치 기록",
+    quantityTotal: "수량 합계"
   }
 } satisfies Record<Language, Record<string, string>>;
 
@@ -481,6 +487,7 @@ function InventoryContent() {
         ? openCategoryKey
         : null;
   const filteredRows = useMemo(() => applyFilters(movementRows, filters), [movementRows, filters]);
+  const filteredSummary = useMemo(() => calculateFilteredMovementSummary(filteredRows), [filteredRows]);
   const pageCount = Math.max(1, Math.ceil(filteredRows.length / PAGE_SIZE));
   const currentPage = Math.min(page, pageCount);
   const pagedRows = filteredRows.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
@@ -603,6 +610,8 @@ function InventoryContent() {
               />
             </div>
           </div>
+
+          <FilteredMovementSummary summary={filteredSummary} ui={ui} />
 
           <div className="overflow-x-auto">
             <table className="w-full min-w-[1120px] border-separate border-spacing-0 text-sm">
@@ -1183,6 +1192,29 @@ function SkeletonRow() {
   );
 }
 
+function FilteredMovementSummary({ summary, ui }: { summary: ReturnType<typeof calculateFilteredMovementSummary>; ui: (typeof copy)[Language] }) {
+  const items = [
+    { label: ui.matchedRecords, value: summary.records, className: "border-slate-200 bg-slate-50 text-slate-700" },
+    { label: ui.quantityTotal, value: summary.quantityTotal, className: "border-emerald-200 bg-emerald-50 text-emerald-800" },
+    { label: ui.returnInbound, value: summary.returnInbound, className: "border-teal-200 bg-teal-50 text-teal-800" },
+    { label: `${ui.lossBad}/${ui.missing}`, value: summary.loss, className: "border-red-200 bg-red-50 text-red-700" }
+  ];
+
+  return (
+    <div className="border-b border-line bg-white/70 px-4 py-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="mr-1 text-xs font-semibold uppercase tracking-[0.16em] text-muted">{ui.filteredTotal}</span>
+        {items.map((item) => (
+          <span key={item.label} className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold ${item.className}`}>
+            <span>{item.label}</span>
+            <b className="tabular-nums">{formatNumber(item.value)}</b>
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function calculateMetrics(products: ProductWithStock[], movements: StockMovement[], metricsByProduct: Map<string, InventoryMetrics>) {
   const inbound = movements.filter((movement) => actionTypeOf(movement) === "purchase").reduce((sum, movement) => sum + safeQuantity(movement.quantity), 0);
   const salesOut = movements.filter((movement) => actionTypeOf(movement) === "sale").reduce((sum, movement) => sum + safeQuantity(movement.quantity), 0);
@@ -1203,6 +1235,20 @@ function calculateMetrics(products: ProductWithStock[], movements: StockMovement
     adjustment,
     flowResult
   };
+}
+
+function calculateFilteredMovementSummary(rows: MovementRow[]) {
+  return rows.reduce(
+    (summary, row) => {
+      const quantity = safeQuantity(row.quantity);
+      summary.records += 1;
+      summary.quantityTotal += quantity;
+      if (row.actionType === "return_resell") summary.returnInbound += quantity;
+      if (row.actionType === "damaged" || row.actionType === "lost") summary.loss += quantity;
+      return summary;
+    },
+    { records: 0, quantityTotal: 0, returnInbound: 0, loss: 0 }
+  );
 }
 
 function attachAfterStock(movements: StockMovement[], products: ProductWithStock[], metricsByProduct: Map<string, InventoryMetrics>) {
