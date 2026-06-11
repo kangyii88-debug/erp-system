@@ -85,6 +85,7 @@ type FormState = {
 };
 
 const pageSize = 20;
+const PRODUCT_TEST_IMAGE_BUCKET = "competitor-product-images";
 const statusOptions: DevelopmentStatus[] = ["pending_analysis", "analyzed", "sampled", "quoted", "testing", "ready_launch", "listed", "abandoned"];
 const gradeOptions: RecommendationGrade[] = ["A_PLUS", "A", "B", "C", "D"];
 const priorityOptions: Priority[] = ["high", "medium", "low"];
@@ -279,6 +280,20 @@ function formFromRow(row: ProductTestRow): FormState {
     priority: row.priority,
     notes: row.notes ?? ""
   };
+}
+
+async function uploadProductTestImage(userId: string, file: File) {
+  if (!file.type.startsWith("image/")) return { error: "Only image files are supported", url: null };
+  const extension = file.name.split(".").pop()?.toLowerCase() || file.type.split("/").pop() || "jpg";
+  const safeName = file.name.replace(/[^\w.\-]+/g, "_");
+  const path = `${userId}/product-tests/${Date.now()}-${Math.random().toString(36).slice(2)}-${safeName || `product.${extension}`}`;
+  const { error } = await supabase.storage.from(PRODUCT_TEST_IMAGE_BUCKET).upload(path, file, {
+    cacheControl: "3600",
+    upsert: false
+  });
+  if (error) return { error: error.message, url: null };
+  const { data } = supabase.storage.from(PRODUCT_TEST_IMAGE_BUCKET).getPublicUrl(path);
+  return { error: null, url: data.publicUrl };
 }
 
 export default function ProductTestDatabasePage() {
@@ -652,13 +667,41 @@ function ProductTestDatabaseContent() {
         )}
       </Panel>
 
-      {drawer ? <Drawer c={c} mode={drawer} form={form} setForm={setForm} onClose={() => setDrawer(null)} onSubmit={submit} /> : null}
+      {drawer ? <Drawer c={c} language={language} mode={drawer} form={form} setForm={setForm} onClose={() => setDrawer(null)} onSubmit={submit} /> : null}
     </div>
   );
 }
 
-function Drawer({ c, mode, form, setForm, onClose, onSubmit }: { c: typeof copyText.zh; mode: DrawerMode; form: FormState; setForm: (form: FormState) => void; onClose: () => void; onSubmit: (event: FormEvent) => void }) {
+function Drawer({ c, language, mode, form, setForm, onClose, onSubmit }: { c: typeof copyText.zh; language: "zh" | "ko"; mode: DrawerMode; form: FormState; setForm: (form: FormState) => void; onClose: () => void; onSubmit: (event: FormEvent) => void }) {
   const calc = compute(form);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [imageUploadMessage, setImageUploadMessage] = useState("");
+  const [imageUploadTone, setImageUploadTone] = useState<"error" | "success">("error");
+
+  const handleImageUpload = async (file: File | null) => {
+    if (!file) return;
+    setUploadingImage(true);
+    setImageUploadMessage("");
+    setImageUploadTone("error");
+    const { data } = await supabase.auth.getUser();
+    if (!data.user) {
+      setUploadingImage(false);
+      setImageUploadMessage(language === "zh" ? "请先登录后再上传图片。" : "이미지를 업로드하려면 먼저 로그인하세요.");
+      return;
+    }
+    const uploaded = await uploadProductTestImage(data.user.id, file);
+    setUploadingImage(false);
+    if (uploaded.error || !uploaded.url) {
+      setImageUploadTone("error");
+      setImageUploadMessage(uploaded.error?.toLowerCase().includes("bucket")
+        ? (language === "zh" ? "图片上传失败：Supabase Storage 缺少 competitor-product-images 存储桶，请先执行图片存储桶 SQL。" : "이미지 업로드 실패: Supabase Storage에 competitor-product-images 버킷이 없습니다.")
+        : uploaded.error || "Upload failed");
+      return;
+    }
+    setForm({ ...form, product_image_url: uploaded.url });
+    setImageUploadTone("success");
+    setImageUploadMessage(language === "zh" ? "图片已上传，保存后会写入这个测试商品。" : "이미지가 업로드되었습니다. 저장하면 상품에 반영됩니다.");
+  };
   return (
     <div className="fixed inset-0 z-40 flex justify-end bg-[#071512]/40 backdrop-blur-sm" onClick={onClose}>
       <form className="h-full w-full max-w-5xl overflow-y-auto border-l border-white/40 bg-[#f6f7f1] p-6 shadow-lift" onClick={(event) => event.stopPropagation()} onSubmit={onSubmit}>
@@ -671,7 +714,18 @@ function Drawer({ c, mode, form, setForm, onClose, onSubmit }: { c: typeof copyT
         </div>
 
         <FormSection title={c.sections.basic}>
-          <Field label="产品图片 URL" value={form.product_image_url} onChange={(value) => setForm({ ...form, product_image_url: value })} />
+          <ImageUploadField
+            label={language === "zh" ? "产品图片" : "상품 이미지"}
+            uploadLabel={language === "zh" ? "上传图片" : "이미지 업로드"}
+            uploadingLabel={language === "zh" ? "上传中..." : "업로드 중..."}
+            clearLabel={language === "zh" ? "清除图片" : "이미지 제거"}
+            value={form.product_image_url}
+            uploading={uploadingImage}
+            message={imageUploadMessage}
+            messageTone={imageUploadTone}
+            onChange={(value) => setForm({ ...form, product_image_url: value })}
+            onFile={handleImageUpload}
+          />
           <Field label="产品名称" value={form.product_name} required onChange={(value) => setForm({ ...form, product_name: value })} />
           <Field label="类目" value={form.category} onChange={(value) => setForm({ ...form, category: value })} />
           <Field label="Coupang链接" value={form.coupang_url} onChange={(value) => setForm({ ...form, coupang_url: value })} />
@@ -780,6 +834,57 @@ function FormSection({ title, children }: { title: string; children: React.React
 
 function Field({ label, value, onChange, type = "text", required = false }: { label: string; value: string; onChange: (value: string) => void; type?: "text" | "number" | "date"; required?: boolean }) {
   return <label><span className="mb-1 block text-xs font-bold text-muted">{label}{required ? " *" : ""}</span><input className="w-full" type={type} min={type === "number" ? "0" : undefined} step={type === "number" ? "0.01" : undefined} value={value} required={required} onChange={(event) => onChange(event.target.value)} /></label>;
+}
+
+function ImageUploadField({
+  label,
+  uploadLabel,
+  uploadingLabel,
+  clearLabel,
+  value,
+  uploading,
+  message,
+  messageTone,
+  onChange,
+  onFile
+}: {
+  label: string;
+  uploadLabel: string;
+  uploadingLabel: string;
+  clearLabel: string;
+  value: string;
+  uploading: boolean;
+  message: string;
+  messageTone: "error" | "success";
+  onChange: (value: string) => void;
+  onFile: (file: File | null) => void;
+}) {
+  return (
+    <div>
+      <span className="mb-1 block text-xs font-bold text-muted">{label}</span>
+      <div className="grid gap-3 rounded-2xl border border-line bg-white/70 p-3 md:grid-cols-[84px_1fr]">
+        <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl border border-line bg-[#f4f6f1]">
+          {value ? <img className="h-full w-full object-cover" src={value} alt="" /> : <PackageSearch className="h-7 w-7 text-muted" />}
+        </div>
+        <div className="min-w-0 space-y-2">
+          <input className="w-full" value={value} onChange={(event) => onChange(event.target.value)} placeholder="https://..." />
+          <div className="flex flex-wrap items-center gap-2">
+            <label className={`erp-button-subtle inline-flex cursor-pointer items-center gap-2 px-3 py-2 text-sm font-bold ${uploading ? "pointer-events-none opacity-50" : ""}`}>
+              <Upload size={15} />
+              {uploading ? uploadingLabel : uploadLabel}
+              <input className="hidden" type="file" accept="image/*" disabled={uploading} onChange={(event) => onFile(event.target.files?.[0] ?? null)} />
+            </label>
+            {value ? (
+              <button type="button" className="erp-button-subtle px-3 py-2 text-sm font-bold" disabled={uploading} onClick={() => onChange("")}>
+                {clearLabel}
+              </button>
+            ) : null}
+          </div>
+          {message ? <p className={`text-xs font-semibold ${messageTone === "success" ? "text-emerald-700" : "text-red-700"}`}>{message}</p> : null}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function Select({ value, options, allLabel, labelMap, onChange }: { value: string; options: string[]; allLabel: string; labelMap?: Record<string, string>; onChange: (value: string) => void }) {
