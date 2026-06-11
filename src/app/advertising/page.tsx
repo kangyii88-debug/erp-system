@@ -117,7 +117,7 @@ const copy = {
   zh: {
     pageEyebrow: "广告日报中心",
     title: "广告日报中心",
-    subtitle: "每天录入 Coupang 广告数据，自动分析广告花费、销售额、ROAS、CTR、转化率和利润贡献。",
+    subtitle: "每天录入 Coupang 广告数据，自动分析广告花费、转化销售额、广告收益率、点击率、转化率和利润贡献。",
     newRecord: "新增广告日报",
     editRecord: "编辑广告日报",
     saveEdit: "保存修改",
@@ -126,21 +126,21 @@ const copy = {
     cancel: "取消",
     deleteConfirm: "确定删除这条广告日报吗？",
     kpiSpend: "广告花费",
-    kpiSales: "广告销售额",
-    kpiRoas: "ROAS",
-    roasHelper: "广告销售额 ÷ 广告花费",
-    kpiCtr: "CTR",
-    ctrHelper: (clicks: string, impressions: string) => `${clicks} 点击 / ${impressions} 展示`,
+    kpiSales: "广告转化销售额",
+    kpiRoas: "广告收益率",
+    roasHelper: "广告转化销售额 ÷ 广告花费",
+    kpiCtr: "点击率",
+    ctrHelper: (clicks: string, impressions: string) => `${clicks} 点击 / ${impressions} 曝光`,
     kpiConversion: "转化率",
-    conversionHelper: "成交数 ÷ 点击量",
+    conversionHelper: "广告转化销售数 ÷ 点击数",
     kpiOrders: "广告订单数",
-    kpiSalesCount: "广告成交数",
+    kpiSalesCount: "广告转化销售数",
     kpiProfit: "广告利润",
     costRatio: "成本占比",
     trendEyebrow: "广告趋势",
     trendTitle: "广告趋势分析",
     trendEmptyTitle: "暂无广告趋势数据",
-    trendEmptyText: "新增广告日报后，这里会自动生成花费、销售额、ROAS、CTR、转化率和利润趋势。",
+    trendEmptyText: "新增广告日报后，这里会自动生成花费、转化销售额、广告收益率、点击率、转化率和利润趋势。",
     skuEyebrow: "SKU 广告分析",
     skuTitle: "广告 SKU 分析中心",
     searchPlaceholder: "搜索 SKU / 产品名称",
@@ -154,18 +154,18 @@ const copy = {
     ledgerTitle: "广告日报记录",
     formNewEyebrow: "新增日报",
     formEditEyebrow: "编辑日报",
-    autoRoas: "自动 ROAS",
+    autoRoas: "自动广告收益率",
     adProfit: "广告利润",
     fieldDate: "日期",
     fieldCampaign: "广告名称",
     fieldSku: "SKU",
     fieldProduct: "产品名称",
     fieldSpend: "广告花费",
-    fieldSales: "广告销售额",
-    fieldImpressions: "展示量",
-    fieldClicks: "点击量",
+    fieldSales: "广告转化销售额",
+    fieldImpressions: "曝光数",
+    fieldClicks: "点击数",
     fieldCtr: "CTR %",
-    fieldSalesCount: "广告成交数量",
+    fieldSalesCount: "广告转化销售数",
     fieldOrderCount: "广告订单数",
     fieldConversion: "转化率 %",
     fieldRemark: "备注",
@@ -180,11 +180,11 @@ const copy = {
     edit: "编辑",
     delete: "删除",
     profit: "利润",
-    columns: ["日期", "广告名称", "SKU", "产品名称", "花费", "销售额", "展示", "点击", "CTR", "成交数", "订单数", "ROAS", "转化率", "操作"],
+    columns: ["日期", "广告名称", "SKU", "产品名称", "广告花费", "广告转化销售额", "曝光数", "点击数", "点击率", "广告转化销售数", "广告订单数", "广告收益率", "转化率", "操作"],
     datePresets: { today: "今日", yesterday: "昨日", last7: "近7天", last30: "近30天", thisMonth: "本月", lastMonth: "上月", custom: "自定义" },
     trendWindows: { "7d": "7天", "30d": "30天", "90d": "90天", year: "年度" },
     statuses: { scale: "增加预算", keep: "维持预算", reduce: "降低预算", pause: "暂停观察" },
-    rankingTabs: { roas: "TOP10 ROAS", ctr: "TOP10 CTR", conversion_rate: "TOP10 转化率", ad_profit: "TOP10 广告利润", ad_sales: "TOP10 广告销售额" },
+    rankingTabs: { roas: "TOP10 广告收益率", ctr: "TOP10 点击率", conversion_rate: "TOP10 转化率", ad_profit: "TOP10 广告利润", ad_sales: "TOP10 广告转化销售额" },
     unnamedSku: "未填写SKU",
     unnamedProduct: "未命名产品",
     monthSuffix: "月",
@@ -199,13 +199,13 @@ const copy = {
     noScale: "暂未发现明确适合加预算的 SKU，先维持观察。",
     scaleAdvice: "且利润为正，建议继续增加预算。",
     noComparison: "当前周期缺少对比数据。",
-    salesGrowthPrefix: "广告销售额较上一周期",
+    salesGrowthPrefix: "广告转化销售额较上一周期",
     increased: "提升",
     decreased: "下降",
     pauseAdvice: "且利润为负，建议暂停或重建广告。",
     noPause: "当前没有明显需要暂停的广告 SKU。",
     tooltipSpend: "广告花费",
-    tooltipSales: "广告销售额",
+    tooltipSales: "广告转化销售额",
     tooltipProfit: "广告利润",
     csvStatus: "状态"
   },
@@ -459,12 +459,12 @@ function AdvertisingDailyCenter() {
           <div className="relative mt-7 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <KpiCard icon={WalletCards} label={c.kpiSpend} value={won(metrics.ad_spend)} change={changeRate(metrics.ad_spend, comparisonMetrics.ad_spend)} />
             <KpiCard icon={TrendingUp} label={c.kpiSales} value={won(metrics.ad_sales)} change={changeRate(metrics.ad_sales, comparisonMetrics.ad_sales)} />
-            <KpiCard icon={Target} label={c.kpiRoas} value={formatNumber(metrics.roas, 2)} helper={c.roasHelper} good={metrics.roas >= 4} />
+            <KpiCard icon={BarChart3} label={c.fieldImpressions} value={formatNumber(metrics.impressions, 0)} />
+            <KpiCard icon={MousePointerClick} label={c.fieldClicks} value={formatNumber(metrics.clicks, 0)} />
             <KpiCard icon={MousePointerClick} label={c.kpiCtr} value={`${formatNumber(metrics.ctr, 2)}%`} helper={c.ctrHelper(formatNumber(metrics.clicks, 0), formatNumber(metrics.impressions, 0))} good={metrics.ctr >= 1} />
-            <KpiCard icon={BarChart3} label={c.kpiConversion} value={`${formatNumber(metrics.conversion_rate, 2)}%`} helper={c.conversionHelper} good={metrics.conversion_rate >= 3} />
-            <KpiCard icon={CalendarDays} label={c.kpiOrders} value={formatNumber(metrics.ad_order_count, 0)} />
             <KpiCard icon={Sparkles} label={c.kpiSalesCount} value={formatNumber(metrics.ad_sales_count, 0)} />
-            <KpiCard icon={metrics.ad_profit >= 0 ? TrendingUp : TrendingDown} label={c.kpiProfit} value={won(metrics.ad_profit)} helper={`${c.costRatio} ${formatNumber(metrics.cost_ratio, 1)}%`} good={metrics.ad_profit >= 0} />
+            <KpiCard icon={Target} label={c.kpiRoas} value={`${formatNumber(metrics.roas * 100, 2)}%`} helper={c.roasHelper} good={metrics.roas >= 4} />
+            <KpiCard icon={BarChart3} label={c.kpiConversion} value={`${formatNumber(metrics.conversion_rate, 2)}%`} helper={c.conversionHelper} good={metrics.conversion_rate >= 3} />
           </div>
         )}
       </section>
@@ -602,7 +602,7 @@ function DailyEntryForm({ form, c, editing, saving, onChange, onSubmit, onCancel
           <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink">{editing ? c.editRecord : c.newRecord}</h2>
         </div>
         <div className="hidden gap-2 lg:grid lg:grid-cols-3">
-          <MiniCalc label={c.autoRoas} value={formatNumber(preview.roas, 2)} />
+          <MiniCalc label={c.autoRoas} value={`${formatNumber(preview.roas * 100, 2)}%`} />
           <MiniCalc label={c.adProfit} value={won(preview.ad_profit)} />
           <MiniCalc label={c.costRatio} value={`${formatNumber(preview.cost_ratio, 1)}%`} />
         </div>
@@ -653,7 +653,7 @@ function SkuTable({ c, rows, sort, onSort }: { c: PageCopy; rows: SkuAgg[]; sort
     { key: "product_name", label: c.fieldProduct, render: (row) => row.product_name },
     { key: "ad_spend", label: c.fieldSpend, render: (row) => won(row.ad_spend) },
     { key: "ad_sales", label: c.fieldSales, render: (row) => won(row.ad_sales) },
-    { key: "roas", label: c.kpiRoas, render: (row) => formatNumber(row.roas, 2) },
+    { key: "roas", label: c.kpiRoas, render: (row) => `${formatNumber(row.roas * 100, 2)}%` },
     { key: "ctr", label: c.kpiCtr, render: (row) => `${formatNumber(row.ctr, 2)}%` },
     { key: "conversion_rate", label: c.kpiConversion, render: (row) => `${formatNumber(row.conversion_rate, 2)}%` },
     { key: "ad_order_count", label: c.kpiOrders, render: (row) => formatNumber(row.ad_order_count, 0) },
@@ -738,7 +738,7 @@ function RecordLedger({ c, records, onEdit, onDelete }: { c: PageCopy; records: 
               <td className="px-4 py-3">{formatNumber(displayCtr(record), 2)}%</td>
               <td className="px-4 py-3">{formatNumber(record.ad_sales_count, 0)}</td>
               <td className="px-4 py-3">{formatNumber(record.ad_order_count, 0)}</td>
-              <td className="px-4 py-3">{formatNumber(displayRoas(record), 2)}</td>
+              <td className="px-4 py-3">{formatNumber(displayRoas(record) * 100, 2)}%</td>
               <td className="px-4 py-3">{formatNumber(displayConversionRate(record), 2)}%</td>
               <td className="px-4 py-3">
                 <div className="flex gap-2">
@@ -856,8 +856,8 @@ function TrendTooltip({ active, payload, c }: { active?: boolean; payload?: Arra
       <div className="mb-2 font-semibold text-ink">{point.label}</div>
       <div>{c.tooltipSpend}：{won(point.ad_spend)}</div>
       <div>{c.tooltipSales}：{won(point.ad_sales)}</div>
-      <div>ROAS：{formatNumber(point.roas, 2)}</div>
-      <div>CTR：{formatNumber(point.ctr, 2)}%</div>
+      <div>广告收益率：{formatNumber(point.roas * 100, 2)}%</div>
+      <div>点击率：{formatNumber(point.ctr, 2)}%</div>
       <div>{c.kpiConversion}：{formatNumber(point.conversion_rate, 2)}%</div>
       <div>{c.tooltipProfit}：{won(point.ad_profit)}</div>
     </div>
@@ -955,11 +955,11 @@ function buildInsights(rows: SkuAgg[], metrics: Metrics, previous: Metrics, c: P
   const pause = rows.find((row) => row.status === "pause");
   const growth = changeRate(metrics.ad_sales, previous.ad_sales);
   return [
-    { icon: TrendingUp, title: c.bestSku, text: `${best.product_name} / ${best.sku}, ROAS ${formatNumber(best.roas, 2)}, ${c.adProfit} ${won(best.ad_profit)}.`, tone: "good" as const },
-    { icon: TrendingDown, title: c.worstSku, text: `${worst.product_name} / ${worst.sku}, ROAS ${formatNumber(worst.roas, 2)}. ${c.checkOptimization}`, tone: worst.roas < 2 ? "risk" as const : "warn" as const },
-    { icon: Target, title: c.budgetAdvice, text: scale ? `${scale.sku} ROAS ${formatNumber(scale.roas, 2)} ${c.scaleAdvice}` : c.noScale, tone: scale ? "good" as const : "neutral" as const },
+    { icon: TrendingUp, title: c.bestSku, text: `${best.product_name} / ${best.sku}, 广告收益率 ${formatNumber(best.roas * 100, 2)}%, ${c.adProfit} ${won(best.ad_profit)}.`, tone: "good" as const },
+    { icon: TrendingDown, title: c.worstSku, text: `${worst.product_name} / ${worst.sku}, 广告收益率 ${formatNumber(worst.roas * 100, 2)}%. ${c.checkOptimization}`, tone: worst.roas < 2 ? "risk" as const : "warn" as const },
+    { icon: Target, title: c.budgetAdvice, text: scale ? `${scale.sku} 广告收益率 ${formatNumber(scale.roas * 100, 2)}% ${c.scaleAdvice}` : c.noScale, tone: scale ? "good" as const : "neutral" as const },
     { icon: WalletCards, title: c.efficiencyChange, text: growth == null ? c.noComparison : `${c.salesGrowthPrefix} ${growth >= 0 ? c.increased : c.decreased} ${formatNumber(Math.abs(growth), 1)}%.`, tone: growth != null && growth < 0 ? "warn" as const : "good" as const },
-    { icon: Trash2, title: c.pauseCandidate, text: pause ? `${pause.sku} ROAS ${formatNumber(pause.roas, 2)} ${c.pauseAdvice}` : c.noPause, tone: pause ? "risk" as const : "neutral" as const }
+    { icon: Trash2, title: c.pauseCandidate, text: pause ? `${pause.sku} 广告收益率 ${formatNumber(pause.roas * 100, 2)}% ${c.pauseAdvice}` : c.noPause, tone: pause ? "risk" as const : "neutral" as const }
   ];
 }
 
@@ -1045,7 +1045,7 @@ function rankClass(index: number) {
 function formatRankingValue(row: SkuAgg, metric: RankingMetric) {
   if (metric === "ad_profit" || metric === "ad_sales") return won(row[metric]);
   if (metric === "ctr" || metric === "conversion_rate") return `${formatNumber(row[metric], 2)}%`;
-  return formatNumber(row[metric], 2);
+  return metric === "roas" ? `${formatNumber(row.roas * 100, 2)}%` : formatNumber(row[metric], 2);
 }
 
 function displayRoas(record: DailyAdRecord) {
