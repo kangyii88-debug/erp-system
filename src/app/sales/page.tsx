@@ -718,6 +718,67 @@ function SalesContent() {
         ) : null}
       </section>
 
+      <section className="erp-card p-5">
+        <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-muted">SKU Ranking</p>
+            <h2 className="text-2xl font-bold text-ink">{text.ranking}</h2>
+          </div>
+          <div className="erp-chip px-3 py-1 text-sm font-semibold">{formatNumber(rankings.length)} SKU</div>
+        </div>
+
+        {rankings.length ? (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[860px] text-sm">
+              <thead>
+                <tr className="text-left text-xs uppercase tracking-[0.12em] text-muted">
+                  <TableHead>{text.rank}</TableHead>
+                  <TableHead>{text.sku}</TableHead>
+                  <TableHead>{text.productName}</TableHead>
+                  <TableHead>{text.color}</TableHead>
+                  <TableHead>{text.size}</TableHead>
+                  <TableHead align="right">{text.quantity}</TableHead>
+                  <TableHead>{text.ratio}</TableHead>
+                </tr>
+              </thead>
+              <tbody>
+                {rankings.map((item, index) => (
+                  <tr key={item.productId} className="border-t border-line/70 transition hover:bg-[rgba(23,72,63,0.035)]">
+                    <TableCell>
+                      <span className={`inline-flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold ${index < 3 ? "bg-[var(--color-primary)] text-white" : "bg-white text-muted"}`}>
+                        {index + 1}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <span className="rounded-full bg-[var(--color-primary-soft)] px-2.5 py-1 text-xs font-bold text-[var(--color-primary)]">{item.sku}</span>
+                    </TableCell>
+                    <TableCell>
+                      <div className="font-semibold text-ink">{item.name}</div>
+                      {index < 3 ? <div className="mt-1 text-xs font-semibold text-[var(--color-primary)]">{text.top3}</div> : null}
+                    </TableCell>
+                    <TableCell>{item.color}</TableCell>
+                    <TableCell>{item.size}</TableCell>
+                    <TableCell align="right">
+                      <span className="tabular-nums text-base font-bold">{formatNumber(item.quantity)}</span>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <div className="h-2 flex-1 overflow-hidden rounded-full bg-[rgba(23,72,63,0.08)]">
+                          <div className="h-full rounded-full bg-[var(--color-primary)]" style={{ width: `${item.ratio}%` }} />
+                        </div>
+                        <span className="w-14 text-right tabular-nums text-xs font-bold">{item.ratio.toFixed(1)}%</span>
+                      </div>
+                    </TableCell>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <EmptyState title={text.emptyTitle} desc={text.emptyDesc} compact />
+        )}
+      </section>
+
       <section className="space-y-4">
         <div className="flex items-end justify-between gap-3">
           <div>
@@ -828,67 +889,6 @@ function SalesContent() {
             })}
           </div>
         ) : null}
-      </section>
-
-      <section className="erp-card p-5">
-        <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-muted">SKU Ranking</p>
-            <h2 className="text-2xl font-bold text-ink">{text.ranking}</h2>
-          </div>
-          <div className="erp-chip px-3 py-1 text-sm font-semibold">{formatNumber(rankings.length)} SKU</div>
-        </div>
-
-        {rankings.length ? (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[860px] text-sm">
-              <thead>
-                <tr className="text-left text-xs uppercase tracking-[0.12em] text-muted">
-                  <TableHead>{text.rank}</TableHead>
-                  <TableHead>{text.sku}</TableHead>
-                  <TableHead>{text.productName}</TableHead>
-                  <TableHead>{text.color}</TableHead>
-                  <TableHead>{text.size}</TableHead>
-                  <TableHead align="right">{text.quantity}</TableHead>
-                  <TableHead>{text.ratio}</TableHead>
-                </tr>
-              </thead>
-              <tbody>
-                {rankings.map((item, index) => (
-                  <tr key={item.productId} className="border-t border-line/70 transition hover:bg-[rgba(23,72,63,0.035)]">
-                    <TableCell>
-                      <span className={`inline-flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold ${index < 3 ? "bg-[var(--color-primary)] text-white" : "bg-white text-muted"}`}>
-                        {index + 1}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <span className="rounded-full bg-[var(--color-primary-soft)] px-2.5 py-1 text-xs font-bold text-[var(--color-primary)]">{item.sku}</span>
-                    </TableCell>
-                    <TableCell>
-                      <div className="font-semibold text-ink">{item.name}</div>
-                      {index < 3 ? <div className="mt-1 text-xs font-semibold text-[var(--color-primary)]">{text.top3}</div> : null}
-                    </TableCell>
-                    <TableCell>{item.color}</TableCell>
-                    <TableCell>{item.size}</TableCell>
-                    <TableCell align="right">
-                      <span className="tabular-nums text-base font-bold">{formatNumber(item.quantity)}</span>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <div className="h-2 flex-1 overflow-hidden rounded-full bg-[rgba(23,72,63,0.08)]">
-                          <div className="h-full rounded-full bg-[var(--color-primary)]" style={{ width: `${item.ratio}%` }} />
-                        </div>
-                        <span className="w-14 text-right tabular-nums text-xs font-bold">{item.ratio.toFixed(1)}%</span>
-                      </div>
-                    </TableCell>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <EmptyState title={text.emptyTitle} desc={text.emptyDesc} compact />
-        )}
       </section>
     </div>
   );
