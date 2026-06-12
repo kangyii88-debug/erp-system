@@ -14,9 +14,11 @@ import {
   PackageCheck,
   Plane,
   Save,
+  Search,
   Ship,
   Trash2,
   Truck,
+  X,
   type LucideIcon
 } from "lucide-react";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
@@ -30,7 +32,14 @@ import type { Language, ProductWithStock, PurchaseOrder } from "@/lib/types";
 type PurchaseStatusOption = "pending" | "producing" | "completed" | "delayed" | "cancelled";
 type ShippingStatusOption = "not_shipped" | "shipped_from_china" | "customs" | "in_korea" | "received";
 type PurchaseOrderWithProduct = PurchaseOrder & {
-  products?: Pick<ProductWithStock, "name" | "sku" | "purchase_price" | "inventory_balances"> | null;
+  products?: Pick<ProductWithStock, "name" | "sku" | "color" | "size" | "purchase_price" | "inventory_balances"> | null;
+};
+type PurchaseOrderFilters = {
+  query: string;
+  color: string;
+  size: string;
+  startDate: string;
+  endDate: string;
 };
 
 const productionStatuses = ["pending", "producing", "completed", "delayed", "cancelled"] as const;
@@ -60,12 +69,22 @@ function PurchasesContent() {
     expected_arrival_date: "",
     memo: ""
   });
+  const [orderFilters, setOrderFilters] = useState({
+    query: "",
+    color: "",
+    size: "",
+    startDate: "",
+    endDate: ""
+  });
   const [message, setMessage] = useState("");
 
   const isEditing = Boolean(editingId);
   const productMap = useMemo(() => new Map(products.map((product) => [product.id, product])), [products]);
   const analytics = useMemo(() => buildPurchaseAnalytics(orders, productMap), [orders, productMap]);
   const health = purchaseHealth(analytics, copy);
+  const filteredOrders = useMemo(() => filterPurchaseOrders(orders, productMap, orderFilters), [orders, productMap, orderFilters]);
+  const filteredQuantity = useMemo(() => filteredOrders.reduce((sum, order) => sum + safeQty(order.quantity), 0), [filteredOrders]);
+  const hasOrderFilters = Boolean(orderFilters.query || orderFilters.color || orderFilters.size || orderFilters.startDate || orderFilters.endDate);
   useEffect(() => {
     load();
   }, []);
@@ -73,7 +92,7 @@ function PurchasesContent() {
   async function load() {
     const [{ data: productRows }, { data: orderRows }] = await Promise.all([
       supabase.from("products").select("*, inventory_balances(current_stock)").order("sku"),
-      supabase.from("purchase_orders").select("*, products(name, sku, purchase_price, inventory_balances(current_stock))").order("created_at", { ascending: false })
+      supabase.from("purchase_orders").select("*, products(name, sku, color, size, purchase_price, inventory_balances(current_stock))").order("created_at", { ascending: false })
     ]);
     setProducts((productRows ?? []) as ProductWithStock[]);
     setOrders((orderRows ?? []) as PurchaseOrderWithProduct[]);
@@ -244,7 +263,63 @@ function PurchasesContent() {
             <div className="premium-section-eyebrow">Purchase Orders</div>
             <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink">{copy.orderTable}</h2>
           </div>
-          <span className="premium-status-chip px-3 py-1.5 text-xs font-semibold text-muted">{formatNumber(orders.length)} SKU</span>
+          <span className="premium-status-chip px-3 py-1.5 text-xs font-semibold text-muted">{formatNumber(filteredOrders.length)} / {formatNumber(orders.length)} SKU</span>
+        </div>
+
+        <div className="mb-4 rounded-2xl border border-white/70 bg-white/72 p-3 shadow-sm">
+          <div className="grid gap-3 md:grid-cols-[minmax(220px,2fr)_minmax(120px,1fr)_minmax(120px,1fr)_minmax(145px,1fr)_minmax(145px,1fr)_auto]">
+            <label className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+              <input
+                className="h-11 w-full rounded-xl border border-line bg-white/90 pl-9 pr-3 text-sm outline-none transition focus:border-brand/50 focus:ring-2 focus:ring-brand/10"
+                placeholder="搜索商品名 / SKU / 工厂 / 备注"
+                value={orderFilters.query}
+                onChange={(event) => setOrderFilters({ ...orderFilters, query: event.target.value })}
+              />
+            </label>
+            <input
+              className="h-11 rounded-xl border border-line bg-white/90 px-3 text-sm outline-none transition focus:border-brand/50 focus:ring-2 focus:ring-brand/10"
+              placeholder="颜色"
+              value={orderFilters.color}
+              onChange={(event) => setOrderFilters({ ...orderFilters, color: event.target.value })}
+            />
+            <input
+              className="h-11 rounded-xl border border-line bg-white/90 px-3 text-sm outline-none transition focus:border-brand/50 focus:ring-2 focus:ring-brand/10"
+              placeholder="尺寸"
+              value={orderFilters.size}
+              onChange={(event) => setOrderFilters({ ...orderFilters, size: event.target.value })}
+            />
+            <input
+              className="h-11 rounded-xl border border-line bg-white/90 px-3 text-sm outline-none transition focus:border-brand/50 focus:ring-2 focus:ring-brand/10"
+              type="date"
+              value={orderFilters.startDate}
+              onChange={(event) => setOrderFilters({ ...orderFilters, startDate: event.target.value })}
+            />
+            <input
+              className="h-11 rounded-xl border border-line bg-white/90 px-3 text-sm outline-none transition focus:border-brand/50 focus:ring-2 focus:ring-brand/10"
+              type="date"
+              value={orderFilters.endDate}
+              onChange={(event) => setOrderFilters({ ...orderFilters, endDate: event.target.value })}
+            />
+            <button
+              type="button"
+              onClick={() => setOrderFilters({ query: "", color: "", size: "", startDate: "", endDate: "" })}
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-line bg-white/85 px-3 text-xs font-bold text-muted shadow-sm transition hover:border-brand/30 hover:text-brand disabled:cursor-not-allowed disabled:opacity-40"
+              disabled={!hasOrderFilters}
+            >
+              <X className="h-4 w-4" />
+              重置
+            </button>
+          </div>
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-[#f3f5ee]/80 px-4 py-3">
+            <div className="text-xs font-semibold text-muted">
+              可按商品名、SKU、颜色、尺寸、预计到仓日期搜索采购订单
+            </div>
+            <div className="flex items-center gap-2 text-sm font-semibold text-ink">
+              <span className="text-muted">当前筛选订货总数</span>
+              <span className="premium-number rounded-full bg-[#17483f] px-3 py-1.5 text-base font-black tabular-nums text-white">{formatNumber(filteredQuantity)}</span>
+            </div>
+          </div>
         </div>
 
         <div className="overflow-hidden rounded-2xl border border-white/65 bg-white/76 shadow-[0_18px_48px_rgba(31,44,38,0.06)] backdrop-blur">
@@ -266,7 +341,7 @@ function PurchasesContent() {
                 </tr>
               </thead>
               <tbody>
-                {orders.map((order) => {
+                {filteredOrders.map((order) => {
                   const product = productMap.get(order.product_id);
                   const amount = orderAmount(order, product);
                   return (
@@ -294,7 +369,7 @@ function PurchasesContent() {
                     </tr>
                   );
                 })}
-                {!orders.length ? (
+                {!filteredOrders.length ? (
                   <tr>
                     <td colSpan={11} className="border-b border-line px-4 py-10 text-center text-sm text-muted">
                       {t("purchase.empty")}
@@ -530,6 +605,40 @@ function PurchaseTd({ children, align = "left", strong = false, mono = false }: 
 
 type PurchaseAnalytics = ReturnType<typeof buildPurchaseAnalytics>;
 type PurchaseCopy = ReturnType<typeof purchaseCopy>;
+
+function filterPurchaseOrders(orders: PurchaseOrderWithProduct[], productMap: Map<string, ProductWithStock>, filters: PurchaseOrderFilters) {
+  const query = normalizeSearch(filters.query);
+  const color = normalizeSearch(filters.color);
+  const size = normalizeSearch(filters.size);
+
+  return orders.filter((order) => {
+    const product = order.products ?? productMap.get(order.product_id);
+    const expectedDate = order.expected_arrival_date ?? "";
+
+    if (query) {
+      const haystack = normalizeSearch([
+        product?.name,
+        product?.sku,
+        product?.color,
+        product?.size,
+        order.factory_name,
+        order.memo
+      ].filter(Boolean).join(" "));
+      if (!haystack.includes(query)) return false;
+    }
+
+    if (color && !normalizeSearch(product?.color).includes(color)) return false;
+    if (size && !normalizeSearch(product?.size).includes(size)) return false;
+    if (filters.startDate && (!expectedDate || expectedDate < filters.startDate)) return false;
+    if (filters.endDate && (!expectedDate || expectedDate > filters.endDate)) return false;
+
+    return true;
+  });
+}
+
+function normalizeSearch(value?: string | null) {
+  return String(value ?? "").trim().toLowerCase();
+}
 
 function buildPurchaseAnalytics(orders: PurchaseOrderWithProduct[], productMap: Map<string, ProductWithStock>) {
   const today = startOfDay(new Date());
