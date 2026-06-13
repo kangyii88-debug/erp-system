@@ -170,7 +170,23 @@ const weightOptions: WeightLevel[] = ["light", "medium", "heavy"];
 const priorityOptions: Priority[] = ["high", "medium", "low"];
 const statusOptions: DecisionStatus[] = ["pending_analysis", "key_product", "eliminated", "ready_test", "tested"];
 const rocketOptions: RocketType[] = ["normal", "rocket_delivery", "rocket_growth", "seller_rocket", "orange_rocket"];
-const categoryOptions = ["厨房用品", "家居清洁", "办公用品", "宠物用品", "旅行用品", "美妆个护", "母婴用品", "电子配件", "运动户外", "服饰配件"];
+const categoryOptions = [
+  "패션의류/잡화",
+  "뷰티",
+  "출산/유아동",
+  "식품",
+  "주방용품",
+  "생활용품",
+  "홈인테리어",
+  "가전디지털",
+  "스포츠/레저",
+  "자동차용품",
+  "도서/음반/DVD",
+  "완구/취미",
+  "문구/오피스",
+  "반려동물용품",
+  "헬스/건강식품"
+];
 
 const emptyFilters: Filters = {
   search: "",
