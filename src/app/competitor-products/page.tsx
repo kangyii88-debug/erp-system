@@ -171,21 +171,21 @@ const priorityOptions: Priority[] = ["high", "medium", "low"];
 const statusOptions: DecisionStatus[] = ["pending_analysis", "key_product", "eliminated", "ready_test", "tested"];
 const rocketOptions: RocketType[] = ["normal", "rocket_delivery", "rocket_growth", "seller_rocket", "orange_rocket"];
 const categoryOptions = [
-  "패션의류/잡화",
-  "뷰티",
-  "출산/유아동",
-  "식품",
-  "주방용품",
-  "생활용품",
-  "홈인테리어",
-  "가전디지털",
-  "스포츠/레저",
-  "자동차용품",
-  "도서/음반/DVD",
-  "완구/취미",
-  "문구/오피스",
-  "반려동물용품",
-  "헬스/건강식품"
+  { zh: "时尚服饰/杂货", ko: "패션의류/잡화" },
+  { zh: "美妆", ko: "뷰티" },
+  { zh: "母婴/儿童", ko: "출산/유아동" },
+  { zh: "食品", ko: "식품" },
+  { zh: "厨房用品", ko: "주방용품" },
+  { zh: "生活用品", ko: "생활용품" },
+  { zh: "家居室内", ko: "홈인테리어" },
+  { zh: "家电数码", ko: "가전디지털" },
+  { zh: "运动/休闲", ko: "스포츠/레저" },
+  { zh: "汽车用品", ko: "자동차용품" },
+  { zh: "图书/音像/DVD", ko: "도서/음반/DVD" },
+  { zh: "玩具/爱好", ko: "완구/취미" },
+  { zh: "文具/办公", ko: "문구/오피스" },
+  { zh: "宠物用品", ko: "반려동물용품" },
+  { zh: "健康/保健食品", ko: "헬스/건강식품" }
 ];
 
 const emptyFilters: Filters = {
@@ -885,7 +885,7 @@ function CompetitorProductsContent() {
     return () => window.clearTimeout(timer);
   }, [toast]);
 
-  const categories = useMemo(() => Array.from(new Set([...categoryOptions, ...rows.map((row) => row.category).filter(Boolean)])).sort(), [rows]);
+  const categories = useMemo(() => categorySelectOptions(rows, language), [rows, language]);
 
   const filtered = useMemo(() => {
     const query = filters.search.trim().toLowerCase();
@@ -899,7 +899,7 @@ function CompetitorProductsContent() {
         (filters.profitSpace === "low" && margin < 20);
       return (
         (!query || searchable.includes(query)) &&
-        (!filters.category || row.category === filters.category) &&
+        (!filters.category || categoryMatches(row.category, filters.category)) &&
         (!filters.status || row.status === filters.status) &&
         (!filters.rocketType || row.rocketType === filters.rocketType) &&
         (!filters.minPrice || row.currentPrice >= toNumber(filters.minPrice)) &&
@@ -1212,7 +1212,7 @@ function CompetitorProductsContent() {
       <Panel title={language === "zh" ? "常用筛选" : "자주 쓰는 필터"} icon={Filter}>
         <div className="grid gap-3 lg:grid-cols-[2fr_repeat(5,1fr)]">
           <Input icon={Search} placeholder={c.filter.search} value={filters.search} onChange={(value) => setFilters({ ...filters, search: value })} />
-          <Select value={filters.category} allLabel={c.filter.category} options={categories} onChange={(value) => setFilters({ ...filters, category: value })} />
+          <Select value={localizedCategoryValue(filters.category, language)} allLabel={c.filter.category} options={categories} onChange={(value) => setFilters({ ...filters, category: value })} />
           <Select value={filters.status} allLabel={c.filter.status} options={statusOptions} labelMap={c.status} onChange={(value) => setFilters({ ...filters, status: value })} />
           <Select value={filters.kcRiskLevel} allLabel={c.filter.kc} options={kcOptions} labelMap={kcLabelMap(language)} onChange={(value) => setFilters({ ...filters, kcRiskLevel: value })} />
           <Select value={filters.profitSpace} allLabel={c.filter.profit} options={levelOptions} labelMap={c.profitSpace} onChange={(value) => setFilters({ ...filters, profitSpace: value })} />
@@ -1420,6 +1420,31 @@ function kcLabelMap(language: "zh" | "ko") {
   };
 }
 
+function categoryPair(value: string) {
+  return categoryOptions.find((option) => option.zh === value || option.ko === value);
+}
+
+function localizedCategoryValue(value: string, language: "zh" | "ko") {
+  const pair = categoryPair(value);
+  if (!pair) return value;
+  return pair[language];
+}
+
+function categoryMatches(value: string, filter: string) {
+  if (value === filter) return true;
+  const valuePair = categoryPair(value);
+  const filterPair = categoryPair(filter);
+  return !!valuePair && !!filterPair && valuePair.zh === filterPair.zh;
+}
+
+function categorySelectOptions(rows: CompetitorItem[], language: "zh" | "ko") {
+  const fixed = categoryOptions.map((option) => option[language]);
+  const extra = rows
+    .map((row) => localizedCategoryValue(row.category, language))
+    .filter((value) => value && !fixed.includes(value));
+  return Array.from(new Set([...fixed, ...extra])).sort();
+}
+
 function csvCell(value: unknown) {
   return `"${String(value ?? "").replace(/"/g, '""')}"`;
 }
@@ -1532,7 +1557,7 @@ function Drawer({
                 onFile={handleImageUpload}
                 className="md:col-span-2"
               />
-              <CategoryField label={c.fields.category} value={form.category} disabled={readOnly} onChange={(value) => setForm({ ...form, category: value })} />
+              <CategoryField label={c.fields.category} value={form.category} language={language} disabled={readOnly} onChange={(value) => setForm({ ...form, category: value })} />
               <Field label={c.fields.brand} value={form.brand} readOnly={readOnly} onChange={(value) => setForm({ ...form, brand: value })} />
               <Field label={c.fields.store} value={form.storeName} readOnly={readOnly} onChange={(value) => setForm({ ...form, storeName: value })} />
             </FormSection>
@@ -1863,12 +1888,14 @@ function SelectField({ label, value, options, labelMap, onChange, disabled = fal
   return <label><span className="mb-1 block text-xs font-bold text-muted">{label}</span><select className="w-full" value={value} disabled={disabled} onChange={(event) => onChange(event.target.value)}>{options.map((option) => <option key={option} value={option}>{labelMap[option]}</option>)}</select></label>;
 }
 
-function CategoryField({ label, value, onChange, disabled = false }: { label: string; value: string; onChange: (value: string) => void; disabled?: boolean }) {
-  const options = value && !categoryOptions.includes(value) ? [value, ...categoryOptions] : categoryOptions;
+function CategoryField({ label, value, language, onChange, disabled = false }: { label: string; value: string; language: "zh" | "ko"; onChange: (value: string) => void; disabled?: boolean }) {
+  const fixed = categoryOptions.map((option) => option[language]);
+  const current = localizedCategoryValue(value, language);
+  const options = current && !fixed.includes(current) ? [current, ...fixed] : fixed;
   return (
     <label>
       <span className="mb-1 block text-xs font-bold text-muted">{label}</span>
-      <select className="w-full" value={value} disabled={disabled} onChange={(event) => onChange(event.target.value)}>
+      <select className="w-full" value={current} disabled={disabled} onChange={(event) => onChange(event.target.value)}>
         <option value="">{label}</option>
         {options.map((option) => <option key={option} value={option}>{option}</option>)}
       </select>
