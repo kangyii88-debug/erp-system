@@ -1205,80 +1205,60 @@ function CompetitorProductsContent() {
       <Panel title={c.modules.table} icon={BarChart3}>
         {loading ? <Skeleton /> : pageRows.length ? (
           <>
-            <div className="overflow-x-auto rounded-2xl border border-line bg-white/70">
-              <table className="w-full min-w-[1880px] text-left text-sm">
-                <thead className="sticky top-0 z-[1] bg-[#eef3ee] text-xs uppercase tracking-[0.08em] text-muted">
+            <div className="overflow-x-auto rounded-[22px] border border-line bg-white/90 shadow-[0_14px_36px_rgba(23,72,63,0.06)]">
+              <table className="w-full min-w-[1540px] table-fixed text-left text-sm">
+                <colgroup>
+                  <col className="w-[46px]" />
+                  <col className="w-[390px]" />
+                  <col className="w-[230px]" />
+                  <col className="w-[230px]" />
+                  <col className="w-[250px]" />
+                  <col className="w-[255px]" />
+                  <col className="w-[120px]" />
+                  <col className="w-[150px]" />
+                </colgroup>
+                <thead className="sticky top-0 z-[1] border-b border-line bg-[#f3f6f2] text-[11px] uppercase tracking-[0.08em] text-muted">
                   <tr>
-                    <th className="px-3 py-3"><input type="checkbox" checked={pageRows.length > 0 && pageRows.every((row) => selectedIds.includes(row.id))} onChange={(event) => setSelectedIds(event.target.checked ? Array.from(new Set([...selectedIds, ...pageRows.map((row) => row.id)])) : selectedIds.filter((id) => !pageRows.some((row) => row.id === id)))} /></th>
-                    <th className="px-4 py-3">{c.table.product}</th>
-                    <th className="px-4 py-3">{c.table.category}</th>
-                    <th className="px-4 py-3"><SortButton label={c.table.market} active={sort.key === "sales"} dir={sort.dir} onClick={() => toggleSort("sales")} /></th>
-                    <th className="px-4 py-3">{c.table.risk}</th>
-                    <th className="px-4 py-3">{c.table.competition}</th>
-                    <th className="px-4 py-3"><SortButton label={c.table.profit} active={sort.key === "profitRate"} dir={sort.dir} onClick={() => toggleSort("profitRate")} /></th>
-                    <th className="px-4 py-3"><SortButton label={c.table.decision} active={sort.key === "score"} dir={sort.dir} onClick={() => toggleSort("score")} /></th>
-                    <th className="px-4 py-3">{c.table.updated}</th>
-                    <th className="px-4 py-3 text-right">{c.table.actions}</th>
+                    <th className="px-3 py-3.5"><input type="checkbox" checked={pageRows.length > 0 && pageRows.every((row) => selectedIds.includes(row.id))} onChange={(event) => setSelectedIds(event.target.checked ? Array.from(new Set([...selectedIds, ...pageRows.map((row) => row.id)])) : selectedIds.filter((id) => !pageRows.some((row) => row.id === id)))} /></th>
+                    <th className="px-4 py-3.5">{c.table.product}</th>
+                    <th className="px-4 py-3.5"><SortButton label={c.table.decision} active={sort.key === "score"} dir={sort.dir} onClick={() => toggleSort("score")} /></th>
+                    <th className="px-4 py-3.5"><SortButton label={c.table.market} active={sort.key === "sales"} dir={sort.dir} onClick={() => toggleSort("sales")} /></th>
+                    <th className="px-4 py-3.5"><SortButton label={c.table.profit} active={sort.key === "profitRate"} dir={sort.dir} onClick={() => toggleSort("profitRate")} /></th>
+                    <th className="px-4 py-3.5">{c.table.risk} / {c.table.competition}</th>
+                    <th className="px-4 py-3.5">{c.table.updated}</th>
+                    <th className="px-4 py-3.5 text-right">{c.table.actions}</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-line/70">
                   {pageRows.map((row) => (
-                    <tr key={row.id} className="premium-table-row cursor-pointer border-t border-line/60" onClick={() => openView(row)}>
-                      <td className="px-3 py-4" onClick={stop}><input type="checkbox" checked={selectedIds.includes(row.id)} onChange={(event) => setSelectedIds(event.target.checked ? [...selectedIds, row.id] : selectedIds.filter((id) => id !== row.id))} /></td>
-                      <td className="px-4 py-4">
-                        <div className="flex min-w-[330px] gap-3">
-                          <div className="h-16 w-16 shrink-0 overflow-hidden rounded-2xl border border-line bg-[#f4f6f1]">
+                    <tr key={row.id} className="cursor-pointer bg-white transition hover:bg-[#f7faf7]" onClick={() => openView(row)}>
+                      <td className="px-3 py-5 align-top" onClick={stop}><input type="checkbox" checked={selectedIds.includes(row.id)} onChange={(event) => setSelectedIds(event.target.checked ? [...selectedIds, row.id] : selectedIds.filter((id) => id !== row.id))} /></td>
+                      <td className="px-4 py-5 align-top">
+                        <div className="flex gap-3">
+                          <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-line bg-[#f4f6f1]">
                             {row.imageUrl ? <img className="h-full w-full object-cover" src={row.imageUrl} alt="" /> : <PackageSearch className="m-5 h-6 w-6 text-muted" />}
                           </div>
                           <div className="min-w-0">
                             <div className="line-clamp-2 font-bold leading-5 text-ink">{row.productNameKr}</div>
                             <div className="mt-1 line-clamp-1 text-xs text-muted">{row.productNameCn || "-"}</div>
-                            <div className="mt-2 flex items-center gap-2 text-xs text-muted"><span>ID: {row.coupangProductId || "-"}</span><a href={row.coupangUrl} target="_blank" onClick={stop} className="inline-flex items-center gap-1 font-bold text-[#17483f]">{c.actions.open}<ExternalLink size={12} /></a></div>
+                            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted"><span>ID: {row.coupangProductId || "-"}</span><span className="text-line">|</span><span>{row.category || "-"}</span><a href={row.coupangUrl} target="_blank" onClick={stop} className="inline-flex items-center gap-1 font-bold text-[#17483f]">{c.actions.open}<ExternalLink size={12} /></a></div>
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-4">
-                        <div className="font-bold">{row.category || "-"}</div>
-                        <div className="mt-1 text-xs text-muted">{row.brand || "-"} / {row.storeName || "-"}</div>
+                      <td className="px-4 py-5 align-top">
+                        <DecisionSnapshot row={row} language={language} c={c} />
                       </td>
-                      <td className="px-4 py-4">
-                        <Metric label={c.fields.price} value={won(row.currentPrice)} strong />
-                        <Metric label={c.fields.sales} value={row.monthlySales.toLocaleString()} />
-                        <Metric label={c.fields.reviews} value={row.reviewCount.toLocaleString()} />
-                        <div className="mt-1 flex items-center gap-2"><Star size={14} className="text-[#b89b5e]" /><span className="font-bold">{row.rating.toFixed(1)}</span><Tag>{c.rocket[row.rocketType]}</Tag></div>
+                      <td className="px-4 py-5 align-top">
+                        <MarketSnapshot row={row} c={c} />
                       </td>
-                      <td className="px-4 py-4">
-                        <div className="flex flex-wrap gap-1.5">
-                          <RiskTag label={`KC ${c.risk[row.kcRiskLevel]}`} level={row.kcRiskLevel} />
-                          <Tag>{c.fields["category"] ? `${c.filter.volume}: ${c.volume[row.volumeLevel]}` : row.volumeLevel}</Tag>
-                          <Tag>{c.filter.weight}: {c.weight[row.weightLevel]}</Tag>
-                          <RiskTag label={`${language === "zh" ? "易碎" : "파손"} ${c.risk[row.fragileRisk]}`} level={row.fragileRisk} />
-                          <RiskTag label={`${language === "zh" ? "退货" : "반품"} ${c.risk[row.returnRisk]}`} level={row.returnRisk} />
-                        </div>
+                      <td className="px-4 py-5 align-top">
+                        <ProfitSnapshot row={row} c={c} />
                       </td>
-                      <td className="px-4 py-4">
-                        <RiskTag label={c.risk[row.competitionLevel]} level={row.competitionLevel} />
-                        <div className="mt-2 text-xs text-muted">{language === "zh" ? "同类商品" : "유사 상품"}: <b className="text-ink">{row.similarProductCount.toLocaleString()}</b></div>
-                        <div className="mt-1 text-xs text-muted">{language === "zh" ? "品牌垄断" : "브랜드 독점"}: <b className="text-ink">{c.risk[row.brandMonopolyLevel]}</b></div>
+                      <td className="px-4 py-5 align-top">
+                        <RiskCompetitionSnapshot row={row} language={language} c={c} />
                       </td>
-                      <td className="px-4 py-4">
-                        <Metric label={c.fields.purchase} value={won(row.estimatedPurchasePrice)} />
-                        <Metric label={c.fields.logistics} value={won(row.estimatedLogisticsCost)} />
-                        <Metric label={c.fields.fee} value={percent(row.coupangFeeRate)} />
-                        <Metric label={c.fields.ad} value={won(row.estimatedAdCost)} />
-                        <div className="mt-2 rounded-xl bg-[#eef5f0] px-3 py-2"><div className="text-xs text-muted">{c.fields.profit}</div><div className={`text-base font-black ${row.estimatedProfit >= 0 ? "text-[#17483f]" : "text-red-700"}`}>{won(row.estimatedProfit)} / {percent(row.estimatedProfitRate)}</div></div>
-                      </td>
-                      <td className="px-4 py-4">
-                        <ScoreBadge score={row.recommendationScore} c={c} />
-                        <div className="mt-2 flex flex-wrap gap-1.5">
-                          <Tag tone={row.testRecommended ? "good" : "neutral"}>{row.testRecommended ? c.yes : c.no}</Tag>
-                          <Tag>{c.fields.testQty}: {row.suggestedTestQuantity || "-"}</Tag>
-                          <Tag tone={row.priority === "high" ? "risk" : row.priority === "medium" ? "watch" : "neutral"}>{c.priority[row.priority]}</Tag>
-                          <Tag tone={row.status === "ready_test" ? "good" : row.status === "eliminated" ? "risk" : row.status === "key_product" ? "watch" : "neutral"}>{c.status[row.status]}</Tag>
-                        </div>
-                      </td>
-                      <td className="px-4 py-4 text-xs text-muted">{formatDate(row.updatedAt)}</td>
-                      <td className="px-4 py-4" onClick={stop}>
+                      <td className="px-4 py-5 align-top text-xs text-muted">{formatDate(row.updatedAt)}</td>
+                      <td className="px-4 py-5 align-top" onClick={stop}>
                         <div className="flex justify-end gap-1.5">
                           <IconButton label={c.actions.view} icon={<Eye size={14} />} onClick={() => openView(row)} />
                           <IconButton label={c.actions.edit} icon={<Edit3 size={14} />} onClick={() => openEdit(row)} />
@@ -1748,6 +1728,109 @@ function RiskTag({ label, level }: { label: string; level: RiskLevel }) {
 function ScoreBadge({ score, c }: { score: number; c: CopyText }) {
   const tone = score >= 8 ? "good" : score >= 6 ? "watch" : score >= 4 ? "neutral" : "risk";
   return <Tag tone={tone}><Gauge size={12} className="mr-1" />{score.toFixed(1)} · {scoreText(score, c)}</Tag>;
+}
+
+function DecisionSnapshot({ row, language, c }: { row: CompetitorItem; language: "zh" | "ko"; c: CopyText }) {
+  const decision = decisionView(row, language);
+  return (
+    <div className={`rounded-2xl border px-3 py-3 ${decision.className}`}>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="text-[11px] font-black uppercase tracking-[0.08em] opacity-70">{language === "zh" ? "决策" : "Decision"}</div>
+          <div className="mt-1 text-base font-black leading-5">{decision.title}</div>
+        </div>
+        <div className="rounded-full bg-white/70 px-2 py-1 text-xs font-black tabular-nums">{row.recommendationScore.toFixed(1)}</div>
+      </div>
+      <div className="mt-3 grid gap-1.5 text-xs font-bold">
+        <div className="flex items-center justify-between gap-3"><span className="opacity-70">{c.fields.testQty}</span><span>{row.testRecommended ? row.suggestedTestQuantity || "-" : "-"}</span></div>
+        <div className="flex items-center justify-between gap-3"><span className="opacity-70">{language === "zh" ? "优先级" : "Priority"}</span><span>{c.priority[row.priority]}</span></div>
+      </div>
+      <div className="mt-2 flex flex-wrap gap-1.5">
+        <Tag tone={row.status === "ready_test" ? "good" : row.status === "eliminated" ? "risk" : row.status === "key_product" ? "watch" : "neutral"}>{c.status[row.status]}</Tag>
+      </div>
+    </div>
+  );
+}
+
+function MarketSnapshot({ row, c }: { row: CompetitorItem; c: CopyText }) {
+  return (
+    <div className="grid gap-2">
+      <div className="rounded-2xl border border-line bg-[#fbfcfb] px-3 py-2.5">
+        <Metric label={c.fields.price} value={won(row.currentPrice)} strong />
+        <Metric label={c.fields.sales} value={row.monthlySales.toLocaleString()} />
+        <Metric label={c.fields.reviews} value={row.reviewCount.toLocaleString()} />
+      </div>
+      <div className="flex flex-wrap items-center gap-2 text-xs">
+        <span className="inline-flex items-center gap-1 rounded-full border border-[#e4d4ae] bg-[#fff8e8] px-2.5 py-1 font-black text-[#8a6b24]"><Star size={13} />{row.rating.toFixed(1)}</span>
+        <Tag>{c.rocket[row.rocketType]}</Tag>
+      </div>
+    </div>
+  );
+}
+
+function ProfitSnapshot({ row, c }: { row: CompetitorItem; c: CopyText }) {
+  const good = row.estimatedProfit >= 0 && row.estimatedProfitRate >= 20;
+  const warn = row.estimatedProfit >= 0 && row.estimatedProfitRate < 20;
+  return (
+    <div className={`rounded-2xl border px-3 py-3 ${good ? "border-emerald-200 bg-emerald-50/70" : warn ? "border-yellow-200 bg-yellow-50/70" : "border-red-200 bg-red-50/70"}`}>
+      <div className="text-[11px] font-black uppercase tracking-[0.08em] text-muted">{c.fields.profit}</div>
+      <div className={`mt-1 text-lg font-black tabular-nums ${row.estimatedProfit >= 0 ? "text-[#17483f]" : "text-red-700"}`}>{won(row.estimatedProfit)}</div>
+      <div className={`text-sm font-black tabular-nums ${row.estimatedProfitRate >= 20 ? "text-[#17483f]" : row.estimatedProfitRate >= 0 ? "text-yellow-800" : "text-red-700"}`}>{percent(row.estimatedProfitRate)}</div>
+      <div className="mt-2 grid gap-1">
+        <Metric label={c.fields.purchase} value={won(row.estimatedPurchasePrice)} />
+        <Metric label={c.fields.logistics} value={won(row.estimatedLogisticsCost)} />
+        <Metric label={c.fields.fee} value={percent(row.coupangFeeRate)} />
+        <Metric label={c.fields.ad} value={won(row.estimatedAdCost)} />
+      </div>
+    </div>
+  );
+}
+
+function RiskCompetitionSnapshot({ row, language, c }: { row: CompetitorItem; language: "zh" | "ko"; c: CopyText }) {
+  return (
+    <div className="grid gap-2">
+      <div className="flex flex-wrap gap-1.5">
+        <RiskTag label={`KC ${c.risk[row.kcRiskLevel]}`} level={row.kcRiskLevel} />
+        <RiskTag label={`${language === "zh" ? "竞争" : "경쟁"} ${c.risk[row.competitionLevel]}`} level={row.competitionLevel} />
+        <RiskTag label={`${language === "zh" ? "破损" : "파손"} ${c.risk[row.fragileRisk]}`} level={row.fragileRisk} />
+        <RiskTag label={`${language === "zh" ? "退货" : "반품"} ${c.risk[row.returnRisk]}`} level={row.returnRisk} />
+      </div>
+      <div className="rounded-2xl border border-line bg-[#fbfcfb] px-3 py-2">
+        <Metric label={language === "zh" ? "同类商品" : "유사 상품"} value={row.similarProductCount.toLocaleString()} />
+        <Metric label={language === "zh" ? "品牌垄断" : "브랜드 독점"} value={c.risk[row.brandMonopolyLevel]} />
+        <Metric label={c.filter.volume} value={c.volume[row.volumeLevel]} />
+        <Metric label={c.filter.weight} value={c.weight[row.weightLevel]} />
+      </div>
+    </div>
+  );
+}
+
+function decisionView(row: CompetitorItem, language: "zh" | "ko") {
+  const blocked = row.status === "eliminated" || row.recommendationScore < 4 || row.estimatedProfit < 0;
+  const strong = !blocked && (row.testRecommended || row.recommendationScore >= 8) && row.estimatedProfitRate >= 20 && row.competitionLevel !== "high";
+  const watch = !blocked && (row.recommendationScore >= 6 || row.estimatedProfitRate >= 20);
+  if (blocked) {
+    return {
+      title: language === "zh" ? "不建议做" : "비추천",
+      className: "border-red-200 bg-red-50/80 text-red-800"
+    };
+  }
+  if (strong) {
+    return {
+      title: language === "zh" ? "建议测试" : "테스트 추천",
+      className: "border-emerald-200 bg-emerald-50/80 text-emerald-800"
+    };
+  }
+  if (watch) {
+    return {
+      title: language === "zh" ? "谨慎观察" : "관찰 필요",
+      className: "border-yellow-200 bg-yellow-50/80 text-yellow-900"
+    };
+  }
+  return {
+    title: language === "zh" ? "暂不优先" : "우선순위 낮음",
+    className: "border-line bg-[#f7f8f5] text-ink"
+  };
 }
 
 function IconButton({ label, icon, onClick, danger = false }: { label: string; icon: React.ReactNode; onClick: () => void; danger?: boolean }) {
