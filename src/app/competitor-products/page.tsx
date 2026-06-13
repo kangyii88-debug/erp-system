@@ -40,6 +40,7 @@ type RocketType = "normal" | "rocket_delivery" | "rocket_growth" | "seller_rocke
 type DrawerMode = "view" | "edit" | "create" | "quick" | null;
 type SortKey = "score" | "price" | "sales" | "reviews" | "rating" | "profitRate" | "updated";
 type SortDir = "asc" | "desc";
+type KpiListKey = "weekly" | "candidates" | "lowRisk" | "top";
 
 type RawRow = Record<string, any>;
 
@@ -841,6 +842,7 @@ function CompetitorProductsContent() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({ key: "score", dir: "desc" });
   const [page, setPage] = useState(1);
+  const [activeKpi, setActiveKpi] = useState<KpiListKey | null>(null);
 
   const loadRows = async () => {
     setLoading(true);
@@ -920,6 +922,38 @@ function CompetitorProductsContent() {
   const top10 = useMemo(() => [...rows].sort(topSort).slice(0, 10), [rows]);
   const weeklyRows = rows.filter((row) => daysAgo(row.collectedAt) <= 7);
   const lastWeekRows = rows.filter((row) => daysAgo(row.collectedAt) > 7 && daysAgo(row.collectedAt) <= 14);
+  const candidateRows = rows.filter((row) => row.status === "key_product" || row.recommendationScore >= 7).sort(topSort);
+  const lowRiskRows = rows.filter((row) => row.kcRiskLevel === "low" && row.volumeLevel !== "large" && row.weightLevel !== "heavy").sort(topSort);
+  const kpiLists: Record<KpiListKey, { title: string; subtitle: string; rows: CompetitorItem[]; cta: string; onFilter: () => void }> = {
+    weekly: {
+      title: language === "zh" ? `本周新增产品 ${weeklyRows.length} 个` : `이번 주 신규 상품 ${weeklyRows.length}개`,
+      subtitle: language === "zh" ? "最近 7 天采集的产品，适合先做快速初筛。" : "최근 7일 내 수집된 상품입니다.",
+      rows: [...weeklyRows].sort((a, b) => new Date(b.collectedAt).getTime() - new Date(a.collectedAt).getTime()).slice(0, 10),
+      cta: language === "zh" ? "查看本周新增" : "이번 주 신규 보기",
+      onFilter: () => { setFilters(emptyFilters); setSort({ key: "updated", dir: "desc" }); setPage(1); }
+    },
+    candidates: {
+      title: language === "zh" ? `重点候选商品 ${candidateRows.length} 个` : `핵심 후보 상품 ${candidateRows.length}개`,
+      subtitle: language === "zh" ? "推荐指数较高或已被标记为重点商品。" : "추천 지수가 높거나 핵심 상품으로 표시된 상품입니다.",
+      rows: candidateRows.slice(0, 10),
+      cta: language === "zh" ? "筛选重点候选" : "핵심 후보 필터",
+      onFilter: () => { setFilters({ ...emptyFilters, status: "key_product" }); setPage(1); }
+    },
+    lowRisk: {
+      title: language === "zh" ? `低风险商品 ${lowRiskRows.length} 个` : `저위험 상품 ${lowRiskRows.length}개`,
+      subtitle: language === "zh" ? "KC 低风险，并且不是大体积或重货。" : "KC 저위험이며 대형/중량 상품이 아닙니다.",
+      rows: lowRiskRows.slice(0, 10),
+      cta: language === "zh" ? "筛选低风险" : "저위험 필터",
+      onFilter: () => { setFilters({ ...emptyFilters, kcRiskLevel: "low" }); setPage(1); }
+    },
+    top: {
+      title: language === "zh" ? "TOP 推荐产品列表" : "TOP 추천 상품 목록",
+      subtitle: language === "zh" ? "按推荐指数、风险、销量综合排序的前 10 个产品。" : "추천 지수, 리스크, 판매량 기준 상위 10개 상품입니다.",
+      rows: top10,
+      cta: language === "zh" ? "按推荐指数排序" : "추천 지수순 정렬",
+      onFilter: () => { setFilters(emptyFilters); setSort({ key: "score", dir: "desc" }); setPage(1); }
+    }
+  };
   const stats = {
     total: rows.length,
     candidates: rows.filter((row) => row.status === "key_product" || row.recommendationScore >= 7).length,
@@ -1110,11 +1144,20 @@ function CompetitorProductsContent() {
       {message ? <div className="rounded-2xl border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm font-semibold text-yellow-800">{message}</div> : null}
 
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <KpiCard icon={PackageSearch} label={c.kpi.total} value={stats.total.toLocaleString()} trend={`${c.kpi.weekly} ${stats.weekly}`} meta={`${c.kpi.change} ${percent(stats.change)}`} />
-        <KpiCard icon={BadgeCheck} label={c.kpi.candidates} value={stats.candidates.toLocaleString()} trend={language === "zh" ? "推荐指数 ≥ 7" : "추천 지수 ≥ 7"} meta={`${language === "zh" ? "转化率" : "전환율"} ${percent(ratio(stats.candidates, stats.total))}`} />
-        <KpiCard icon={ShieldCheck} label={c.kpi.lowRisk} value={stats.lowRisk.toLocaleString()} trend={language === "zh" ? "KC 低风险 + 轻小件" : "KC 저위험 + 소형"} meta={`${language === "zh" ? "占比" : "비중"} ${percent(ratio(stats.lowRisk, stats.total))}`} />
-        <KpiCard icon={Flame} label={c.kpi.topScore} value={stats.topScore.toFixed(1)} trend={c.kpi.scoreTrend} meta={scoreText(stats.topScore, c)} />
+        <KpiCard icon={PackageSearch} label={c.kpi.total} value={stats.total.toLocaleString()} trend={`${c.kpi.weekly} ${stats.weekly}`} meta={`${c.kpi.change} ${percent(stats.change)}`} active={activeKpi === "weekly"} onClick={() => setActiveKpi(activeKpi === "weekly" ? null : "weekly")} />
+        <KpiCard icon={BadgeCheck} label={c.kpi.candidates} value={stats.candidates.toLocaleString()} trend={language === "zh" ? "推荐指数 ≥ 7" : "추천 지수 ≥ 7"} meta={`${language === "zh" ? "转化率" : "전환율"} ${percent(ratio(stats.candidates, stats.total))}`} active={activeKpi === "candidates"} onClick={() => setActiveKpi(activeKpi === "candidates" ? null : "candidates")} />
+        <KpiCard icon={ShieldCheck} label={c.kpi.lowRisk} value={stats.lowRisk.toLocaleString()} trend={language === "zh" ? "KC 低风险 + 轻小件" : "KC 저위험 + 소형"} meta={`${language === "zh" ? "占比" : "비중"} ${percent(ratio(stats.lowRisk, stats.total))}`} active={activeKpi === "lowRisk"} onClick={() => setActiveKpi(activeKpi === "lowRisk" ? null : "lowRisk")} />
+        <KpiCard icon={Flame} label={c.kpi.topScore} value={stats.topScore.toFixed(1)} trend={c.kpi.scoreTrend} meta={scoreText(stats.topScore, c)} active={activeKpi === "top"} onClick={() => setActiveKpi(activeKpi === "top" ? null : "top")} />
       </div>
+
+      {activeKpi ? (
+        <KpiProductList
+          c={c}
+          language={language}
+          config={kpiLists[activeKpi]}
+          onOpen={openView}
+        />
+      ) : null}
 
       <Panel title={language === "zh" ? "今天先看这三类" : "오늘 먼저 볼 3가지"} icon={Sparkles}>
         <div className="grid gap-3 lg:grid-cols-3">
@@ -1590,9 +1633,29 @@ function Panel({ title, icon: Icon, children }: { title: string; icon: LucideIco
   return <section className="rounded-[24px] border border-line bg-card/90 p-5 shadow-card backdrop-blur"><div className="mb-4 flex items-center gap-2"><div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#e8f1ed] text-[#17483f]"><Icon size={18} /></div><h2 className="text-xl font-semibold tracking-tight text-ink">{title}</h2></div>{children}</section>;
 }
 
-function KpiCard({ icon: Icon, label, value, trend, meta }: { icon: LucideIcon; label: string; value: string; trend: string; meta: string }) {
+function KpiCard({
+  icon: Icon,
+  label,
+  value,
+  trend,
+  meta,
+  active = false,
+  onClick
+}: {
+  icon: LucideIcon;
+  label: string;
+  value: string;
+  trend: string;
+  meta: string;
+  active?: boolean;
+  onClick?: () => void;
+}) {
   return (
-    <div className="premium-dashboard-card p-4">
+    <button
+      type="button"
+      className={`premium-dashboard-card w-full p-4 text-left transition hover:-translate-y-0.5 hover:border-[#17483f]/30 hover:shadow-lift ${active ? "border-[#17483f]/40 bg-[#eef5f0] ring-2 ring-[#17483f]/10" : ""}`}
+      onClick={onClick}
+    >
       <div className="flex items-start gap-3">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#e7f0ec] text-[#17483f]"><Icon size={19} /></div>
         <div className="min-w-0">
@@ -1601,6 +1664,71 @@ function KpiCard({ icon: Icon, label, value, trend, meta }: { icon: LucideIcon; 
           <div className="mt-2 flex flex-wrap gap-1.5 text-[11px] font-bold"><span className="rounded-full bg-[#eef5f0] px-2 py-1 text-[#17483f]">{trend}</span><span className="rounded-full bg-white px-2 py-1 text-muted">{meta}</span></div>
         </div>
       </div>
+    </button>
+  );
+}
+
+function KpiProductList({
+  c,
+  language,
+  config,
+  onOpen
+}: {
+  c: CopyText;
+  language: "zh" | "ko";
+  config: { title: string; subtitle: string; rows: CompetitorItem[]; cta: string; onFilter: () => void };
+  onOpen: (row: CompetitorItem) => void;
+}) {
+  return (
+    <section className="rounded-[24px] border border-[#d9e2dc] bg-white/92 p-4 shadow-card">
+      <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h3 className="text-lg font-black text-ink">{config.title}</h3>
+          <p className="mt-1 text-sm text-muted">{config.subtitle}</p>
+        </div>
+        <button type="button" className="erp-button-subtle px-3 py-2 text-sm font-bold" onClick={config.onFilter}>{config.cta}</button>
+      </div>
+      {config.rows.length ? (
+        <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-5">
+          {config.rows.map((row) => (
+            <button
+              key={row.id}
+              type="button"
+              className="group rounded-2xl border border-line bg-[#fbfcfb] p-3 text-left transition hover:border-[#17483f]/30 hover:bg-[#f4f8f4]"
+              onClick={() => onOpen(row)}
+            >
+              <div className="flex gap-3">
+                <div className="h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-line bg-[#f4f6f1]">
+                  {row.imageUrl ? <img className="h-full w-full object-cover" src={row.imageUrl} alt="" /> : <PackageSearch className="m-3 h-6 w-6 text-muted" />}
+                </div>
+                <div className="min-w-0">
+                  <div className="line-clamp-2 text-sm font-black leading-5 text-ink group-hover:text-[#17483f]">{row.productNameKr}</div>
+                  <div className="mt-1 truncate text-xs text-muted">{row.category || "-"}</div>
+                </div>
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                <MiniMetric label={c.fields.profit} value={`${won(row.estimatedProfit)} / ${percent(row.estimatedProfitRate)}`} />
+                <MiniMetric label={c.fields.score} value={row.recommendationScore.toFixed(1)} />
+                <MiniMetric label={c.fields.sales} value={row.monthlySales.toLocaleString()} />
+                <MiniMetric label={language === "zh" ? "风险" : "리스크"} value={c.risk[row.kcRiskLevel]} />
+              </div>
+            </button>
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-2xl border border-dashed border-line bg-[#fbfcfb] px-4 py-8 text-center text-sm font-bold text-muted">
+          {language === "zh" ? "暂无符合条件的商品" : "조건에 맞는 상품이 없습니다."}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function MiniMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0 rounded-xl bg-white px-2 py-1.5">
+      <div className="truncate text-[10px] font-bold text-muted">{label}</div>
+      <div className="mt-0.5 truncate font-black tabular-nums text-ink">{value}</div>
     </div>
   );
 }
