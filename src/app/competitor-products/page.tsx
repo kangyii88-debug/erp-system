@@ -134,6 +134,16 @@ type FormState = {
   testOwner: string;
   plannedLaunchDate: string;
   targetPrice: string;
+  productSpecSize: string;
+  capacity: string;
+  color: string;
+  material: string;
+  packageSize: string;
+  packageQuantity: string;
+  cartonSize: string;
+  cartonQuantity: string;
+  gp20: string;
+  hq40: string;
 };
 
 type Filters = {
@@ -252,7 +262,17 @@ const emptyForm: FormState = {
   testStatus: "not_added",
   testOwner: "",
   plannedLaunchDate: "",
-  targetPrice: ""
+  targetPrice: "",
+  productSpecSize: "",
+  capacity: "",
+  color: "",
+  material: "",
+  packageSize: "",
+  packageQuantity: "",
+  cartonSize: "",
+  cartonQuantity: "",
+  gp20: "",
+  hq40: ""
 };
 
 const text = {
@@ -651,7 +671,54 @@ function oldStatus(value: DecisionStatus) {
   return "watching";
 }
 
+const productSpecNotePattern = /\n*\[PRODUCT_SPEC_JSON\]([\s\S]*?)\[\/PRODUCT_SPEC_JSON\]\s*/;
+const emptyProductSpecs = {
+  productSpecSize: "",
+  capacity: "",
+  color: "",
+  material: "",
+  packageSize: "",
+  packageQuantity: "",
+  cartonSize: "",
+  cartonQuantity: "",
+  gp20: "",
+  hq40: ""
+};
+
+function parseProductSpecNotes(notes: string) {
+  const match = notes.match(productSpecNotePattern);
+  if (!match) return { notes, specs: emptyProductSpecs };
+  try {
+    const parsed = JSON.parse(match[1]) as Partial<typeof emptyProductSpecs>;
+    return {
+      notes: notes.replace(productSpecNotePattern, "").trim(),
+      specs: { ...emptyProductSpecs, ...parsed }
+    };
+  } catch {
+    return { notes, specs: emptyProductSpecs };
+  }
+}
+
+function serializeProductSpecNotes(notes: string, form: FormState) {
+  const specs = {
+    productSpecSize: form.productSpecSize.trim(),
+    capacity: form.capacity.trim(),
+    color: form.color.trim(),
+    material: form.material.trim(),
+    packageSize: form.packageSize.trim(),
+    packageQuantity: form.packageQuantity.trim(),
+    cartonSize: form.cartonSize.trim(),
+    cartonQuantity: form.cartonQuantity.trim(),
+    gp20: form.gp20.trim(),
+    hq40: form.hq40.trim()
+  };
+  const cleanNotes = notes.replace(productSpecNotePattern, "").trim();
+  if (!Object.values(specs).some(Boolean)) return cleanNotes;
+  return `${cleanNotes}${cleanNotes ? "\n\n" : ""}[PRODUCT_SPEC_JSON]${JSON.stringify(specs)}[/PRODUCT_SPEC_JSON]`;
+}
+
 function formFromItem(item: CompetitorItem): FormState {
+  const parsedNotes = parseProductSpecNotes(item.notes);
   return {
     productNameKr: item.productNameKr,
     productNameCn: item.productNameCn,
@@ -689,11 +756,12 @@ function formFromItem(item: CompetitorItem): FormState {
     brandingFit: item.brandingFit,
     nextAction: item.nextAction,
     collectedAt: item.collectedAt,
-    notes: item.notes,
+    notes: parsedNotes.notes,
     testStatus: item.testStatus,
     testOwner: item.testOwner,
     plannedLaunchDate: item.plannedLaunchDate,
-    targetPrice: String(item.targetPrice || "")
+    targetPrice: String(item.targetPrice || ""),
+    ...parsedNotes.specs
   };
 }
 
@@ -739,7 +807,7 @@ function itemFromForm(form: FormState): CompetitorItem {
     nextAction: form.nextAction.trim(),
     collectedAt: form.collectedAt || today(),
     updatedAt: today(),
-    notes: form.notes.trim(),
+    notes: serializeProductSpecNotes(form.notes, form),
     testStatus: form.testStatus,
     testOwner: form.testOwner.trim(),
     plannedLaunchDate: form.plannedLaunchDate,
@@ -1600,6 +1668,19 @@ function Drawer({
                 <div className="text-xs font-bold text-muted">{c.fields.profit}</div>
                 <div className="mt-1 text-xl font-black text-[#17483f]">{won(item.estimatedProfit)} / {percent(item.estimatedProfitRate)}</div>
               </div>
+            </FormSection>
+
+            <FormSection title={language === "zh" ? "产品规格与装箱信息" : "제품 사양 및 포장 정보"}>
+              <Field label={language === "zh" ? "产品规格尺寸" : "제품 규격/사이즈"} value={form.productSpecSize} readOnly={readOnly} onChange={(value) => setForm({ ...form, productSpecSize: value })} />
+              <Field label={language === "zh" ? "容量" : "용량"} value={form.capacity} readOnly={readOnly} onChange={(value) => setForm({ ...form, capacity: value })} />
+              <Field label={language === "zh" ? "颜色" : "색상"} value={form.color} readOnly={readOnly} onChange={(value) => setForm({ ...form, color: value })} />
+              <Field label={language === "zh" ? "材质" : "소재"} value={form.material} readOnly={readOnly} onChange={(value) => setForm({ ...form, material: value })} />
+              <Field label={language === "zh" ? "包装尺寸" : "포장 사이즈"} value={form.packageSize} readOnly={readOnly} onChange={(value) => setForm({ ...form, packageSize: value })} />
+              <Field label={language === "zh" ? "包装数量" : "포장 수량"} value={form.packageQuantity} readOnly={readOnly} onChange={(value) => setForm({ ...form, packageQuantity: value })} />
+              <Field label={language === "zh" ? "外箱尺寸" : "박스 사이즈"} value={form.cartonSize} readOnly={readOnly} onChange={(value) => setForm({ ...form, cartonSize: value })} />
+              <Field label={language === "zh" ? "外箱装箱数" : "박스 입수"} value={form.cartonQuantity} readOnly={readOnly} onChange={(value) => setForm({ ...form, cartonQuantity: value })} />
+              <Field label="20GP" value={form.gp20} readOnly={readOnly} onChange={(value) => setForm({ ...form, gp20: value })} />
+              <Field label="40HQ" value={form.hq40} readOnly={readOnly} onChange={(value) => setForm({ ...form, hq40: value })} />
             </FormSection>
 
             {!quick ? (
