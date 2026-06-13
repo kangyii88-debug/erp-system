@@ -170,6 +170,7 @@ const weightOptions: WeightLevel[] = ["light", "medium", "heavy"];
 const priorityOptions: Priority[] = ["high", "medium", "low"];
 const statusOptions: DecisionStatus[] = ["pending_analysis", "key_product", "eliminated", "ready_test", "tested"];
 const rocketOptions: RocketType[] = ["normal", "rocket_delivery", "rocket_growth", "seller_rocket", "orange_rocket"];
+const categoryOptions = ["厨房用品", "家居清洁", "办公用品", "宠物用品", "旅行用品", "美妆个护", "母婴用品", "电子配件", "运动户外", "服饰配件"];
 
 const emptyFilters: Filters = {
   search: "",
@@ -868,7 +869,7 @@ function CompetitorProductsContent() {
     return () => window.clearTimeout(timer);
   }, [toast]);
 
-  const categories = useMemo(() => Array.from(new Set(rows.map((row) => row.category).filter(Boolean))).sort(), [rows]);
+  const categories = useMemo(() => Array.from(new Set([...categoryOptions, ...rows.map((row) => row.category).filter(Boolean)])).sort(), [rows]);
 
   const filtered = useMemo(() => {
     const query = filters.search.trim().toLowerCase();
@@ -1515,7 +1516,7 @@ function Drawer({
                 onFile={handleImageUpload}
                 className="md:col-span-2"
               />
-              <Field label={c.fields.category} value={form.category} readOnly={readOnly} onChange={(value) => setForm({ ...form, category: value })} />
+              <CategoryField label={c.fields.category} value={form.category} disabled={readOnly} onChange={(value) => setForm({ ...form, category: value })} />
               <Field label={c.fields.brand} value={form.brand} readOnly={readOnly} onChange={(value) => setForm({ ...form, brand: value })} />
               <Field label={c.fields.store} value={form.storeName} readOnly={readOnly} onChange={(value) => setForm({ ...form, storeName: value })} />
             </FormSection>
@@ -1844,6 +1845,19 @@ function TextArea({ label, value, onChange, readOnly = false, className = "" }: 
 
 function SelectField({ label, value, options, labelMap, onChange, disabled = false }: { label: string; value: string; options: readonly string[]; labelMap: Record<string, string>; onChange: (value: string) => void; disabled?: boolean }) {
   return <label><span className="mb-1 block text-xs font-bold text-muted">{label}</span><select className="w-full" value={value} disabled={disabled} onChange={(event) => onChange(event.target.value)}>{options.map((option) => <option key={option} value={option}>{labelMap[option]}</option>)}</select></label>;
+}
+
+function CategoryField({ label, value, onChange, disabled = false }: { label: string; value: string; onChange: (value: string) => void; disabled?: boolean }) {
+  const options = value && !categoryOptions.includes(value) ? [value, ...categoryOptions] : categoryOptions;
+  return (
+    <label>
+      <span className="mb-1 block text-xs font-bold text-muted">{label}</span>
+      <select className="w-full" value={value} disabled={disabled} onChange={(event) => onChange(event.target.value)}>
+        <option value="">{label}</option>
+        {options.map((option) => <option key={option} value={option}>{option}</option>)}
+      </select>
+    </label>
+  );
 }
 
 function KcRequirementField({ value, language, disabled = false, onChange }: { value: RiskLevel; language: "zh" | "ko"; disabled?: boolean; onChange: (value: RiskLevel) => void }) {
