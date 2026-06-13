@@ -1529,7 +1529,7 @@ function Drawer({
             </FormSection>
 
             <FormSection title={language === "zh" ? "风险与竞争判断" : "리스크 및 경쟁 판단"}>
-              <SelectField label="KC" value={form.kcRiskLevel === "medium" ? "low" : form.kcRiskLevel} disabled={readOnly} options={kcOptions} labelMap={kcLabelMap(language)} onChange={(value) => setForm({ ...form, kcRiskLevel: value as RiskLevel })} />
+              <KcRequirementField value={form.kcRiskLevel === "high" ? "high" : "low"} language={language} disabled={readOnly} onChange={(value) => setForm({ ...form, kcRiskLevel: value })} />
               <SelectField label={c.filter.volume} value={form.volumeLevel} disabled={readOnly} options={volumeOptions} labelMap={c.volume} onChange={(value) => setForm({ ...form, volumeLevel: value as VolumeLevel })} />
               <SelectField label={c.filter.weight} value={form.weightLevel} disabled={readOnly} options={weightOptions} labelMap={c.weight} onChange={(value) => setForm({ ...form, weightLevel: value as WeightLevel })} />
               <SelectField label={language === "zh" ? "易碎风险" : "파손 리스크"} value={form.fragileRisk} disabled={readOnly} options={levelOptions} labelMap={c.risk} onChange={(value) => setForm({ ...form, fragileRisk: value as RiskLevel })} />
@@ -1844,6 +1844,43 @@ function TextArea({ label, value, onChange, readOnly = false, className = "" }: 
 
 function SelectField({ label, value, options, labelMap, onChange, disabled = false }: { label: string; value: string; options: readonly string[]; labelMap: Record<string, string>; onChange: (value: string) => void; disabled?: boolean }) {
   return <label><span className="mb-1 block text-xs font-bold text-muted">{label}</span><select className="w-full" value={value} disabled={disabled} onChange={(event) => onChange(event.target.value)}>{options.map((option) => <option key={option} value={option}>{labelMap[option]}</option>)}</select></label>;
+}
+
+function KcRequirementField({ value, language, disabled = false, onChange }: { value: RiskLevel; language: "zh" | "ko"; disabled?: boolean; onChange: (value: RiskLevel) => void }) {
+  const options: Array<{ value: RiskLevel; label: string; hint: string }> = [
+    {
+      value: "low",
+      label: language === "zh" ? "不需要" : "불필요",
+      hint: language === "zh" ? "无需 KC 认证" : "KC 인증 불필요"
+    },
+    {
+      value: "high",
+      label: language === "zh" ? "需要" : "필요",
+      hint: language === "zh" ? "需要 KC 认证" : "KC 인증 필요"
+    }
+  ];
+  return (
+    <div>
+      <span className="mb-1 block text-xs font-bold text-muted">KC</span>
+      <div className="grid grid-cols-2 gap-2">
+        {options.map((option) => {
+          const active = value === option.value;
+          return (
+            <button
+              key={option.value}
+              type="button"
+              disabled={disabled}
+              className={`rounded-2xl border px-3 py-3 text-left transition ${active ? "border-[#17483f] bg-[#e8f1ed] text-[#17483f]" : "border-line bg-white/70 text-ink hover:border-[#17483f]/30"} ${disabled ? "cursor-not-allowed opacity-60" : ""}`}
+              onClick={() => onChange(option.value)}
+            >
+              <span className="block text-sm font-black">{option.label}</span>
+              <span className="mt-1 block text-xs font-semibold text-muted">{option.hint}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 function Select({ value, options, allLabel, labelMap, onChange }: { value: string; options: readonly string[]; allLabel: string; labelMap?: Record<string, string>; onChange: (value: string) => void }) {
