@@ -164,6 +164,7 @@ const pageSize = 10;
 const PRODUCT_IMAGE_BUCKET = "competitor-product-images";
 
 const levelOptions: RiskLevel[] = ["low", "medium", "high"];
+const kcOptions: RiskLevel[] = ["low", "high"];
 const volumeOptions: VolumeLevel[] = ["small", "medium", "large"];
 const weightOptions: WeightLevel[] = ["light", "medium", "heavy"];
 const priorityOptions: Priority[] = ["high", "medium", "low"];
@@ -1196,7 +1197,7 @@ function CompetitorProductsContent() {
           <Input icon={Search} placeholder={c.filter.search} value={filters.search} onChange={(value) => setFilters({ ...filters, search: value })} />
           <Select value={filters.category} allLabel={c.filter.category} options={categories} onChange={(value) => setFilters({ ...filters, category: value })} />
           <Select value={filters.status} allLabel={c.filter.status} options={statusOptions} labelMap={c.status} onChange={(value) => setFilters({ ...filters, status: value })} />
-          <Select value={filters.kcRiskLevel} allLabel={c.filter.kc} options={levelOptions} labelMap={c.risk} onChange={(value) => setFilters({ ...filters, kcRiskLevel: value })} />
+          <Select value={filters.kcRiskLevel} allLabel={c.filter.kc} options={kcOptions} labelMap={kcLabelMap(language)} onChange={(value) => setFilters({ ...filters, kcRiskLevel: value })} />
           <Select value={filters.profitSpace} allLabel={c.filter.profit} options={levelOptions} labelMap={c.profitSpace} onChange={(value) => setFilters({ ...filters, profitSpace: value })} />
           <Select value={filters.testRecommended} allLabel={c.filter.test} options={["yes", "no"]} labelMap={{ yes: c.yes, no: c.no }} onChange={(value) => setFilters({ ...filters, testRecommended: value })} />
         </div>
@@ -1389,6 +1390,19 @@ function scoreText(score: number, c: CopyText) {
   return c.scoreLabel.reject;
 }
 
+function kcLabel(level: RiskLevel, language: "zh" | "ko") {
+  if (level === "high") return language === "zh" ? "需要" : "필요";
+  if (level === "medium") return language === "zh" ? "需要确认" : "확인 필요";
+  return language === "zh" ? "不需要" : "불필요";
+}
+
+function kcLabelMap(language: "zh" | "ko") {
+  return {
+    low: language === "zh" ? "不需要" : "불필요",
+    high: language === "zh" ? "需要" : "필요"
+  };
+}
+
 function csvCell(value: unknown) {
   return `"${String(value ?? "").replace(/"/g, '""')}"`;
 }
@@ -1515,7 +1529,7 @@ function Drawer({
             </FormSection>
 
             <FormSection title={language === "zh" ? "风险与竞争判断" : "리스크 및 경쟁 판단"}>
-              <SelectField label="KC" value={form.kcRiskLevel} disabled={readOnly} options={levelOptions} labelMap={c.risk} onChange={(value) => setForm({ ...form, kcRiskLevel: value as RiskLevel })} />
+              <SelectField label="KC" value={form.kcRiskLevel === "medium" ? "low" : form.kcRiskLevel} disabled={readOnly} options={kcOptions} labelMap={kcLabelMap(language)} onChange={(value) => setForm({ ...form, kcRiskLevel: value as RiskLevel })} />
               <SelectField label={c.filter.volume} value={form.volumeLevel} disabled={readOnly} options={volumeOptions} labelMap={c.volume} onChange={(value) => setForm({ ...form, volumeLevel: value as VolumeLevel })} />
               <SelectField label={c.filter.weight} value={form.weightLevel} disabled={readOnly} options={weightOptions} labelMap={c.weight} onChange={(value) => setForm({ ...form, weightLevel: value as WeightLevel })} />
               <SelectField label={language === "zh" ? "易碎风险" : "파손 리스크"} value={form.fragileRisk} disabled={readOnly} options={levelOptions} labelMap={c.risk} onChange={(value) => setForm({ ...form, fragileRisk: value as RiskLevel })} />
@@ -1576,7 +1590,7 @@ function QuickAnalysis({ c, language, row, onPatch }: { c: CopyText; language: "
         <div className="min-w-0">
           <div className="flex flex-wrap gap-2">
             <ScoreBadge score={row.recommendationScore} c={c} />
-            <RiskTag label={`KC ${c.risk[row.kcRiskLevel]}`} level={row.kcRiskLevel} />
+            <RiskTag label={`KC ${kcLabel(row.kcRiskLevel, language)}`} level={row.kcRiskLevel} />
             <Tag tone={row.testRecommended ? "good" : "neutral"}>{row.testRecommended ? c.yes : c.no}</Tag>
             <Tag>{c.status[row.status]}</Tag>
           </div>
@@ -1594,7 +1608,7 @@ function QuickAnalysis({ c, language, row, onPatch }: { c: CopyText; language: "
 
       <div className="grid gap-4 lg:grid-cols-3">
         <AnalysisBlock title={language === "zh" ? "风险分析" : "리스크 분석"}>
-          <RiskTag label={`KC ${c.risk[row.kcRiskLevel]}`} level={row.kcRiskLevel} />
+          <RiskTag label={`KC ${kcLabel(row.kcRiskLevel, language)}`} level={row.kcRiskLevel} />
           <Tag>{c.filter.volume}: {c.volume[row.volumeLevel]}</Tag>
           <Tag>{c.filter.weight}: {c.weight[row.weightLevel]}</Tag>
           <RiskTag label={`${language === "zh" ? "易碎" : "파손"} ${c.risk[row.fragileRisk]}`} level={row.fragileRisk} />
@@ -1710,7 +1724,7 @@ function KpiProductList({
                 <MiniMetric label={c.fields.profit} value={`${won(row.estimatedProfit)} / ${percent(row.estimatedProfitRate)}`} />
                 <MiniMetric label={c.fields.score} value={row.recommendationScore.toFixed(1)} />
                 <MiniMetric label={c.fields.sales} value={row.monthlySales.toLocaleString()} />
-                <MiniMetric label={language === "zh" ? "风险" : "리스크"} value={c.risk[row.kcRiskLevel]} />
+                <MiniMetric label="KC" value={kcLabel(row.kcRiskLevel, language)} />
               </div>
             </button>
           ))}
@@ -1918,7 +1932,7 @@ function RiskCompetitionSnapshot({ row, language, c }: { row: CompetitorItem; la
   return (
     <div className="grid gap-2">
       <div className="flex flex-wrap gap-1.5">
-        <RiskTag label={`KC ${c.risk[row.kcRiskLevel]}`} level={row.kcRiskLevel} />
+        <RiskTag label={`KC ${kcLabel(row.kcRiskLevel, language)}`} level={row.kcRiskLevel} />
         <RiskTag label={`${language === "zh" ? "竞争" : "경쟁"} ${c.risk[row.competitionLevel]}`} level={row.competitionLevel} />
         <RiskTag label={`${language === "zh" ? "破损" : "파손"} ${c.risk[row.fragileRisk]}`} level={row.fragileRisk} />
         <RiskTag label={`${language === "zh" ? "退货" : "반품"} ${c.risk[row.returnRisk]}`} level={row.returnRisk} />
