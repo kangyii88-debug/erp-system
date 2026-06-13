@@ -1658,9 +1658,15 @@ function Drawer({
               <Field label={c.fields.testQty} type="number" value={form.suggestedTestQuantity} readOnly={readOnly} onChange={(value) => setForm({ ...form, suggestedTestQuantity: value })} />
               <SelectField label={language === "zh" ? "优先级" : "우선순위"} value={form.priority} disabled={readOnly} options={priorityOptions} labelMap={c.priority} onChange={(value) => setForm({ ...form, priority: value as Priority })} />
               <SelectField label={language === "zh" ? "当前状态" : "현재 상태"} value={form.status} disabled={readOnly} options={statusOptions} labelMap={c.status} onChange={(value) => setForm({ ...form, status: value as DecisionStatus })} />
-              <Toggle label={c.filter.test} checked={form.testRecommended} disabled={readOnly} onChange={(value) => setForm({ ...form, testRecommended: value })} />
-              <Toggle label={c.fields.chinaFit} checked={form.chinaSourcingFit} disabled={readOnly} onChange={(value) => setForm({ ...form, chinaSourcingFit: value })} />
-              <Toggle label={c.fields.brandFit} checked={form.brandingFit} disabled={readOnly} onChange={(value) => setForm({ ...form, brandingFit: value })} />
+              <DecisionToggleRow
+                language={language}
+                className="md:col-span-3"
+                items={[
+                  { label: c.fields.chinaFit, description: language === "zh" ? "中国供应链可开发" : "중국 공급망 개발 가능", checked: form.chinaSourcingFit, onChange: (value) => setForm({ ...form, chinaSourcingFit: value }) },
+                  { label: c.fields.brandFit, description: language === "zh" ? "适合做品牌包装" : "브랜드 포장 적합", checked: form.brandingFit, onChange: (value) => setForm({ ...form, brandingFit: value }) },
+                  { label: c.filter.test, description: language === "zh" ? "加入新品测试判断" : "신상품 테스트 판단", checked: form.testRecommended, onChange: (value) => setForm({ ...form, testRecommended: value }) }
+                ]}
+              />
               <Field label={c.fields.targetPrice} type="number" value={form.targetPrice} readOnly={readOnly} onChange={(value) => setForm({ ...form, targetPrice: value })} />
               <Field label={c.fields.owner} value={form.testOwner} readOnly={readOnly} onChange={(value) => setForm({ ...form, testOwner: value })} />
               <Field label={c.fields.launchDate} type="date" value={form.plannedLaunchDate} readOnly={readOnly} onChange={(value) => setForm({ ...form, plannedLaunchDate: value })} />
@@ -2031,6 +2037,40 @@ function Input({ value, onChange, placeholder, type = "text", icon: Icon }: { va
 
 function Toggle({ label, checked, disabled, onChange }: { label: string; checked: boolean; disabled?: boolean; onChange: (value: boolean) => void }) {
   return <label className="flex items-center justify-between gap-3 rounded-2xl border border-line bg-white/70 px-3 py-2 text-sm font-bold text-ink"><span>{label}</span><input type="checkbox" checked={checked} disabled={disabled} onChange={(event) => onChange(event.target.checked)} /></label>;
+}
+
+function DecisionToggleRow({
+  items,
+  language,
+  className = ""
+}: {
+  items: Array<{ label: string; description: string; checked: boolean; onChange: (value: boolean) => void }>;
+  language: "zh" | "ko";
+  className?: string;
+}) {
+  return (
+    <div className={className}>
+      <div className="mb-1 text-xs font-bold text-muted">{language === "zh" ? "关键判断" : "핵심 판단"}</div>
+      <div className="grid gap-2 md:grid-cols-3">
+        {items.map((item) => (
+          <button
+            key={item.label}
+            type="button"
+            className={`flex min-h-[74px] items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-left transition ${item.checked ? "border-[#17483f] bg-[#e8f1ed] text-[#17483f]" : "border-line bg-white/72 text-ink hover:border-[#17483f]/30"}`}
+            onClick={() => item.onChange(!item.checked)}
+          >
+            <span className="min-w-0">
+              <span className="block text-sm font-black">{item.label}</span>
+              <span className="mt-1 block text-xs font-semibold text-muted">{item.description}</span>
+            </span>
+            <span className={`relative h-5 w-9 shrink-0 rounded-full transition ${item.checked ? "bg-[#17483f]" : "bg-[#cfd8d1]"}`}>
+              <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition ${item.checked ? "left-[18px]" : "left-0.5"}`} />
+            </span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 function Tag({ children, tone = "neutral" }: { children: React.ReactNode; tone?: "neutral" | "good" | "watch" | "risk" }) {
