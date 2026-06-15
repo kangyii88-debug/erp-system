@@ -83,6 +83,7 @@ const copy = {
     expectedPrice: "预计售价",
     platformFee: "平台服务费",
     extraCost: "总附加成本",
+    landedCost: "预计总成本",
     expectedProfit: "预计利润",
     currentStatus: "当前状态",
     owner: "开发负责人",
@@ -107,6 +108,8 @@ const copy = {
       internationalShipping: "国际运费",
       inboundShipping: "Coupang 入仓运费",
       adCost: "广告费用",
+      additionalCost: "总附加成本",
+      totalCost: "预计总成本",
       netProfit: "预计净利润",
       margin: "预计利润率",
       owner: "开发负责人",
@@ -174,6 +177,7 @@ const copy = {
     expectedPrice: "예상 판매가",
     platformFee: "플랫폼 수수료",
     extraCost: "총 추가 비용",
+    landedCost: "예상 총원가",
     expectedProfit: "예상 이익",
     currentStatus: "현재 상태",
     owner: "개발 담당자",
@@ -198,6 +202,8 @@ const copy = {
       internationalShipping: "국제 배송비",
       inboundShipping: "Coupang 입고 배송비",
       adCost: "광고비",
+      additionalCost: "총 추가 비용",
+      totalCost: "예상 총원가",
       netProfit: "예상 순이익",
       margin: "예상 이익률",
       owner: "개발 담당자",
@@ -456,7 +462,8 @@ function ProductDevelopmentContent() {
                       <DarkMetric label={c.expectedCost} value={won(selected.purchase_cost)} />
                       <DarkMetric label={c.expectedPrice} value={won(selected.expected_price)} />
                       <DarkMetric label={c.platformFee} value={won(platformFeeAmount(selected))} />
-                      <DarkMetric label={c.extraCost} value={won(extraCost(selected))} />
+                      <DarkMetric label={c.extraCost} value={won(totalAdditionalCost(selected))} />
+                      <DarkMetric label={c.landedCost} value={won(totalExpectedCost(selected))} />
                       <DarkMetric label={c.expectedProfit} value={won(expectedProfit(selected))} />
                       <DarkMetric label={c.expectedMargin} value={`${expectedMargin(selected).toFixed(1)}%`} />
                     </div>
@@ -487,6 +494,8 @@ function ProductDevelopmentContent() {
 function ProductForm({ c, form, editing, onChange, onSubmit, onCancel }: { c: Copy; form: typeof emptyForm; editing: boolean; onChange: (form: typeof emptyForm) => void; onSubmit: (event: FormEvent) => void; onCancel: () => void }) {
   const previewProfit = calculateProductProfit(form);
   const previewMargin = calculateProductMargin(form);
+  const previewAdditionalCost = calculateAdditionalCost(form);
+  const previewTotalCost = calculateTotalCost(form);
 
   return (
     <CenterPanel eyebrow={editing ? c.formEditEyebrow : c.formNewEyebrow} title={editing ? c.formEditTitle : c.formNewTitle}>
@@ -500,6 +509,8 @@ function ProductForm({ c, form, editing, onChange, onSubmit, onCancel }: { c: Co
         <Field label={c.fields.internationalShipping}><input className="premium-input" type="number" min="0" value={form.international_shipping_cost} onChange={(event) => onChange({ ...form, international_shipping_cost: event.target.value })} /></Field>
         <Field label={c.fields.inboundShipping}><input className="premium-input" type="number" min="0" value={form.coupang_inbound_shipping_cost} onChange={(event) => onChange({ ...form, coupang_inbound_shipping_cost: event.target.value })} /></Field>
         <Field label={c.fields.adCost}><input className="premium-input" type="number" min="0" value={form.ad_cost} onChange={(event) => onChange({ ...form, ad_cost: event.target.value })} /></Field>
+        <Field label={c.fields.additionalCost}><div className="premium-input flex h-10 items-center px-3 py-2 font-semibold text-ink">{won(previewAdditionalCost)}</div></Field>
+        <Field label={c.fields.totalCost}><div className="premium-input flex h-10 items-center px-3 py-2 font-semibold text-ink">{won(previewTotalCost)}</div></Field>
         <Field label={c.fields.netProfit}><div className="premium-input flex h-10 items-center px-3 py-2 font-semibold text-ink">{won(previewProfit)}</div></Field>
         <Field label={c.fields.margin}><div className="premium-input flex h-10 items-center px-3 py-2 font-semibold text-ink">{previewMargin.toFixed(1)}%</div></Field>
         <Field label={c.fields.owner}><input className="premium-input" required value={form.owner} onChange={(event) => onChange({ ...form, owner: event.target.value })} /></Field>
@@ -591,6 +602,23 @@ function calculateProductMargin(form: typeof emptyForm) {
   return profitMargin(product, unitProfit(product));
 }
 
+function calculatePlatformFee(form: typeof emptyForm) {
+  return Number(form.expected_price || 0) * (Number(form.platform_fee_rate || 11.6) / 100);
+}
+
+function calculateAdditionalCost(form: typeof emptyForm) {
+  return (
+    calculatePlatformFee(form) +
+    Number(form.international_shipping_cost || 0) +
+    Number(form.coupang_inbound_shipping_cost || 0) +
+    Number(form.ad_cost || 0)
+  );
+}
+
+function calculateTotalCost(form: typeof emptyForm) {
+  return Number(form.purchase_cost || 0) + calculateAdditionalCost(form);
+}
+
 function toProfitProduct(item: ProductDevRow) {
   return {
     purchase_price: Number(item.purchase_cost || 0),
@@ -606,8 +634,12 @@ function platformFeeAmount(item: ProductDevRow) {
   return Number(item.expected_price || 0) * (Number(item.platform_fee_rate ?? 11.6) / 100);
 }
 
-function extraCost(item: ProductDevRow) {
-  return Number(item.international_shipping_cost ?? 0) + Number(item.coupang_inbound_shipping_cost ?? 0) + Number(item.ad_cost ?? 0);
+function totalAdditionalCost(item: ProductDevRow) {
+  return platformFeeAmount(item) + Number(item.international_shipping_cost ?? 0) + Number(item.coupang_inbound_shipping_cost ?? 0) + Number(item.ad_cost ?? 0);
+}
+
+function totalExpectedCost(item: ProductDevRow) {
+  return Number(item.purchase_cost || 0) + totalAdditionalCost(item);
 }
 
 function priorityTone(priority: ProductPriority) {
