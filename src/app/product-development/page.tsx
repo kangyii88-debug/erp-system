@@ -5,6 +5,7 @@ import { BadgeCheck, Beaker, Boxes, CircleOff, Edit3, FlaskConical, Lightbulb, P
 import { AppShell } from "@/components/AppShell";
 import { useLanguage } from "@/components/LanguageProvider";
 import { CenterHero, CenterPanel, EmptyState, ExecutiveKpi, KpiGrid, MetricLine, ProgressBar, StatusPill } from "@/components/ManagementCenter";
+import { categoryMatches, categorySelectOptions, localizedCategoryValue } from "@/lib/category-options";
 import { formatDatabaseError } from "@/lib/database-error";
 import { profitMargin, unitProfit } from "@/lib/profit";
 import { supabase } from "@/lib/supabase";
@@ -398,7 +399,7 @@ function ProductDevelopmentContent() {
       ) : (
         <div className="grid gap-5 xl:grid-cols-[1fr_420px]">
           <div className="space-y-5">
-            <ProductFilters c={c} filters={filters} categories={unique(products.map((item) => item.product_category))} owners={unique(products.map((item) => item.owner))} onChange={setFilters} />
+            <ProductFilters c={c} language={language} filters={filters} categories={categorySelectOptions(products.map((item) => item.product_category), language)} owners={unique(products.map((item) => item.owner))} onChange={setFilters} />
             <CenterPanel eyebrow={c.funnelEyebrow} title={c.funnelTitle}>
               <div className="grid gap-3 md:grid-cols-6">
                 {funnelStatuses.map((status, index) => {
@@ -428,7 +429,7 @@ function ProductDevelopmentContent() {
                           <StatusPill tone={statusTone(item.development_status)}>{c.status[item.development_status]}</StatusPill>
                         </div>
                         <h3 className="mt-3 font-semibold leading-snug text-ink">{item.product_name}</h3>
-                        <p className="mt-1 text-xs text-muted">{item.product_category} · {item.supplier || c.noSupplier}</p>
+                        <p className="mt-1 text-xs text-muted">{localizedCategoryValue(item.product_category, language)} · {item.supplier || c.noSupplier}</p>
                       </div>
                       <div className="text-right">
                         <div className="text-3xl font-semibold tabular-nums text-ink">{totalScore(item)}</div>
@@ -492,6 +493,7 @@ function ProductDevelopmentContent() {
 }
 
 function ProductForm({ c, form, editing, onChange, onSubmit, onCancel }: { c: Copy; form: typeof emptyForm; editing: boolean; onChange: (form: typeof emptyForm) => void; onSubmit: (event: FormEvent) => void; onCancel: () => void }) {
+  const { language } = useLanguage();
   const previewProfit = calculateProductProfit(form);
   const previewMargin = calculateProductMargin(form);
   const previewAdditionalCost = calculateAdditionalCost(form);
@@ -501,7 +503,7 @@ function ProductForm({ c, form, editing, onChange, onSubmit, onCancel }: { c: Co
     <CenterPanel eyebrow={editing ? c.formEditEyebrow : c.formNewEyebrow} title={editing ? c.formEditTitle : c.formNewTitle}>
       <form onSubmit={onSubmit} className="grid gap-4 lg:grid-cols-4">
         <Field label={c.fields.name}><input className="premium-input" required value={form.product_name} onChange={(event) => onChange({ ...form, product_name: event.target.value })} /></Field>
-        <Field label={c.fields.category}><input className="premium-input" required value={form.product_category} onChange={(event) => onChange({ ...form, product_category: event.target.value })} /></Field>
+        <Field label={c.fields.category}><CategoryFormSelect label={c.fields.category} value={form.product_category} language={language} required onChange={(value) => onChange({ ...form, product_category: value })} /></Field>
         <Field label={c.fields.supplier}><input className="premium-input" value={form.supplier} onChange={(event) => onChange({ ...form, supplier: event.target.value })} /></Field>
         <Field label={c.fields.cost}><input className="premium-input" type="number" min="0" value={form.purchase_cost} onChange={(event) => onChange({ ...form, purchase_cost: event.target.value })} /></Field>
         <Field label={c.fields.price}><input className="premium-input" type="number" min="0" value={form.expected_price} onChange={(event) => onChange({ ...form, expected_price: event.target.value })} /></Field>
@@ -528,7 +530,7 @@ function ProductForm({ c, form, editing, onChange, onSubmit, onCancel }: { c: Co
   );
 }
 
-function ProductFilters({ c, filters, categories, owners, onChange }: { c: Copy; filters: { status: string; priority: string; category: string; owner: string }; categories: string[]; owners: string[]; onChange: (filters: { status: string; priority: string; category: string; owner: string }) => void }) {
+function ProductFilters({ c, filters, categories, owners, onChange }: { c: Copy; language: "zh" | "ko"; filters: { status: string; priority: string; category: string; owner: string }; categories: string[]; owners: string[]; onChange: (filters: { status: string; priority: string; category: string; owner: string }) => void }) {
   return (
     <CenterPanel eyebrow={c.filtersEyebrow} title={c.filtersTitle}>
       <div className="grid gap-3 md:grid-cols-4">
@@ -556,7 +558,7 @@ function applyProductFilters(products: ProductDevRow[], filters: { status: strin
   return products.filter((item) => {
     if (filters.status !== allFilter && item.development_status !== filters.status) return false;
     if (filters.priority !== allFilter && item.priority !== filters.priority) return false;
-    if (filters.category && item.product_category !== filters.category) return false;
+    if (filters.category && !categoryMatches(item.product_category, filters.category)) return false;
     if (filters.owner && item.owner !== filters.owner) return false;
     return true;
   });
@@ -666,6 +668,17 @@ function clampScore(value: string) {
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return <label className="block text-xs font-bold text-muted"><span className="mb-1.5 block">{label}</span>{children}</label>;
+}
+
+function CategoryFormSelect({ value, language, required = false, onChange }: { label: string; value: string; language: "zh" | "ko"; required?: boolean; onChange: (value: string) => void }) {
+  const current = localizedCategoryValue(value, language);
+  const options = categorySelectOptions(value ? [value] : [], language);
+  return (
+    <select className="premium-input w-full" value={current} required={required} onChange={(event) => onChange(event.target.value)}>
+      <option value="">{language === "zh" ? "请选择产品分类" : "상품 분류 선택"}</option>
+      {options.map((option) => <option key={option} value={option}>{option}</option>)}
+    </select>
+  );
 }
 
 function Select({ value, options, onChange }: { value: string; options: SelectOption[]; onChange: (value: string) => void }) {

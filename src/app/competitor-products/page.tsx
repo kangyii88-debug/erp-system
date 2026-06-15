@@ -29,6 +29,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { useLanguage } from "@/components/LanguageProvider";
+import { categoryMatches, categorySelectOptions, localizedCategoryValue, productCategoryOptions } from "@/lib/category-options";
 import { supabase } from "@/lib/supabase";
 
 type RiskLevel = "low" | "medium" | "high";
@@ -180,23 +181,6 @@ const weightOptions: WeightLevel[] = ["light", "medium", "heavy"];
 const priorityOptions: Priority[] = ["high", "medium", "low"];
 const statusOptions: DecisionStatus[] = ["pending_analysis", "key_product", "eliminated", "ready_test", "tested"];
 const rocketOptions: RocketType[] = ["normal", "rocket_delivery", "rocket_growth", "seller_rocket", "orange_rocket"];
-const categoryOptions = [
-  { zh: "时尚服饰/杂货", ko: "패션의류/잡화" },
-  { zh: "美妆", ko: "뷰티" },
-  { zh: "母婴/儿童", ko: "출산/유아동" },
-  { zh: "食品", ko: "식품" },
-  { zh: "厨房用品", ko: "주방용품" },
-  { zh: "生活用品", ko: "생활용품" },
-  { zh: "家居室内", ko: "홈인테리어" },
-  { zh: "家电数码", ko: "가전디지털" },
-  { zh: "运动/休闲", ko: "스포츠/레저" },
-  { zh: "汽车用品", ko: "자동차용품" },
-  { zh: "图书/音像/DVD", ko: "도서/음반/DVD" },
-  { zh: "玩具/爱好", ko: "완구/취미" },
-  { zh: "文具/办公", ko: "문구/오피스" },
-  { zh: "宠物用品", ko: "반려동물용품" },
-  { zh: "健康/保健食品", ko: "헬스/건강식품" }
-];
 
 const emptyFilters: Filters = {
   search: "",
@@ -953,7 +937,7 @@ function CompetitorProductsContent() {
     return () => window.clearTimeout(timer);
   }, [toast]);
 
-  const categories = useMemo(() => categorySelectOptions(rows, language), [rows, language]);
+  const categories = useMemo(() => categorySelectOptions(rows.map((row) => row.category), language), [rows, language]);
 
   const filtered = useMemo(() => {
     const query = filters.search.trim().toLowerCase();
@@ -1488,31 +1472,6 @@ function kcLabelMap(language: "zh" | "ko") {
   };
 }
 
-function categoryPair(value: string) {
-  return categoryOptions.find((option) => option.zh === value || option.ko === value);
-}
-
-function localizedCategoryValue(value: string, language: "zh" | "ko") {
-  const pair = categoryPair(value);
-  if (!pair) return value;
-  return pair[language];
-}
-
-function categoryMatches(value: string, filter: string) {
-  if (value === filter) return true;
-  const valuePair = categoryPair(value);
-  const filterPair = categoryPair(filter);
-  return !!valuePair && !!filterPair && valuePair.zh === filterPair.zh;
-}
-
-function categorySelectOptions(rows: CompetitorItem[], language: "zh" | "ko") {
-  const fixed = categoryOptions.map((option) => option[language]);
-  const extra = rows
-    .map((row) => localizedCategoryValue(row.category, language))
-    .filter((value) => value && !fixed.includes(value));
-  return Array.from(new Set([...fixed, ...extra])).sort();
-}
-
 function csvCell(value: unknown) {
   return `"${String(value ?? "").replace(/"/g, '""')}"`;
 }
@@ -1976,7 +1935,7 @@ function SelectField({ label, value, options, labelMap, onChange, disabled = fal
 }
 
 function CategoryField({ label, value, language, onChange, disabled = false }: { label: string; value: string; language: "zh" | "ko"; onChange: (value: string) => void; disabled?: boolean }) {
-  const fixed = categoryOptions.map((option) => option[language]);
+  const fixed: string[] = productCategoryOptions.map((option) => option[language]);
   const current = localizedCategoryValue(value, language);
   const options = current && !fixed.includes(current) ? [current, ...fixed] : fixed;
   return (

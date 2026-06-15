@@ -22,6 +22,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { useLanguage } from "@/components/LanguageProvider";
+import { categoryMatches, categorySelectOptions, localizedCategoryValue } from "@/lib/category-options";
 import { supabase } from "@/lib/supabase";
 
 type DevelopmentStatus = "pending_analysis" | "analyzed" | "sampled" | "quoted" | "testing" | "ready_launch" | "listed" | "abandoned";
@@ -343,7 +344,7 @@ function ProductTestDatabaseContent() {
     return () => window.clearTimeout(timer);
   }, [toast]);
 
-  const categories = Array.from(new Set(rows.map((row) => row.category).filter(Boolean))) as string[];
+  const categories = categorySelectOptions(rows.map((row) => row.category ?? ""), language);
   const filtered = useMemo(() => {
     const marginMatch = (margin: number) => {
       if (!filters.margin) return true;
@@ -356,7 +357,7 @@ function ProductTestDatabaseContent() {
     const result = rows.filter((row) => (
       (!filters.name || row.product_name.toLowerCase().includes(filters.name.toLowerCase())) &&
       (!filters.url || String(row.coupang_url ?? "").toLowerCase().includes(filters.url.toLowerCase())) &&
-      (!filters.category || row.category === filters.category) &&
+      (!filters.category || categoryMatches(row.category ?? "", filters.category)) &&
       (!filters.status || row.development_status === filters.status) &&
       (!filters.grade || row.recommendation_grade === filters.grade) &&
       (!filters.priority || row.priority === filters.priority) &&
@@ -727,7 +728,7 @@ function Drawer({ c, language, mode, form, setForm, onClose, onSubmit }: { c: ty
             onFile={handleImageUpload}
           />
           <Field label="产品名称" value={form.product_name} required onChange={(value) => setForm({ ...form, product_name: value })} />
-          <Field label="类目" value={form.category} onChange={(value) => setForm({ ...form, category: value })} />
+          <CategoryFormField label={language === "zh" ? "类目" : "카테고리"} value={form.category} language={language} onChange={(value) => setForm({ ...form, category: value })} />
           <Field label="Coupang链接" value={form.coupang_url} onChange={(value) => setForm({ ...form, coupang_url: value })} />
           <Field label="供应商链接" value={form.supplier_url} onChange={(value) => setForm({ ...form, supplier_url: value })} />
           <Field label="分析日期" type="date" value={form.analysis_date} onChange={(value) => setForm({ ...form, analysis_date: value })} />
@@ -834,6 +835,20 @@ function FormSection({ title, children }: { title: string; children: React.React
 
 function Field({ label, value, onChange, type = "text", required = false }: { label: string; value: string; onChange: (value: string) => void; type?: "text" | "number" | "date"; required?: boolean }) {
   return <label><span className="mb-1 block text-xs font-bold text-muted">{label}{required ? " *" : ""}</span><input className="w-full" type={type} min={type === "number" ? "0" : undefined} step={type === "number" ? "0.01" : undefined} value={value} required={required} onChange={(event) => onChange(event.target.value)} /></label>;
+}
+
+function CategoryFormField({ label, value, language, onChange }: { label: string; value: string; language: "zh" | "ko"; onChange: (value: string) => void }) {
+  const current = localizedCategoryValue(value, language);
+  const options = categorySelectOptions(value ? [value] : [], language);
+  return (
+    <label>
+      <span className="mb-1 block text-xs font-bold text-muted">{label}</span>
+      <select className="w-full" value={current} onChange={(event) => onChange(event.target.value)}>
+        <option value="">{label}</option>
+        {options.map((option) => <option key={option} value={option}>{option}</option>)}
+      </select>
+    </label>
+  );
 }
 
 function ImageUploadField({
