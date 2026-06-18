@@ -113,6 +113,7 @@ const copy = {
     categoryTotal: "品类库存",
     category4lk: "百褶帘系列",
     categoryBld: "蜂巢帘系列",
+    categoryBzg: "半遮光蜂巢帘",
     filteredTotal: "筛选总数",
     matchedRecords: "匹配记录",
     quantityTotal: "数量合计"
@@ -181,6 +182,7 @@ const copy = {
     categoryTotal: "품목 재고",
     category4lk: "주름 커튼 시리즈",
     categoryBld: "허니콤 블라인드 시리즈",
+    categoryBzg: "반차광 허니콤 블라인드",
     filteredTotal: "필터 합계",
     matchedRecords: "일치 기록",
     quantityTotal: "수량 합계"
@@ -1419,6 +1421,7 @@ function categoryKey(product: ProductWithStock) {
 function categoryLabel(key: string, ui: (typeof copy)[Language]) {
   if (key === "4LK") return ui.category4lk;
   if (key === "BLD") return ui.categoryBld;
+  if (key === "BZG") return ui.categoryBzg;
   return key === "OTHER" ? "OTHER" : key;
 }
 

@@ -88,6 +88,7 @@ function categoryColorGroupLabel(key: string, t: ReturnType<typeof useLanguage>[
 function categoryLabel(key: string, t: ReturnType<typeof useLanguage>["t"]) {
   if (key === "4LK") return t("category.4lk");
   if (key === "BLD") return t("category.bld");
+  if (key === "BZG") return t("category.bzg");
   return key === "OTHER" ? "OTHER" : key;
 }
 
