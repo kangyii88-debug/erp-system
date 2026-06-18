@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { FormEvent, ReactNode, useEffect, useMemo, useState } from "react";
 import {
@@ -445,8 +445,8 @@ function AdvertisingDailyCenter() {
   return (
     <div className="space-y-6">
       <section className="relative overflow-hidden rounded-[30px] border border-[#d9ded6] bg-[#fbfaf6] px-6 py-7 shadow-[0_22px_70px_rgba(18,31,27,0.08)] backdrop-blur">
-        <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-emerald-900/8 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-28 left-16 h-72 w-72 rounded-full bg-[#bca77a]/14 blur-3xl" />
+        <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-blue-500/[0.04] blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-28 left-16 h-72 w-72 rounded-full bg-slate-900/[0.035] blur-3xl" />
         <div className="relative flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <div className="premium-section-eyebrow">{c.pageEyebrow}</div>
@@ -463,7 +463,7 @@ function AdvertisingDailyCenter() {
         <div className="relative mt-7 flex flex-wrap items-center gap-2">
           <DatePresetBar value={preset} onChange={setPreset} c={c} />
           {preset === "custom" ? (
-            <div className="flex items-center gap-2 rounded-2xl border border-line bg-white/80 p-2 shadow-soft">
+            <div className="flex items-center gap-2 rounded-2xl border border-line bg-white p-2 shadow-soft">
               <input className="premium-input h-10 w-40" type="date" value={customStart} onChange={(event) => setCustomStart(event.target.value)} />
               <span className="text-muted">~</span>
               <input className="premium-input h-10 w-40" type="date" value={customEnd} onChange={(event) => setCustomEnd(event.target.value)} />
@@ -516,15 +516,15 @@ function AdvertisingDailyCenter() {
                 <AreaChart data={trendData}>
                   <defs>
                     <linearGradient id="adDailySales" x1="0" x2="0" y1="0" y2="1">
-                      <stop offset="0%" stopColor="#17483f" stopOpacity={0.22} />
-                      <stop offset="100%" stopColor="#17483f" stopOpacity={0} />
+                      <stop offset="0%" stopColor="#2563eb" stopOpacity={0.22} />
+                      <stop offset="100%" stopColor="#2563eb" stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid stroke="rgba(197,201,189,0.55)" strokeDasharray="3 3" vertical={false} />
                   <XAxis dataKey="label" tickLine={false} axisLine={false} />
                   <YAxis tickLine={false} axisLine={false} tickFormatter={(value) => compactWon(Number(value), language)} />
-                  <Tooltip content={<TrendTooltip c={c} />} cursor={{ stroke: "rgba(23,72,63,0.28)" }} />
-                  <Area type="monotone" dataKey="ad_sales" name={c.kpiSales} stroke="#17483f" strokeWidth={2.5} fill="url(#adDailySales)" animationDuration={650} />
+                  <Tooltip content={<TrendTooltip c={c} />} cursor={{ stroke: "rgba(37,99,235,0.22)" }} />
+                  <Area type="monotone" dataKey="ad_sales" name={c.kpiSales} stroke="#2563eb" strokeWidth={2.5} fill="url(#adDailySales)" animationDuration={650} />
                   <Line type="monotone" dataKey="ad_spend" name={c.kpiSpend} stroke="#b89b5e" strokeWidth={2.2} dot={false} animationDuration={700} />
                   <Line type="monotone" dataKey="roas" name={c.kpiRoas} stroke="#3577c9" strokeWidth={2.2} dot={false} animationDuration={750} />
                   <Line type="monotone" dataKey="ctr" name={c.kpiCtr} stroke="#21a485" strokeWidth={1.8} dot={false} animationDuration={760} />
@@ -656,7 +656,7 @@ function KpiCard({ icon: Icon, label, value, helper, change, good = true }: { ic
   return (
     <div className="group rounded-[24px] border border-line bg-white/82 p-5 shadow-[0_16px_46px_rgba(18,31,27,0.06)] transition duration-300 hover:-translate-y-1 hover:shadow-lift">
       <div className="flex items-start justify-between gap-3">
-        <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#17483f] text-white shadow-soft"><Icon className="h-5 w-5" /></span>
+        <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#111827] text-white shadow-soft"><Icon className="h-5 w-5" /></span>
         {change != null ? <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${positive ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"}`}>{change >= 0 ? "↗" : "↘"} {formatNumber(Math.abs(change), 1)}%</span> : null}
       </div>
       <div className="mt-5 text-sm font-semibold text-ink">{label}</div>
@@ -680,7 +680,7 @@ function SkuTable({ c, rows, sort, onSort }: { c: PageCopy; rows: SkuAgg[]; sort
     { key: "ad_profit", label: c.kpiProfit, render: (row) => <span className={row.ad_profit >= 0 ? "text-emerald-700" : "text-red-600"}>{won(row.ad_profit)}</span> }
   ];
   return (
-    <div className="overflow-x-auto rounded-2xl border border-line bg-white/70 dark:border-white/10 dark:bg-white/[0.03]">
+    <div className="overflow-x-auto rounded-2xl border border-line bg-white dark:border-white/10 dark:bg-white/[0.03]">
       <table className="min-w-[1120px] w-full text-left text-sm">
         <thead className="sticky top-0 bg-[#f7f5ed] text-xs uppercase tracking-[0.14em] text-muted dark:bg-white/[0.06]">
           <tr>
@@ -694,7 +694,7 @@ function SkuTable({ c, rows, sort, onSort }: { c: PageCopy; rows: SkuAgg[]; sort
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={row.sku} className="border-t border-line/70 transition hover:bg-emerald-50/45 dark:border-white/10">
+            <tr key={row.sku} className="border-t border-line/70 transition hover:bg-[#f9fafb] dark:border-white/10">
               {columns.map((column) => <td key={column.key} className="px-4 py-3 font-medium text-ink dark:text-white">{column.render(row)}</td>)}
               <td className="px-4 py-3"><StatusBadge c={c} status={row.status} /></td>
             </tr>
@@ -713,7 +713,7 @@ function RankingList({ c, rows, metric }: { c: PageCopy; rows: SkuAgg[]; metric:
   return (
     <div className="space-y-3">
       {rows.map((row, index) => (
-        <div key={row.sku} className="group rounded-2xl border border-line bg-white/72 p-4 shadow-soft transition hover:-translate-y-0.5 hover:shadow-lift">
+        <div key={row.sku} className="group rounded-2xl border border-line bg-white p-4 shadow-soft transition hover:-translate-y-0.5 hover:shadow-lift">
           <div className="flex items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
               <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl text-sm font-black ${rankClass(index)}`}>{index + 1}</span>
@@ -736,7 +736,7 @@ function RankingList({ c, rows, metric }: { c: PageCopy; rows: SkuAgg[]; metric:
 function RecordLedger({ c, records, onEdit, onDelete }: { c: PageCopy; records: DailyAdRecord[]; onEdit: (record: DailyAdRecord) => void; onDelete: (id: string) => void }) {
   if (!records.length) return <PanelEmpty title={c.ledgerEmptyTitle} text={c.ledgerEmptyText} />;
   return (
-    <div className="overflow-x-auto rounded-2xl border border-line bg-white/70">
+    <div className="overflow-x-auto rounded-2xl border border-line bg-white">
       <table className="min-w-[1180px] w-full text-left text-sm">
         <thead className="bg-[#f7f5ed] text-xs uppercase tracking-[0.14em] text-muted">
           <tr>
@@ -745,7 +745,7 @@ function RecordLedger({ c, records, onEdit, onDelete }: { c: PageCopy; records: 
         </thead>
         <tbody>
           {records.map((record) => (
-            <tr key={record.id} className="border-t border-line/70 transition hover:bg-emerald-50/45">
+            <tr key={record.id} className="border-t border-line/70 transition hover:bg-[#f9fafb]">
               <td className="px-4 py-3">{formatDate(record.record_date)}</td>
               <td className="px-4 py-3 font-semibold text-ink">{record.campaign_name}</td>
               <td className="px-4 py-3 font-mono text-xs">{record.sku}</td>
@@ -799,7 +799,7 @@ function Segmented({ value, options, onChange, tone = "light" }: { value: string
             value === key
               ? dark
                 ? "bg-[#1f7a6b] text-white shadow-[0_10px_24px_rgba(31,122,107,0.36)]"
-                : "bg-[#17483f] text-white shadow-soft"
+                : "bg-[#111827] text-white shadow-soft"
               : dark
                 ? "text-white/82 hover:bg-white/[0.12] hover:text-white"
                 : "text-ink/68 hover:bg-white"
@@ -823,13 +823,13 @@ function NumberInput({ value, onChange, step = "1" }: { value: string; onChange:
 }
 
 function MiniCalc({ label, value }: { label: string; value: string }) {
-  return <div className="rounded-2xl border border-line bg-white/72 px-4 py-3"><div className="text-xs font-bold text-muted">{label}</div><div className="mt-1 font-semibold text-ink">{value}</div></div>;
+  return <div className="rounded-2xl border border-line bg-white px-4 py-3"><div className="text-xs font-bold text-muted">{label}</div><div className="mt-1 font-semibold text-ink">{value}</div></div>;
 }
 
 function InsightCard({ icon: Icon, title, text, tone }: { icon: LucideIcon; title: string; text: string; tone: "good" | "warn" | "risk" | "neutral" }) {
   const className = tone === "good" ? "bg-emerald-50 text-emerald-700" : tone === "warn" ? "bg-amber-50 text-amber-700" : tone === "risk" ? "bg-red-50 text-red-700" : "bg-slate-50 text-slate-700";
   return (
-    <div className="rounded-2xl border border-line bg-white/72 p-4 shadow-soft transition hover:-translate-y-0.5 hover:shadow-lift">
+    <div className="rounded-2xl border border-line bg-white p-4 shadow-soft transition hover:-translate-y-0.5 hover:shadow-lift">
       <div className="flex gap-3">
         <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ${className}`}><Icon className="h-5 w-5" /></span>
         <div>
@@ -844,7 +844,7 @@ function InsightCard({ icon: Icon, title, text, tone }: { icon: LucideIcon; titl
 function EmptyState({ c, onCreate }: { c: PageCopy; onCreate: () => void }) {
   return (
     <section className="rounded-[28px] border border-dashed border-line bg-card/75 px-6 py-14 text-center shadow-card">
-      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-3xl bg-emerald-50 text-brand"><BarChart3 className="h-7 w-7" /></div>
+      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-3xl bg-emerald-50 text-[#2563eb]"><BarChart3 className="h-7 w-7" /></div>
       <h2 className="mt-5 text-2xl font-semibold text-ink">{c.emptyTitle}</h2>
       <p className="mt-2 text-sm text-muted">{c.emptyText}</p>
       <button className="erp-button-primary mt-5 inline-flex items-center gap-2 px-4 py-2 text-sm font-bold" onClick={onCreate}><Plus className="h-4 w-4" /> {c.newRecord}</button>
@@ -883,14 +883,14 @@ function TrendReportTable({ c, rows, total, window }: { c: PageCopy; rows: Trend
   ];
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-line bg-white/72">
+    <div className="overflow-hidden rounded-2xl border border-line bg-white">
       <div className="flex items-center justify-between border-b border-line/70 bg-[#f7f5ed] px-4 py-3">
         <h3 className="text-sm font-bold text-ink">{c.reportTableTitle}</h3>
         <span className="text-xs font-semibold text-muted">{rows.length} rows</span>
       </div>
       <div className="overflow-x-auto">
         <table className="min-w-[1320px] w-full text-right text-sm">
-          <thead className="bg-white/80 text-xs uppercase tracking-[0.12em] text-muted">
+          <thead className="bg-white text-xs uppercase tracking-[0.12em] text-muted">
             <tr>
               {columns.map((column, index) => (
                 <th key={column} className={`px-4 py-3 ${index === 0 ? "text-left" : ""}`}>{column}</th>
@@ -925,7 +925,7 @@ function TrendReportRow({ c, row, window, isTotal = false }: { c: PageCopy; row:
   ];
 
   return (
-    <tr className={`border-t border-line/70 tabular-nums ${isTotal ? "bg-emerald-50/55 font-bold text-ink" : "transition hover:bg-emerald-50/35"}`}>
+    <tr className={`border-t border-line/70 tabular-nums ${isTotal ? "bg-[#f9fafb] font-bold text-ink" : "transition hover:bg-[#f9fafb]"}`}>
       {cells.map((cell, index) => (
         <td key={`${row.record_date}-${index}`} className={`px-4 py-3 ${cell.align === "left" ? "text-left font-semibold text-ink" : ""}`}>{cell.value}</td>
       ))}

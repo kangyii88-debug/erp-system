@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { BadgeCheck, Beaker, Boxes, CircleOff, Edit3, FlaskConical, Lightbulb, Plus, Rocket, Trash2 } from "lucide-react";
@@ -405,7 +405,7 @@ function ProductDevelopmentContent() {
                 {funnelStatuses.map((status, index) => {
                   const count = products.filter((item) => item.development_status === status).length;
                   return (
-                    <div key={status} className="rounded-2xl border border-line bg-white/75 p-4">
+                    <div key={status} className="rounded-2xl border border-line bg-white p-4">
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-semibold text-muted">0{index + 1}</span>
                         <StatusPill tone={count ? "brand" : "neutral"}>{count}</StatusPill>
@@ -421,7 +421,7 @@ function ProductDevelopmentContent() {
             <CenterPanel eyebrow={c.projectsEyebrow} title={c.projectsTitle}>
               <div className="grid gap-3 lg:grid-cols-2">
                 {filteredProducts.map((item) => (
-                  <button key={item.id} type="button" onClick={() => setSelectedId(item.id)} className={`rounded-[22px] border bg-white/80 p-4 text-left shadow-[0_10px_26px_rgba(23,33,29,0.06)] ${selected?.id === item.id ? "border-[#17483f]/40 ring-2 ring-[#17483f]/10" : "border-line"}`}>
+                  <button key={item.id} type="button" onClick={() => setSelectedId(item.id)} className={`rounded-[22px] border bg-white p-4 text-left shadow-[0_10px_26px_rgba(17,24,39,0.04)] ${selected?.id === item.id ? "border-[#2563eb]/40 ring-2 ring-[#2563eb]/10" : "border-line"}`}>
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <div className="flex flex-wrap gap-2">
@@ -475,7 +475,7 @@ function ProductDevelopmentContent() {
                     <MetricLine label={c.currentStatus} value={c.status[selected.development_status]} tone={statusTone(selected.development_status)} />
                     <MetricLine label={c.owner} value={selected.owner} />
                     <MetricLine label={c.launchDate} value={selected.expected_launch_date ?? c.noDate} />
-                    <div className="rounded-2xl border border-line bg-white/70 p-4 text-sm leading-6 text-muted">{selected.remark || c.noRemark}</div>
+                    <div className="rounded-2xl border border-line bg-white p-4 text-sm leading-6 text-muted">{selected.remark || c.noRemark}</div>
                     <div className="grid grid-cols-2 gap-2">
                       <button className="erp-button-subtle inline-flex items-center justify-center gap-2 px-3 py-2 text-sm font-bold" onClick={() => startEdit(selected)}><Edit3 className="h-4 w-4" />{c.edit}</button>
                       <button className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-bold text-red-700" onClick={() => deleteProduct(selected.id)}><Trash2 className="inline h-4 w-4" /> {c.delete}</button>
@@ -700,7 +700,7 @@ function EmptyAction({ c, title, button, onClick }: { c: Copy; title: string; bu
   return (
     <CenterPanel eyebrow={c.emptyTitle} title={c.emptyTitle}>
       <div className="rounded-[26px] border border-dashed border-[#cdd8cf] bg-white/65 px-6 py-12 text-center">
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#e6f2ed] text-[#17483f]"><Plus className="h-6 w-6" /></div>
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#f3f4f6] text-[#2563eb]"><Plus className="h-6 w-6" /></div>
         <p className="mt-4 text-base font-semibold text-ink">{title}</p>
         <button className="erp-button-primary mt-5 px-4 py-2 text-sm font-bold" onClick={onClick}>{button}</button>
       </div>

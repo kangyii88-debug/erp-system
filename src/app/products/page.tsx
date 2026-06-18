@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { FormEvent, ReactNode, useEffect, useState } from "react";
 import {
@@ -330,11 +330,11 @@ function ProductsContent() {
 
   return (
     <div className="space-y-6">
-      <section className="relative overflow-hidden rounded-[28px] border border-[#d8d8ca] bg-[#f9f7ef] px-5 py-6 shadow-[0_24px_70px_rgba(20,33,29,0.10)] md:px-7">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_85%_10%,rgba(188,167,122,0.28),transparent_28rem),radial-gradient(circle_at_12%_20%,rgba(23,72,63,0.12),transparent_24rem)]" />
+      <section className="relative overflow-hidden rounded-[28px] border border-line bg-[#ffffff] px-5 py-6 shadow-[0_24px_70px_rgba(17,24,39,0.055)] md:px-7">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_85%_10%,rgba(37,99,235,0.06),transparent_28rem),radial-gradient(circle_at_12%_20%,rgba(17,24,39,0.04),transparent_24rem)]" />
         <div className="relative flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-[#d4c28e]/55 bg-white/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-[#8a6834]">
+            <div className="inline-flex items-center gap-2 rounded-full border border-[#d4c28e]/55 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-[#8a6834]">
               <Sparkles className="h-3.5 w-3.5" />
               {text.heroEyebrow}
             </div>
@@ -438,7 +438,7 @@ function ProductsContent() {
               <textarea className="premium-input min-h-[88px]" placeholder={t("common.memo")} value={form.memo} onChange={(event) => setForm({ ...form, memo: event.target.value })} />
             </Field>
             <div className="flex items-end">
-              <button className="inline-flex h-12 min-w-[180px] items-center justify-center gap-2 rounded-2xl bg-gradient-to-br from-[#17483f] to-[#0f342f] px-6 text-sm font-bold text-white shadow-[0_18px_34px_rgba(23,72,63,0.24)] transition hover:-translate-y-0.5 hover:shadow-[0_22px_42px_rgba(23,72,63,0.30)] disabled:opacity-70" disabled={saving}>
+              <button className="inline-flex h-12 min-w-[180px] items-center justify-center gap-2 rounded-2xl bg-gradient-to-br from-[#111827] to-[#1f2937] px-6 text-sm font-bold text-white shadow-[0_18px_34px_rgba(17,24,39,0.12)] transition hover:-translate-y-0.5 hover:shadow-[0_22px_42px_rgba(17,24,39,0.16)] disabled:opacity-70" disabled={saving}>
                 <Save className="h-4 w-4" />
                 {saving ? text.saving : t("common.save")}
               </button>
@@ -490,9 +490,9 @@ function ProductsContent() {
 function KpiTile({ icon: Icon, label, value, tone = "neutral" }: { icon: typeof Layers3; label: string; value: string; tone?: "neutral" | "good" | "watch" | "risk" }) {
   const toneClass = tone === "good" ? "text-emerald-700" : tone === "watch" ? "text-yellow-800" : tone === "risk" ? "text-red-700" : "text-ink";
   return (
-    <div className="rounded-2xl border border-white/70 bg-white/75 p-4 shadow-[0_12px_34px_rgba(20,33,29,0.08)] backdrop-blur">
+    <div className="rounded-2xl border border-line bg-white p-4 shadow-[0_12px_34px_rgba(17,24,39,0.035)] backdrop-blur">
       <div className="flex items-center justify-between">
-        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#17483f] text-white">
+        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#111827] text-white">
           <Icon className="h-4 w-4" />
         </span>
       </div>
@@ -504,7 +504,7 @@ function KpiTile({ icon: Icon, label, value, tone = "neutral" }: { icon: typeof 
 
 function FormPanel({ eyebrow, title, description, children }: { eyebrow: string; title: string; description: string; children: ReactNode }) {
   return (
-    <div className="rounded-[22px] border border-[#dcd8c8] bg-gradient-to-b from-white to-[#fbfaf4] p-4 shadow-[0_14px_34px_rgba(23,33,29,0.07)]">
+    <div className="rounded-[22px] border border-line bg-gradient-to-b from-white to-[#fafafa] p-4 shadow-[0_14px_34px_rgba(17,24,39,0.04)]">
       <div className="mb-4">
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8a6834]">{eyebrow}</p>
         <h3 className="mt-1 text-lg font-semibold text-ink">{title}</h3>
@@ -609,7 +609,7 @@ function ProductCategoryGroup({
         onClick={onToggle}
       >
         <div className="flex items-center gap-3">
-          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#17483f] text-white">
+          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#111827] text-white">
             {expanded ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
           </span>
           <div>
@@ -721,7 +721,7 @@ function ProductSkuCard({
 
   return (
     <article
-      className="group cursor-pointer rounded-[22px] border border-[#d9d8cc] bg-gradient-to-b from-white to-[#fbfaf3] p-4 shadow-[0_10px_28px_rgba(23,33,29,0.06)] transition duration-300 hover:-translate-y-1 hover:border-[#17483f]/35 hover:shadow-[0_22px_48px_rgba(23,33,29,0.12)]"
+      className="group cursor-pointer rounded-[22px] border border-line bg-gradient-to-b from-white to-[#fafafa] p-4 shadow-[0_10px_28px_rgba(17,24,39,0.04)] transition duration-300 hover:-translate-y-1 hover:border-[#2563eb]/35 hover:shadow-[0_22px_48px_rgba(17,24,39,0.075)]"
       onClick={onExpand}
     >
       <div className="flex items-start justify-between gap-3">
@@ -735,7 +735,7 @@ function ProductSkuCard({
         <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${status.className}`}>{status.label}</span>
       </div>
 
-      <div className="mt-3 rounded-2xl border border-line bg-white/70 px-3 py-2 font-mono text-xs font-semibold text-muted">{product.sku}</div>
+      <div className="mt-3 rounded-2xl border border-line bg-white px-3 py-2 font-mono text-xs font-semibold text-muted">{product.sku}</div>
 
       <div className="mt-4 grid grid-cols-2 gap-3">
         <CardMetric label={t("common.salePrice")} value={formatCurrency(product.sale_price)} />
@@ -757,7 +757,7 @@ function ProductSkuCard({
 
       <div className="mt-4 flex justify-end gap-2 opacity-100 transition md:opacity-0 md:group-hover:opacity-100">
         <button
-          className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-white px-3 py-1.5 text-xs font-semibold text-muted hover:text-brand"
+          className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-white px-3 py-1.5 text-xs font-semibold text-muted hover:text-[#2563eb]"
           type="button"
           onClick={(event) => {
             event.stopPropagation();
@@ -793,7 +793,7 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 }
 
 function TagPill({ children }: { children: ReactNode }) {
-  return <span className="rounded-full border border-line bg-white/80 px-2.5 py-1 text-xs font-semibold text-muted">{children}</span>;
+  return <span className="rounded-full border border-line bg-white px-2.5 py-1 text-xs font-semibold text-muted">{children}</span>;
 }
 
 function CardMetric({ label, value, tone = "neutral" }: { label: string; value: string; tone?: "neutral" | "good" | "watch" | "risk" }) {

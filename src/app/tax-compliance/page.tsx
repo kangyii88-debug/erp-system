@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -338,14 +338,14 @@ function TaxComplianceContent() {
   return (
     <div className="space-y-6">
       <section className="relative overflow-hidden rounded-[30px] border border-[#dde1d8] bg-[#fbfaf6]/95 p-7 shadow-[0_24px_72px_rgba(18,31,27,0.08)] backdrop-blur">
-        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#17483f]/30 to-transparent" />
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#2563eb]/20 to-transparent" />
         <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div>
             <p className="premium-section-eyebrow">Tax & Compliance Center</p>
             <h1 className="mt-3 text-4xl font-semibold tracking-tight text-ink md:text-5xl">{c.title}</h1>
             <p className="mt-3 text-base text-muted">{c.subtitle}</p>
           </div>
-          <div className="rounded-2xl border border-line bg-white/70 px-4 py-3 text-xs font-semibold text-muted">{c.notice}</div>
+          <div className="rounded-2xl border border-line bg-white px-4 py-3 text-xs font-semibold text-muted">{c.notice}</div>
         </div>
         {loading ? <SkeletonKpis /> : (
           <div className="mt-7 grid gap-4 md:grid-cols-2 xl:grid-cols-7">
@@ -388,7 +388,7 @@ function TaxComplianceContent() {
                   <XAxis dataKey="label" tickLine={false} axisLine={false} />
                   <YAxis tickLine={false} axisLine={false} tickFormatter={(value) => compactWon(Number(value))} />
                   <Tooltip formatter={(value) => won(Number(value))} />
-                  <Area type="monotone" dataKey="vat" stroke="#17483f" fill="#e6efeb" strokeWidth={2.4} animationDuration={700} />
+                  <Area type="monotone" dataKey="vat" stroke="#2563eb" fill="#dbeafe" strokeWidth={2.4} animationDuration={700} />
                 </AreaChart>
               </ResponsiveContainer>
             ) : <EmptyBox title={c.noVatTrend} text={c.noVatTrendText} />}
@@ -410,7 +410,7 @@ function TaxComplianceContent() {
         <Panel eyebrow="Payroll & Insurance" title={c.payrollCenter}>
           <div className="grid gap-3">
             {payroll.length ? payroll.slice(0, 5).map((row) => (
-              <div key={row.id} className="rounded-2xl border border-line bg-white/70 p-4">
+              <div key={row.id} className="rounded-2xl border border-line bg-white p-4">
                 <div className="flex items-center justify-between">
                   <div className="font-semibold text-ink">{row.employee_name}</div>
                   <StatusPill status={row.payment_status} copy={c} />
@@ -428,7 +428,7 @@ function TaxComplianceContent() {
         <Panel eyebrow="Tax To-dos" title={c.taxTodos}>
           <div className="grid gap-3">
             {tasks.length ? tasks.slice(0, 8).map((task) => (
-              <div key={task.id} className="flex items-center gap-3 rounded-2xl border border-line bg-white/70 p-4">
+              <div key={task.id} className="flex items-center gap-3 rounded-2xl border border-line bg-white p-4">
                 <span className={`h-3 w-3 rounded-full ${task.risk_level === "high" ? "bg-red-500" : task.risk_level === "watch" ? "bg-yellow-500" : "bg-emerald-500"}`} />
                 <div className="min-w-0 flex-1">
                   <div className="truncate font-semibold text-ink">{task.title}</div>
@@ -445,8 +445,8 @@ function TaxComplianceContent() {
         <Panel eyebrow="Documents" title={c.documents}>
           <div className="grid gap-3 md:grid-cols-2">
             {documents.length ? documents.slice(0, 6).map((doc) => (
-              <div key={doc.id} className="rounded-2xl border border-line bg-white/70 p-4">
-                <FileArchive className="h-5 w-5 text-brand" />
+              <div key={doc.id} className="rounded-2xl border border-line bg-white p-4">
+                <FileArchive className="h-5 w-5 text-[#2563eb]" />
                 <div className="mt-3 font-semibold text-ink">{doc.document_name}</div>
                 <div className="mt-1 text-xs text-muted">{doc.category} · {doc.document_date ?? c.documentNoDate}</div>
               </div>
@@ -457,9 +457,9 @@ function TaxComplianceContent() {
         <Panel eyebrow="Business Insights" title={c.insights}>
           <div className="grid gap-3">
             {insights.map((item) => (
-              <div key={item.title} className="rounded-2xl border border-line bg-white/70 p-4">
+              <div key={item.title} className="rounded-2xl border border-line bg-white p-4">
                 <div className="flex items-center gap-3">
-                  <Sparkles className="h-5 w-5 text-brand" />
+                  <Sparkles className="h-5 w-5 text-[#2563eb]" />
                   <div className="font-semibold text-ink">{item.title}</div>
                 </div>
                 <p className="mt-2 text-sm leading-6 text-muted">{item.text}</p>
@@ -472,8 +472,8 @@ function TaxComplianceContent() {
       <Panel eyebrow="Future Extensions" title={c.future}>
         <div className="grid gap-3 md:grid-cols-4">
           {c.futureItems.map((item) => (
-            <div key={item} className="rounded-2xl border border-line bg-white/70 p-4">
-              <BadgeCheck className="h-5 w-5 text-brand" />
+            <div key={item} className="rounded-2xl border border-line bg-white p-4">
+              <BadgeCheck className="h-5 w-5 text-[#2563eb]" />
               <div className="mt-3 font-semibold text-ink">{item}</div>
               <p className="mt-1 text-xs text-muted">{c.futureNote}</p>
             </div>
@@ -485,9 +485,9 @@ function TaxComplianceContent() {
 }
 
 function TaxKpi({ icon: Icon, label, value, tone = "neutral" }: { icon: typeof CircleDollarSign; label: string; value: string | number; tone?: "neutral" | "good" | "watch" | "risk" }) {
-  const color = tone === "risk" ? "text-red-700 bg-red-50" : tone === "watch" ? "text-yellow-800 bg-yellow-50" : tone === "good" ? "text-emerald-700 bg-emerald-50" : "text-brand bg-[#e6efeb]";
+  const color = tone === "risk" ? "text-red-700 bg-red-50" : tone === "watch" ? "text-yellow-800 bg-yellow-50" : tone === "good" ? "text-emerald-700 bg-emerald-50" : "text-[#2563eb] bg-[#eff6ff]";
   return (
-    <div className="rounded-[22px] border border-line bg-white/76 p-4 shadow-[0_14px_38px_rgba(18,31,27,0.06)] transition hover:-translate-y-1 hover:shadow-[0_22px_54px_rgba(18,31,27,0.1)]">
+    <div className="rounded-[22px] border border-line bg-white p-4 shadow-[0_14px_38px_rgba(18,31,27,0.06)] transition hover:-translate-y-1 hover:shadow-[0_22px_54px_rgba(18,31,27,0.1)]">
       <span className={`flex h-9 w-9 items-center justify-center rounded-2xl ${color}`}><Icon className="h-4 w-4" /></span>
       <div className="mt-4 text-xs font-semibold text-muted">{label}</div>
       <div className="premium-number mt-1 truncate text-2xl font-semibold tabular-nums text-ink">{value}</div>
@@ -520,8 +520,8 @@ function YearCalendar({ events, copy: c }: { events: ReturnType<typeof buildCale
 
 function CalendarRow({ event, copy: c }: { event: ReturnType<typeof buildCalendarEvents>[number]; copy: PageCopy }) {
   return (
-    <div className="flex items-center gap-3 rounded-2xl border border-line bg-white/70 p-4">
-      <CalendarDays className="h-5 w-5 text-brand" />
+    <div className="flex items-center gap-3 rounded-2xl border border-line bg-white p-4">
+      <CalendarDays className="h-5 w-5 text-[#2563eb]" />
       <div className="flex-1">
         <div className="font-semibold text-ink">{event.title}</div>
         <div className="mt-1 text-xs text-muted">{event.type} · {event.date}</div>
@@ -541,7 +541,7 @@ function RiskCard({ title, text, level }: { title: string; text: string; level: 
 }
 
 function Metric({ label, value, tone = "neutral" }: { label: string; value: string; tone?: "neutral" | "good" | "watch" | "risk" }) {
-  return <div className="rounded-2xl border border-line bg-white/70 p-4"><div className="text-xs font-semibold text-muted">{label}</div><div className={`mt-2 text-xl font-semibold tabular-nums ${tone === "risk" ? "text-red-700" : tone === "good" ? "text-emerald-700" : "text-ink"}`}>{value}</div></div>;
+  return <div className="rounded-2xl border border-line bg-white p-4"><div className="text-xs font-semibold text-muted">{label}</div><div className={`mt-2 text-xl font-semibold tabular-nums ${tone === "risk" ? "text-red-700" : tone === "good" ? "text-emerald-700" : "text-ink"}`}>{value}</div></div>;
 }
 
 function StatusPill({ status, copy: c }: { status: string; copy: PageCopy }) {
@@ -551,11 +551,11 @@ function StatusPill({ status, copy: c }: { status: string; copy: PageCopy }) {
 }
 
 function Segmented({ value, onChange, copy: c }: { value: "month" | "year"; onChange: (value: "month" | "year") => void; copy: PageCopy }) {
-  return <div className="rounded-2xl border border-line bg-white/70 p-1">{(["month", "year"] as const).map((item) => <button key={item} className={`rounded-xl px-3 py-2 text-xs font-bold ${value === item ? "bg-[#102b27] text-white" : "text-muted"}`} onClick={() => onChange(item)}>{item === "month" ? c.monthView : c.yearView}</button>)}</div>;
+  return <div className="rounded-2xl border border-line bg-white p-1">{(["month", "year"] as const).map((item) => <button key={item} className={`rounded-xl px-3 py-2 text-xs font-bold ${value === item ? "bg-[#111827] text-white" : "text-muted"}`} onClick={() => onChange(item)}>{item === "month" ? c.monthView : c.yearView}</button>)}</div>;
 }
 
 function EmptyBox({ title, text }: { title: string; text: string }) {
-  return <div className="rounded-2xl border border-dashed border-line bg-white/55 px-5 py-8 text-center"><ShieldCheck className="mx-auto h-6 w-6 text-brand" /><div className="mt-3 font-semibold text-ink">{title}</div><p className="mt-2 text-sm text-muted">{text}</p></div>;
+  return <div className="rounded-2xl border border-dashed border-line bg-white/55 px-5 py-8 text-center"><ShieldCheck className="mx-auto h-6 w-6 text-[#2563eb]" /><div className="mt-3 font-semibold text-ink">{title}</div><p className="mt-2 text-sm text-muted">{text}</p></div>;
 }
 
 function SkeletonKpis() {

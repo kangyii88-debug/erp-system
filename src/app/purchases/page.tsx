@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
@@ -187,8 +187,8 @@ function PurchasesContent() {
   return (
     <>
       <section className="premium-dashboard-panel relative mb-5 overflow-hidden rounded-[30px] p-6 md:p-8">
-        <div className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full bg-[#bca77a]/18 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-24 -left-20 h-72 w-72 rounded-full bg-brand/10 blur-3xl" />
+        <div className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full bg-slate-900/[0.035] blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-24 -left-20 h-72 w-72 rounded-full bg-blue-50 blur-3xl" />
         <div className="relative flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div>
             <div className="premium-section-eyebrow">
@@ -223,7 +223,7 @@ function PurchasesContent() {
             <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink">{isEditing ? copy.editTitle : copy.addTitle}</h2>
           </div>
           {isEditing ? (
-            <button type="button" onClick={resetForm} className="rounded-xl border border-line bg-white/80 px-3 py-2 text-xs font-semibold text-muted shadow-sm transition hover:border-brand/30 hover:text-brand">
+            <button type="button" onClick={resetForm} className="rounded-xl border border-line bg-white px-3 py-2 text-xs font-semibold text-muted shadow-sm transition hover:border-[#2563eb]/30 hover:text-[#2563eb]">
               {t("purchase.cancelEdit")}
             </button>
           ) : null}
@@ -241,14 +241,14 @@ function PurchasesContent() {
           </select>
           <input className="md:col-span-1" placeholder={t("common.memo")} value={form.memo} onChange={(e) => setForm({ ...form, memo: e.target.value })} />
           <div className="flex gap-2">
-            <button className="flex-1 rounded-xl bg-gradient-to-br from-brand to-brand-strong px-4 py-2 text-sm font-semibold text-white shadow-soft transition hover:-translate-y-0.5 hover:shadow-lift">
+            <button className="flex-1 rounded-xl bg-[#111827] px-4 py-2 text-sm font-semibold text-white shadow-soft transition hover:-translate-y-0.5 hover:shadow-lift">
               <span className="inline-flex items-center justify-center gap-2">
                 <Save className="h-4 w-4" />
                 {saving ? copy.saving : isEditing ? t("purchase.update") : t("common.save")}
               </span>
             </button>
             {isEditing ? (
-              <button type="button" onClick={resetForm} className="rounded-xl border border-line bg-white/80 px-4 py-2 text-sm font-semibold text-muted transition hover:border-brand/30 hover:text-brand">
+              <button type="button" onClick={resetForm} className="rounded-xl border border-line bg-white px-4 py-2 text-sm font-semibold text-muted transition hover:border-[#2563eb]/30 hover:text-[#2563eb]">
                 {t("purchase.cancelEdit")}
               </button>
             ) : null}
@@ -266,37 +266,37 @@ function PurchasesContent() {
           <span className="premium-status-chip px-3 py-1.5 text-xs font-semibold text-muted">{formatNumber(filteredOrders.length)} / {formatNumber(orders.length)} SKU</span>
         </div>
 
-        <div className="mb-4 rounded-2xl border border-white/70 bg-white/72 p-3 shadow-sm">
+        <div className="mb-4 rounded-2xl border border-line bg-white p-3 shadow-sm">
           <div className="grid gap-3 md:grid-cols-[minmax(220px,2fr)_minmax(120px,1fr)_minmax(120px,1fr)_minmax(145px,1fr)_minmax(145px,1fr)_auto]">
             <label className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
               <input
-                className="h-11 w-full rounded-xl border border-line bg-white/90 pl-9 pr-3 text-sm outline-none transition focus:border-brand/50 focus:ring-2 focus:ring-brand/10"
+                className="h-11 w-full rounded-xl border border-line bg-white pl-9 pr-3 text-sm outline-none transition focus:border-[#111827] focus:ring-2 focus:ring-[#111827]/10"
                 placeholder="搜索商品名 / SKU / 工厂 / 备注"
                 value={orderFilters.query}
                 onChange={(event) => setOrderFilters({ ...orderFilters, query: event.target.value })}
               />
             </label>
             <input
-              className="h-11 rounded-xl border border-line bg-white/90 px-3 text-sm outline-none transition focus:border-brand/50 focus:ring-2 focus:ring-brand/10"
+              className="h-11 rounded-xl border border-line bg-white px-3 text-sm outline-none transition focus:border-[#111827] focus:ring-2 focus:ring-[#111827]/10"
               placeholder="颜色"
               value={orderFilters.color}
               onChange={(event) => setOrderFilters({ ...orderFilters, color: event.target.value })}
             />
             <input
-              className="h-11 rounded-xl border border-line bg-white/90 px-3 text-sm outline-none transition focus:border-brand/50 focus:ring-2 focus:ring-brand/10"
+              className="h-11 rounded-xl border border-line bg-white px-3 text-sm outline-none transition focus:border-[#111827] focus:ring-2 focus:ring-[#111827]/10"
               placeholder="尺寸"
               value={orderFilters.size}
               onChange={(event) => setOrderFilters({ ...orderFilters, size: event.target.value })}
             />
             <input
-              className="h-11 rounded-xl border border-line bg-white/90 px-3 text-sm outline-none transition focus:border-brand/50 focus:ring-2 focus:ring-brand/10"
+              className="h-11 rounded-xl border border-line bg-white px-3 text-sm outline-none transition focus:border-[#111827] focus:ring-2 focus:ring-[#111827]/10"
               type="date"
               value={orderFilters.startDate}
               onChange={(event) => setOrderFilters({ ...orderFilters, startDate: event.target.value })}
             />
             <input
-              className="h-11 rounded-xl border border-line bg-white/90 px-3 text-sm outline-none transition focus:border-brand/50 focus:ring-2 focus:ring-brand/10"
+              className="h-11 rounded-xl border border-line bg-white px-3 text-sm outline-none transition focus:border-[#111827] focus:ring-2 focus:ring-[#111827]/10"
               type="date"
               value={orderFilters.endDate}
               onChange={(event) => setOrderFilters({ ...orderFilters, endDate: event.target.value })}
@@ -304,7 +304,7 @@ function PurchasesContent() {
             <button
               type="button"
               onClick={() => setOrderFilters({ query: "", color: "", size: "", startDate: "", endDate: "" })}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-line bg-white/85 px-3 text-xs font-bold text-muted shadow-sm transition hover:border-brand/30 hover:text-brand disabled:cursor-not-allowed disabled:opacity-40"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-line bg-white px-3 text-xs font-bold text-muted shadow-sm transition hover:border-[#2563eb]/30 hover:text-[#2563eb] disabled:cursor-not-allowed disabled:opacity-40"
               disabled={!hasOrderFilters}
             >
               <X className="h-4 w-4" />
@@ -317,12 +317,12 @@ function PurchasesContent() {
             </div>
             <div className="flex items-center gap-2 text-sm font-semibold text-ink">
               <span className="text-muted">当前筛选订货总数</span>
-              <span className="premium-number rounded-full bg-[#17483f] px-3 py-1.5 text-base font-black tabular-nums text-white">{formatNumber(filteredQuantity)}</span>
+              <span className="premium-number rounded-full bg-[#111827] px-3 py-1.5 text-base font-black tabular-nums text-white">{formatNumber(filteredQuantity)}</span>
             </div>
           </div>
         </div>
 
-        <div className="overflow-hidden rounded-2xl border border-white/65 bg-white/76 shadow-[0_18px_48px_rgba(31,44,38,0.06)] backdrop-blur">
+        <div className="overflow-hidden rounded-2xl border border-line bg-white shadow-[0_18px_48px_rgba(17,24,39,0.045)] backdrop-blur">
           <div className="overflow-x-auto">
             <table className="min-w-[1420px] w-full border-collapse text-sm">
               <thead className="sticky top-0 z-20 bg-[#f3f5ee]/95 backdrop-blur-xl">
@@ -387,9 +387,9 @@ function PurchasesContent() {
 
 function ProcurementKpi({ icon: Icon, label, value, tag, tone }: { icon: LucideIcon; label: string; value: string; tag: string; tone: "green" | "blue" | "yellow" | "slate" }) {
   const toneClass = {
-    green: "from-brand/12 text-brand",
-    blue: "from-[#406A7A]/14 text-[#406A7A]",
-    yellow: "from-[#bca77a]/20 text-[#8a6834]",
+    green: "from-blue-50 text-[#2563eb]",
+    blue: "from-[#2563eb]/14 text-[#2563eb]",
+    yellow: "from-[#9ca3af]/20 text-[#8a6834]",
     slate: "from-slate-500/12 text-slate-600"
   }[tone];
   return (
@@ -398,7 +398,7 @@ function ProcurementKpi({ icon: Icon, label, value, tag, tone }: { icon: LucideI
         <div className={`rounded-2xl bg-gradient-to-br ${toneClass} to-white p-3 shadow-sm`}>
           <Icon className="h-5 w-5" />
         </div>
-        <span className="rounded-full border border-white/70 bg-white/70 px-2.5 py-1 text-[11px] font-bold text-muted shadow-sm">{tag}</span>
+        <span className="rounded-full border border-line bg-white px-2.5 py-1 text-[11px] font-bold text-muted shadow-sm">{tag}</span>
       </div>
       <div className="mt-4 text-xs font-semibold text-muted">{label}</div>
       <div className="premium-number mt-2 text-2xl font-semibold tabular-nums text-ink">{value}</div>
@@ -411,7 +411,7 @@ function HealthCard({ health, copy }: { health: ReturnType<typeof purchaseHealth
     <div className={`min-w-[260px] rounded-3xl border p-5 shadow-soft ${health.className}`}>
       <div className="flex items-center justify-between gap-3">
         <div className="text-xs font-semibold uppercase tracking-[0.18em] opacity-70">{copy.healthIndex}</div>
-        <span className="rounded-full bg-white/70 px-2.5 py-1 text-xs font-bold shadow-sm">{health.label}</span>
+        <span className="rounded-full bg-white px-2.5 py-1 text-xs font-bold shadow-sm">{health.label}</span>
       </div>
       <div className="mt-4 flex items-end gap-2">
         <div className="premium-number text-4xl font-semibold tabular-nums">{health.score}</div>
@@ -438,7 +438,7 @@ function FinancialPanel({ analytics, copy, formatCurrency }: { analytics: Purcha
       <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink">{copy.amountOverview}</h2>
       <div className="mt-5 grid gap-3 md:grid-cols-2">
         {items.map(([label, value]) => (
-          <div key={label} className="rounded-2xl border border-white/70 bg-white/72 p-4 shadow-sm">
+          <div key={label} className="rounded-2xl border border-line bg-white p-4 shadow-sm">
             <div className="text-xs font-semibold text-muted">{label}</div>
             <div className="premium-number mt-2 text-xl font-semibold tabular-nums text-ink">{formatCurrency(value)}</div>
           </div>
@@ -451,17 +451,17 @@ function FinancialPanel({ analytics, copy, formatCurrency }: { analytics: Purcha
 function StatusDonut({ title, data }: { title: string; data: Array<{ name: string; value: number; color: string }> }) {
   const total = data.reduce((sum, item) => sum + item.value, 0);
   return (
-    <div className="relative overflow-hidden rounded-[30px] border border-[#17483f]/15 bg-gradient-to-br from-white via-[#fbfcf8] to-[#edf4ef] p-5 shadow-[0_22px_60px_rgba(16,45,38,0.10)]">
-      <div className="pointer-events-none absolute -right-12 -top-16 h-44 w-44 rounded-full bg-[#17483f]/10 blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-16 left-10 h-44 w-44 rounded-full bg-[#bca77a]/14 blur-3xl" />
+    <div className="relative overflow-hidden rounded-[30px] border border-[#2563eb]/15 bg-gradient-to-br from-white via-white to-[#f9fafb] p-5 shadow-[0_22px_60px_rgba(16,45,38,0.10)]">
+      <div className="pointer-events-none absolute -right-12 -top-16 h-44 w-44 rounded-full bg-[#111827]/10 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-16 left-10 h-44 w-44 rounded-full bg-slate-900/[0.035] blur-3xl" />
       <div className="relative flex items-start justify-between gap-4">
         <div>
           <div className="premium-section-eyebrow">Status</div>
           <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink">{title}</h2>
         </div>
-        <div className="rounded-2xl border border-white/70 bg-white/70 px-4 py-3 text-right shadow-sm">
+        <div className="rounded-2xl border border-line bg-white px-4 py-3 text-right shadow-sm">
           <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted">Total</div>
-          <div className="premium-number mt-1 text-2xl font-semibold tabular-nums text-[#17483f]">{total}</div>
+          <div className="premium-number mt-1 text-2xl font-semibold tabular-nums text-[#2563eb]">{total}</div>
         </div>
       </div>
       <div className="relative mt-5 grid items-center gap-4 md:grid-cols-[1fr_1.1fr]">
@@ -475,7 +475,7 @@ function StatusDonut({ title, data }: { title: string; data: Array<{ name: strin
             </PieChart>
           </ResponsiveContainer>
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-            <div className="rounded-full border border-white/70 bg-white/80 px-4 py-3 text-center shadow-sm">
+            <div className="rounded-full border border-line bg-white px-4 py-3 text-center shadow-sm">
               <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted">Live</div>
               <div className="premium-number text-xl font-semibold tabular-nums text-ink">{total}</div>
             </div>
@@ -483,7 +483,7 @@ function StatusDonut({ title, data }: { title: string; data: Array<{ name: strin
         </div>
         <div className="grid gap-2">
           {data.map((item) => (
-            <div key={item.name} className="flex items-center justify-between rounded-2xl border border-white/70 bg-white/68 px-3 py-2 text-sm shadow-sm">
+            <div key={item.name} className="flex items-center justify-between rounded-2xl border border-line bg-white/68 px-3 py-2 text-sm shadow-sm">
               <span className="flex items-center gap-2 font-semibold text-ink/75"><span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.color }} />{item.name}</span>
               <span className="font-black tabular-nums text-ink">{item.value}</span>
             </div>
@@ -506,8 +506,8 @@ function ArrivalCenter({ analytics, copy, formatNumber }: { analytics: PurchaseA
       <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink">{copy.arrivalCenter}</h2>
       <div className="mt-5 grid gap-3 md:grid-cols-3">
         {items.map(([label, value]) => (
-          <div key={label} className="rounded-2xl border border-white/70 bg-white/72 p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-soft">
-            <CalendarDays className="h-5 w-5 text-brand" />
+          <div key={label} className="rounded-2xl border border-line bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-soft">
+            <CalendarDays className="h-5 w-5 text-[#2563eb]" />
             <div className="mt-3 text-xs font-semibold text-muted">{label}</div>
             <div className="premium-number mt-2 text-3xl font-semibold tabular-nums text-ink">{formatNumber(value)}</div>
           </div>
@@ -524,7 +524,7 @@ function InsightPanel({ insights, copy }: { insights: string[]; copy: PurchaseCo
       <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink">{copy.insightsTitle}</h2>
       <div className="mt-5 space-y-3">
         {insights.map((insight) => (
-          <div key={insight} className="flex gap-3 rounded-2xl border border-white/70 bg-white/72 p-4 text-sm font-medium leading-6 text-ink shadow-sm">
+          <div key={insight} className="flex gap-3 rounded-2xl border border-line bg-white p-4 text-sm font-medium leading-6 text-ink shadow-sm">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[#8a6834]" />
             <span>{insight}</span>
           </div>
@@ -544,7 +544,7 @@ function InlineStatusSelect<T extends string>({ value, options, label, tone, onC
 
 function SkuBadge({ sku }: { sku?: string | null }) {
   return (
-    <span className="inline-flex whitespace-nowrap rounded-lg border border-[#17483f]/15 bg-[#e8f1ed] px-2.5 py-1 font-mono text-[11px] font-black tracking-[0.02em] text-[#17483f] shadow-sm">
+    <span className="inline-flex whitespace-nowrap rounded-lg border border-[#2563eb]/15 bg-[#eff6ff] px-2.5 py-1 font-mono text-[11px] font-black tracking-[0.02em] text-[#2563eb] shadow-sm">
       {sku || "-"}
     </span>
   );
@@ -575,8 +575,8 @@ function PurchaseTimeline({ order, copy }: { order: PurchaseOrder; copy: Purchas
       <div className="flex items-center">
         {steps.map((step, index) => (
           <div key={step.label} className="flex flex-1 items-center">
-            <span className={`h-2.5 w-2.5 rounded-full ${step.done ? "bg-brand" : "bg-line"}`} />
-            {index < steps.length - 1 ? <span className={`h-px flex-1 ${steps[index + 1].done ? "bg-brand/60" : "bg-line"}`} /> : null}
+            <span className={`h-2.5 w-2.5 rounded-full ${step.done ? "bg-[#111827]" : "bg-line"}`} />
+            {index < steps.length - 1 ? <span className={`h-px flex-1 ${steps[index + 1].done ? "bg-blue-400" : "bg-line"}`} /> : null}
           </div>
         ))}
       </div>
@@ -589,7 +589,7 @@ function PurchaseTimeline({ order, copy }: { order: PurchaseOrder; copy: Purchas
 
 function IconButton({ label, icon: Icon, onClick, danger = false }: { label: string; icon: LucideIcon; onClick: () => void; danger?: boolean }) {
   return (
-    <button type="button" title={label} onClick={onClick} className={`inline-flex h-9 w-9 items-center justify-center rounded-full border shadow-sm transition hover:-translate-y-0.5 hover:shadow-soft ${danger ? "border-red-200 bg-red-50 text-red-700 hover:bg-red-100" : "border-line bg-white/80 text-ink hover:border-brand/30 hover:text-brand"}`}>
+    <button type="button" title={label} onClick={onClick} className={`inline-flex h-9 w-9 items-center justify-center rounded-full border shadow-sm transition hover:-translate-y-0.5 hover:shadow-soft ${danger ? "border-red-200 bg-red-50 text-red-700 hover:bg-red-100" : "border-line bg-white text-ink hover:border-[#2563eb]/30 hover:text-[#2563eb]"}`}>
       <Icon className="h-4 w-4" />
     </button>
   );
@@ -674,8 +674,8 @@ function buildPurchaseAnalytics(orders: PurchaseOrderWithProduct[], productMap: 
 
 function productionDonutData(orders: PurchaseOrderWithProduct[], copy: PurchaseCopy) {
   return [
-    { name: copy.pending, value: countBy(orders, "production_status", "pending"), color: "#bca77a" },
-    { name: copy.producing, value: countBy(orders, "production_status", "producing"), color: "#406A7A" },
+    { name: copy.pending, value: countBy(orders, "production_status", "pending"), color: "#9ca3af" },
+    { name: copy.producing, value: countBy(orders, "production_status", "producing"), color: "#2563eb" },
     { name: copy.completed, value: countBy(orders, "production_status", "completed"), color: "#23614f" },
     { name: copy.abnormal, value: countBy(orders, "production_status", "delayed") + countBy(orders, "production_status", "cancelled"), color: "#9a3f3f" }
   ];
@@ -684,7 +684,7 @@ function productionDonutData(orders: PurchaseOrderWithProduct[], copy: PurchaseC
 function shippingDonutData(orders: PurchaseOrderWithProduct[], copy: PurchaseCopy) {
   return [
     { name: copy.notShipped, value: countBy(orders, "shipping_status", "not_shipped"), color: "#6D756F" },
-    { name: copy.shippedFromChina, value: countBy(orders, "shipping_status", "shipped_from_china"), color: "#406A7A" },
+    { name: copy.shippedFromChina, value: countBy(orders, "shipping_status", "shipped_from_china"), color: "#2563eb" },
     { name: copy.inTransit, value: countBy(orders, "shipping_status", "customs") + countBy(orders, "shipping_status", "in_korea"), color: "#b8793c" },
     { name: copy.received, value: countBy(orders, "shipping_status", "received"), color: "#23614f" }
   ];

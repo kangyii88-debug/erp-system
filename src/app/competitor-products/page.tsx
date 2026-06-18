@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { FormEvent, MouseEvent, useEffect, useMemo, useState } from "react";
 import {
@@ -1291,13 +1291,13 @@ function CompetitorProductsContent() {
         <Panel title={language === "zh" ? "优先看这些商品" : "먼저 볼 상품"} icon={Flame}>
           <div className="grid gap-2">
             {top10.slice(0, 5).map((row, index) => (
-              <button key={row.id} className="group grid grid-cols-[42px_1fr_auto] items-center gap-3 rounded-2xl border border-line bg-white/72 px-3 py-2 text-left hover:border-[#17483f]/30 hover:bg-[#eef5f0]" onClick={() => openView(row)}>
+              <button key={row.id} className="group grid grid-cols-[42px_1fr_auto] items-center gap-3 rounded-2xl border border-line bg-white px-3 py-2 text-left hover:border-[#2563eb]/30 hover:bg-[#eff6ff]" onClick={() => openView(row)}>
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#123c35] text-sm font-black text-white">#{index + 1}</div>
                 <div className="min-w-0">
                   <div className="truncate text-sm font-bold text-ink">{row.productNameKr}</div>
                   <div className="mt-1 flex flex-wrap gap-2 text-xs text-muted"><span>{row.category || c.none}</span><span>{c.fields.sales}: {row.monthlySales.toLocaleString()}</span><span>{c.fields.reviews}: {row.reviewCount.toLocaleString()}</span></div>
                 </div>
-                <div className="text-right"><ScoreBadge score={row.recommendationScore} c={c} /><div className="mt-1 text-xs font-bold text-[#17483f]">{row.testRecommended ? c.actions.addTest : c.scoreLabel.observe}</div></div>
+                <div className="text-right"><ScoreBadge score={row.recommendationScore} c={c} /><div className="mt-1 text-xs font-bold text-[#2563eb]">{row.testRecommended ? c.actions.addTest : c.scoreLabel.observe}</div></div>
               </button>
             ))}
           </div>
@@ -1306,7 +1306,7 @@ function CompetitorProductsContent() {
         <Panel title={language === "zh" ? "需要避开的风险" : "피해야 할 리스크"} icon={AlertTriangle}>
           <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
             {warnings.filter((item) => item.count > 0).length ? warnings.filter((item) => item.count > 0).slice(0, 5).map((item) => (
-              <button key={item.key} className="group flex items-center justify-between rounded-2xl border border-line bg-white/72 px-3 py-3 text-left hover:border-red-200 hover:bg-red-50" onClick={() => { item.onClick(); setPage(1); }}>
+              <button key={item.key} className="group flex items-center justify-between rounded-2xl border border-line bg-white px-3 py-3 text-left hover:border-red-200 hover:bg-red-50" onClick={() => { item.onClick(); setPage(1); }}>
                 <span className="text-sm font-bold text-ink">{item.label}</span>
                 <span className={`rounded-full px-2.5 py-1 text-xs font-black ${item.count ? "bg-red-50 text-red-700" : "bg-emerald-50 text-emerald-700"}`}>{item.count}</span>
               </button>
@@ -1318,7 +1318,7 @@ function CompetitorProductsContent() {
       <Panel title={c.modules.table} icon={BarChart3}>
         {loading ? <Skeleton /> : pageRows.length ? (
           <>
-            <div className="overflow-x-auto rounded-[22px] border border-line bg-white/90 shadow-[0_14px_36px_rgba(23,72,63,0.06)]">
+            <div className="overflow-x-auto rounded-[22px] border border-line bg-white shadow-[0_14px_36px_rgba(17,24,39,0.045)]">
               <table className="w-full min-w-[1540px] table-fixed text-left text-sm">
                 <colgroup>
                   <col className="w-[46px]" />
@@ -1354,7 +1354,7 @@ function CompetitorProductsContent() {
                           <div className="min-w-0">
                             <div className="line-clamp-2 font-bold leading-5 text-ink">{row.productNameKr}</div>
                             <div className="mt-1 line-clamp-1 text-xs text-muted">{row.productNameCn || "-"}</div>
-                            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted"><span>ID: {row.coupangProductId || "-"}</span><span className="text-line">|</span><span>{row.category || "-"}</span><a href={row.coupangUrl} target="_blank" onClick={stop} className="inline-flex items-center gap-1 font-bold text-[#17483f]">{c.actions.open}<ExternalLink size={12} /></a></div>
+                            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted"><span>ID: {row.coupangProductId || "-"}</span><span className="text-line">|</span><span>{row.category || "-"}</span><a href={row.coupangUrl} target="_blank" onClick={stop} className="inline-flex items-center gap-1 font-bold text-[#2563eb]">{c.actions.open}<ExternalLink size={12} /></a></div>
                           </div>
                         </div>
                       </td>
@@ -1396,7 +1396,7 @@ function CompetitorProductsContent() {
           </>
         ) : (
           <div className="rounded-3xl border border-dashed border-line bg-white/50 px-6 py-14 text-center">
-            <PackageSearch className="mx-auto h-12 w-12 text-[#17483f]" />
+            <PackageSearch className="mx-auto h-12 w-12 text-[#2563eb]" />
             <p className="mt-4 text-lg font-bold text-ink">
               {rows.length && !sorted.length
                 ? (language === "zh" ? "当前筛选没有结果，商品还在。清空筛选就能看到全部产品。" : "현재 필터 결과가 없습니다. 필터를 초기화하면 전체 상품을 볼 수 있습니다.")
@@ -1629,9 +1629,9 @@ function Drawer({
               <Field label={c.fields.targetPrice} type="number" value={form.targetPrice} readOnly={readOnly} onChange={(value) => setForm({ ...form, targetPrice: value })} />
               <Field label={c.fields.owner} value={form.testOwner} readOnly={readOnly} onChange={(value) => setForm({ ...form, testOwner: value })} />
               <Field label={c.fields.launchDate} type="date" value={form.plannedLaunchDate} readOnly={readOnly} onChange={(value) => setForm({ ...form, plannedLaunchDate: value })} />
-              <div className="rounded-2xl border border-line bg-[#eef5f0] px-3 py-2">
+              <div className="rounded-2xl border border-line bg-[#eff6ff] px-3 py-2">
                 <div className="text-xs font-bold text-muted">{c.fields.profit}</div>
-                <div className="mt-1 text-xl font-black text-[#17483f]">{won(item.estimatedProfit)} / {percent(item.estimatedProfitRate)}</div>
+                <div className="mt-1 text-xl font-black text-[#2563eb]">{won(item.estimatedProfit)} / {percent(item.estimatedProfitRate)}</div>
               </div>
             </FormSection>
 
@@ -1671,7 +1671,7 @@ function Drawer({
 function QuickAnalysis({ c, language, row, onPatch }: { c: CopyText; language: "zh" | "ko"; row: CompetitorItem; onPatch: (patch: RawRow) => Promise<boolean | void> | boolean | void }) {
   return (
     <div className="space-y-5">
-      <div className="grid gap-4 rounded-[24px] border border-line bg-white/80 p-4 shadow-card md:grid-cols-[180px_1fr]">
+      <div className="grid gap-4 rounded-[24px] border border-line bg-white p-4 shadow-card md:grid-cols-[180px_1fr]">
         <div className="aspect-square overflow-hidden rounded-2xl border border-line bg-[#f4f6f1]">
           {row.imageUrl ? <img className="h-full w-full object-cover" src={row.imageUrl} alt="" /> : <PackageSearch className="m-14 h-14 w-14 text-muted" />}
         </div>
@@ -1690,7 +1690,7 @@ function QuickAnalysis({ c, language, row, onPatch }: { c: CopyText; language: "
             <Mini label={c.fields.reviews} value={row.reviewCount.toLocaleString()} />
             <Mini label={c.fields.rating} value={row.rating.toFixed(1)} />
           </div>
-          <a className="mt-4 inline-flex items-center gap-2 rounded-xl bg-[#17483f] px-4 py-2 text-sm font-bold text-white" href={row.coupangUrl} target="_blank">{c.actions.open}<ExternalLink size={15} /></a>
+          <a className="mt-4 inline-flex items-center gap-2 rounded-xl bg-[#111827] px-4 py-2 text-sm font-bold text-white" href={row.coupangUrl} target="_blank">{c.actions.open}<ExternalLink size={15} /></a>
         </div>
       </div>
 
@@ -1732,7 +1732,7 @@ function QuickAnalysis({ c, language, row, onPatch }: { c: CopyText; language: "
 }
 
 function Panel({ title, icon: Icon, children }: { title: string; icon: LucideIcon; children: React.ReactNode }) {
-  return <section className="rounded-[24px] border border-line bg-card/90 p-5 shadow-card backdrop-blur"><div className="mb-4 flex items-center gap-2"><div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#e8f1ed] text-[#17483f]"><Icon size={18} /></div><h2 className="text-xl font-semibold tracking-tight text-ink">{title}</h2></div>{children}</section>;
+  return <section className="rounded-[24px] border border-line bg-card/90 p-5 shadow-card backdrop-blur"><div className="mb-4 flex items-center gap-2"><div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#eff6ff] text-[#2563eb]"><Icon size={18} /></div><h2 className="text-xl font-semibold tracking-tight text-ink">{title}</h2></div>{children}</section>;
 }
 
 function KpiCard({
@@ -1755,15 +1755,15 @@ function KpiCard({
   return (
     <button
       type="button"
-      className={`premium-dashboard-card w-full p-4 text-left transition hover:-translate-y-0.5 hover:border-[#17483f]/30 hover:shadow-lift ${active ? "border-[#17483f]/40 bg-[#eef5f0] ring-2 ring-[#17483f]/10" : ""}`}
+      className={`premium-dashboard-card w-full p-4 text-left transition hover:-translate-y-0.5 hover:border-[#2563eb]/30 hover:shadow-lift ${active ? "border-[#2563eb]/40 bg-[#eff6ff] ring-2 ring-[#2563eb]/10" : ""}`}
       onClick={onClick}
     >
       <div className="flex items-start gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#e7f0ec] text-[#17483f]"><Icon size={19} /></div>
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#f3f4f6] text-[#2563eb]"><Icon size={19} /></div>
         <div className="min-w-0">
           <div className="text-xs font-bold text-muted">{label}</div>
           <div className="premium-number mt-1 truncate text-2xl font-black text-ink">{value}</div>
-          <div className="mt-2 flex flex-wrap gap-1.5 text-[11px] font-bold"><span className="rounded-full bg-[#eef5f0] px-2 py-1 text-[#17483f]">{trend}</span><span className="rounded-full bg-white px-2 py-1 text-muted">{meta}</span></div>
+          <div className="mt-2 flex flex-wrap gap-1.5 text-[11px] font-bold"><span className="rounded-full bg-[#eff6ff] px-2 py-1 text-[#2563eb]">{trend}</span><span className="rounded-full bg-white px-2 py-1 text-muted">{meta}</span></div>
         </div>
       </div>
     </button>
@@ -1796,7 +1796,7 @@ function KpiProductList({
             <button
               key={row.id}
               type="button"
-              className="group rounded-2xl border border-line bg-[#fbfcfb] p-3 text-left transition hover:border-[#17483f]/30 hover:bg-[#f4f8f4]"
+              className="group rounded-2xl border border-line bg-[#fbfcfb] p-3 text-left transition hover:border-[#2563eb]/30 hover:bg-[#f9fafb]"
               onClick={() => onOpen(row)}
             >
               <div className="flex gap-3">
@@ -1804,7 +1804,7 @@ function KpiProductList({
                   {row.imageUrl ? <img className="h-full w-full object-cover" src={row.imageUrl} alt="" /> : <PackageSearch className="m-3 h-6 w-6 text-muted" />}
                 </div>
                 <div className="min-w-0">
-                  <div className="line-clamp-2 text-sm font-black leading-5 text-ink group-hover:text-[#17483f]">{row.productNameKr}</div>
+                  <div className="line-clamp-2 text-sm font-black leading-5 text-ink group-hover:text-[#2563eb]">{row.productNameKr}</div>
                   <div className="mt-1 truncate text-xs text-muted">{row.category || "-"}</div>
                 </div>
               </div>
@@ -1843,7 +1843,7 @@ function DecisionCard({ icon: Icon, title, value, description, action, tone, onC
         ? "border-yellow-200 bg-yellow-50 text-yellow-800"
         : "border-red-200 bg-red-50 text-red-700";
   return (
-    <button type="button" className="group rounded-2xl border border-line bg-white/76 p-4 text-left shadow-card hover:border-[#17483f]/30 hover:bg-[#f8fbf8]" onClick={onClick}>
+    <button type="button" className="group rounded-2xl border border-line bg-white p-4 text-left shadow-card hover:border-[#2563eb]/30 hover:bg-[#f9fafb]" onClick={onClick}>
       <div className="flex items-start justify-between gap-3">
         <div className={`flex h-10 w-10 items-center justify-center rounded-xl border ${toneStyle}`}>
           <Icon size={18} />
@@ -1852,13 +1852,13 @@ function DecisionCard({ icon: Icon, title, value, description, action, tone, onC
       </div>
       <div className="mt-3 text-base font-black text-ink">{title}</div>
       <p className="mt-1 min-h-10 text-sm leading-5 text-muted">{description}</p>
-      <div className="mt-3 text-xs font-black text-[#17483f] group-hover:underline">{action}</div>
+      <div className="mt-3 text-xs font-black text-[#2563eb] group-hover:underline">{action}</div>
     </button>
   );
 }
 
 function FormSection({ title, children }: { title: string; children: React.ReactNode }) {
-  return <section className="mb-5 rounded-[20px] border border-line bg-white/76 p-4 shadow-card"><h3 className="mb-4 text-lg font-semibold text-ink">{title}</h3><div className="grid gap-3 md:grid-cols-3">{children}</div></section>;
+  return <section className="mb-5 rounded-[20px] border border-line bg-white p-4 shadow-card"><h3 className="mb-4 text-lg font-semibold text-ink">{title}</h3><div className="grid gap-3 md:grid-cols-3">{children}</div></section>;
 }
 
 function Field({ label, value, onChange, type = "text", required = false, readOnly = false, className = "" }: { label: string; value: string; onChange: (value: string) => void; type?: "text" | "number" | "date"; required?: boolean; readOnly?: boolean; className?: string }) {
@@ -1895,7 +1895,7 @@ function ImageUploadField({
   return (
     <div className={className}>
       <span className="mb-1 block text-xs font-bold text-muted">{label}</span>
-      <div className="grid gap-3 rounded-2xl border border-line bg-white/70 p-3 md:grid-cols-[96px_1fr]">
+      <div className="grid gap-3 rounded-2xl border border-line bg-white p-3 md:grid-cols-[96px_1fr]">
         <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-2xl border border-line bg-[#f4f6f1]">
           {value ? <img className="h-full w-full object-cover" src={value} alt="" /> : <PackageSearch className="h-8 w-8 text-muted" />}
         </div>
@@ -1973,7 +1973,7 @@ function KcRequirementField({ value, language, disabled = false, onChange }: { v
               key={option.value}
               type="button"
               disabled={disabled}
-              className={`rounded-2xl border px-3 py-3 text-left transition ${active ? "border-[#17483f] bg-[#e8f1ed] text-[#17483f]" : "border-line bg-white/70 text-ink hover:border-[#17483f]/30"} ${disabled ? "cursor-not-allowed opacity-60" : ""}`}
+              className={`rounded-2xl border px-3 py-3 text-left transition ${active ? "border-[#2563eb] bg-[#eff6ff] text-[#2563eb]" : "border-line bg-white text-ink hover:border-[#2563eb]/30"} ${disabled ? "cursor-not-allowed opacity-60" : ""}`}
               onClick={() => onChange(option.value)}
             >
               <span className="block text-sm font-black">{option.label}</span>
@@ -1995,7 +1995,7 @@ function Input({ value, onChange, placeholder, type = "text", icon: Icon }: { va
 }
 
 function Toggle({ label, checked, disabled, onChange }: { label: string; checked: boolean; disabled?: boolean; onChange: (value: boolean) => void }) {
-  return <label className="flex items-center justify-between gap-3 rounded-2xl border border-line bg-white/70 px-3 py-2 text-sm font-bold text-ink"><span>{label}</span><input type="checkbox" checked={checked} disabled={disabled} onChange={(event) => onChange(event.target.checked)} /></label>;
+  return <label className="flex items-center justify-between gap-3 rounded-2xl border border-line bg-white px-3 py-2 text-sm font-bold text-ink"><span>{label}</span><input type="checkbox" checked={checked} disabled={disabled} onChange={(event) => onChange(event.target.checked)} /></label>;
 }
 
 function DecisionToggleRow({
@@ -2015,14 +2015,14 @@ function DecisionToggleRow({
           <button
             key={item.label}
             type="button"
-            className={`flex min-h-[74px] items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-left transition ${item.checked ? "border-[#17483f] bg-[#e8f1ed] text-[#17483f]" : "border-line bg-white/72 text-ink hover:border-[#17483f]/30"}`}
+            className={`flex min-h-[74px] items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-left transition ${item.checked ? "border-[#2563eb] bg-[#eff6ff] text-[#2563eb]" : "border-line bg-white text-ink hover:border-[#2563eb]/30"}`}
             onClick={() => item.onChange(!item.checked)}
           >
             <span className="min-w-0">
               <span className="block text-sm font-black">{item.label}</span>
               <span className="mt-1 block text-xs font-semibold text-muted">{item.description}</span>
             </span>
-            <span className={`relative h-5 w-9 shrink-0 rounded-full transition ${item.checked ? "bg-[#17483f]" : "bg-[#cfd8d1]"}`}>
+            <span className={`relative h-5 w-9 shrink-0 rounded-full transition ${item.checked ? "bg-[#111827]" : "bg-[#cfd8d1]"}`}>
               <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition ${item.checked ? "left-[18px]" : "left-0.5"}`} />
             </span>
           </button>
@@ -2033,7 +2033,7 @@ function DecisionToggleRow({
 }
 
 function Tag({ children, tone = "neutral" }: { children: React.ReactNode; tone?: "neutral" | "good" | "watch" | "risk" }) {
-  const styles = tone === "good" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : tone === "risk" ? "border-red-200 bg-red-50 text-red-700" : tone === "watch" ? "border-yellow-200 bg-yellow-50 text-yellow-800" : "border-[#17483f]/15 bg-[#e8f1ed] text-[#17483f]";
+  const styles = tone === "good" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : tone === "risk" ? "border-red-200 bg-red-50 text-red-700" : tone === "watch" ? "border-yellow-200 bg-yellow-50 text-yellow-800" : "border-[#2563eb]/15 bg-[#eff6ff] text-[#2563eb]";
   return <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-bold ${styles}`}>{children}</span>;
 }
 
@@ -2055,7 +2055,7 @@ function DecisionSnapshot({ row, language, c }: { row: CompetitorItem; language:
           <div className="text-[11px] font-black uppercase tracking-[0.08em] opacity-70">{language === "zh" ? "决策" : "Decision"}</div>
           <div className="mt-1 text-base font-black leading-5">{decision.title}</div>
         </div>
-        <div className="rounded-full bg-white/70 px-2 py-1 text-xs font-black tabular-nums">{row.recommendationScore.toFixed(1)}</div>
+        <div className="rounded-full bg-white px-2 py-1 text-xs font-black tabular-nums">{row.recommendationScore.toFixed(1)}</div>
       </div>
       <div className="mt-3 grid gap-1.5 text-xs font-bold">
         <div className="flex items-center justify-between gap-3"><span className="opacity-70">{c.fields.testQty}</span><span>{row.testRecommended ? row.suggestedTestQuantity || "-" : "-"}</span></div>
@@ -2090,8 +2090,8 @@ function ProfitSnapshot({ row, c }: { row: CompetitorItem; c: CopyText }) {
   return (
     <div className={`rounded-2xl border px-3 py-3 ${good ? "border-emerald-200 bg-emerald-50/70" : warn ? "border-yellow-200 bg-yellow-50/70" : "border-red-200 bg-red-50/70"}`}>
       <div className="text-[11px] font-black uppercase tracking-[0.08em] text-muted">{c.fields.profit}</div>
-      <div className={`mt-1 text-lg font-black tabular-nums ${row.estimatedProfit >= 0 ? "text-[#17483f]" : "text-red-700"}`}>{won(row.estimatedProfit)}</div>
-      <div className={`text-sm font-black tabular-nums ${row.estimatedProfitRate >= 20 ? "text-[#17483f]" : row.estimatedProfitRate >= 0 ? "text-yellow-800" : "text-red-700"}`}>{percent(row.estimatedProfitRate)}</div>
+      <div className={`mt-1 text-lg font-black tabular-nums ${row.estimatedProfit >= 0 ? "text-[#2563eb]" : "text-red-700"}`}>{won(row.estimatedProfit)}</div>
+      <div className={`text-sm font-black tabular-nums ${row.estimatedProfitRate >= 20 ? "text-[#2563eb]" : row.estimatedProfitRate >= 0 ? "text-yellow-800" : "text-red-700"}`}>{percent(row.estimatedProfitRate)}</div>
       <div className="mt-2 grid gap-1">
         <Metric label={c.fields.purchase} value={won(row.estimatedPurchasePrice)} />
         <Metric label={c.fields.logistics} value={won(row.estimatedLogisticsCost)} />
@@ -2150,7 +2150,7 @@ function decisionView(row: CompetitorItem, language: "zh" | "ko") {
 }
 
 function IconButton({ label, icon, onClick, danger = false }: { label: string; icon: React.ReactNode; onClick: () => void; danger?: boolean }) {
-  return <button type="button" title={label} className={`inline-flex h-8 w-8 items-center justify-center rounded-lg border ${danger ? "border-red-200 bg-red-50 text-red-700" : "border-line bg-white/80 text-ink hover:bg-[#eef4ef]"}`} onClick={onClick}>{icon}</button>;
+  return <button type="button" title={label} className={`inline-flex h-8 w-8 items-center justify-center rounded-lg border ${danger ? "border-red-200 bg-red-50 text-red-700" : "border-line bg-white text-ink hover:bg-[#eef4ef]"}`} onClick={onClick}>{icon}</button>;
 }
 
 function Mini({ label, value }: { label: string; value: string }) {
@@ -2162,15 +2162,15 @@ function Metric({ label, value, strong = false }: { label: string; value: string
 }
 
 function SortButton({ label, active, dir, onClick }: { label: string; active: boolean; dir: SortDir; onClick: () => void }) {
-  return <button className={`inline-flex items-center gap-1 font-black ${active ? "text-[#17483f]" : ""}`} onClick={onClick}>{label}<ArrowDownUp size={13} className={active && dir === "asc" ? "rotate-180" : ""} /></button>;
+  return <button className={`inline-flex items-center gap-1 font-black ${active ? "text-[#2563eb]" : ""}`} onClick={onClick}>{label}<ArrowDownUp size={13} className={active && dir === "asc" ? "rotate-180" : ""} /></button>;
 }
 
 function AnalysisBlock({ title, children }: { title: string; children: React.ReactNode }) {
-  return <div className="rounded-[20px] border border-line bg-white/76 p-4 shadow-card"><h3 className="mb-3 text-sm font-black text-ink">{title}</h3><div className="flex flex-wrap gap-2">{children}</div></div>;
+  return <div className="rounded-[20px] border border-line bg-white p-4 shadow-card"><h3 className="mb-3 text-sm font-black text-ink">{title}</h3><div className="flex flex-wrap gap-2">{children}</div></div>;
 }
 
 function TextBlock({ title, value }: { title: string; value: string }) {
-  return <div className="rounded-[20px] border border-line bg-white/76 p-4 shadow-card"><h3 className="text-sm font-black text-ink">{title}</h3><p className="mt-2 min-h-20 whitespace-pre-wrap text-sm leading-6 text-muted">{value || "-"}</p></div>;
+  return <div className="rounded-[20px] border border-line bg-white p-4 shadow-card"><h3 className="text-sm font-black text-ink">{title}</h3><p className="mt-2 min-h-20 whitespace-pre-wrap text-sm leading-6 text-muted">{value || "-"}</p></div>;
 }
 
 function Skeleton() {

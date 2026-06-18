@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { AlertTriangle, CalendarCheck2, CheckCircle2, Clock3, Edit3, Flame, Plus, Trash2, TimerReset } from "lucide-react";
@@ -398,10 +398,10 @@ function TaskFilters({ c, filters, owners, onChange }: { c: Copy; filters: { sta
 
 function TaskCard({ c, task, rank, compact, draggable, onDragStart, onDragEnd, onEdit, onDelete, onDone }: { c: Copy; task: TaskRow; rank?: number; compact?: boolean; draggable?: boolean; onDragStart?: () => void; onDragEnd?: () => void; onEdit: (task: TaskRow) => void; onDelete: (id: string) => void; onDone: () => void }) {
   return (
-    <article draggable={draggable} onDragStart={onDragStart} onDragEnd={onDragEnd} className={`rounded-2xl border bg-white/85 p-4 shadow-[0_10px_24px_rgba(23,33,29,0.06)] ${isOverdue(task) ? "border-red-200 ring-2 ring-red-100" : "border-white"}`}>
+    <article draggable={draggable} onDragStart={onDragStart} onDragEnd={onDragEnd} className={`rounded-2xl border bg-white p-4 shadow-[0_10px_24px_rgba(17,24,39,0.04)] ${isOverdue(task) ? "border-red-200 ring-2 ring-red-100" : "border-white"}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex gap-3">
-          {rank ? <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#17483f] text-sm font-bold text-white">{rank}</span> : null}
+          {rank ? <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#111827] text-sm font-bold text-white">{rank}</span> : null}
           <div>
             <h4 className="font-semibold leading-snug text-ink">{task.task_name}</h4>
             <p className="mt-1 text-xs text-muted">{task.task_type} · {task.owner} · {task.due_date}</p>
@@ -487,7 +487,7 @@ function EmptyAction({ c, title, button, onClick }: { c: Copy; title: string; bu
   return (
     <CenterPanel eyebrow={c.emptyEyebrow} title={c.emptyTitle}>
       <div className="rounded-[26px] border border-dashed border-[#cdd8cf] bg-white/65 px-6 py-12 text-center">
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#e6f2ed] text-[#17483f]"><Plus className="h-6 w-6" /></div>
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#f3f4f6] text-[#2563eb]"><Plus className="h-6 w-6" /></div>
         <p className="mt-4 text-base font-semibold text-ink">{title}</p>
         <button className="erp-button-primary mt-5 px-4 py-2 text-sm font-bold" onClick={onClick}>{button}</button>
       </div>
