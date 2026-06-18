@@ -533,18 +533,18 @@ function ProfitPanel({
   text: ProductPageText;
 }) {
   return (
-    <aside className="rounded-[28px] border border-[#d8d0b8] bg-[#162f2b] p-5 text-white shadow-[0_26px_70px_rgba(15,52,47,0.26)]">
+    <aside className="rounded-[28px] border border-line bg-white p-5 text-ink shadow-[0_16px_44px_rgba(17,24,39,0.06)]">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#d6c28b]">{text.profitEyebrow}</p>
-          <h2 className="mt-2 text-2xl font-semibold">{text.profitTitle}</h2>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted">{text.profitEyebrow}</p>
+          <h2 className="mt-2 text-2xl font-semibold text-ink">{text.profitTitle}</h2>
         </div>
         <span className={`rounded-full px-3 py-1 text-xs font-bold ${grade.badgeClass}`}>{grade.label}</span>
       </div>
-      <div className="mt-6 rounded-3xl border border-white/10 bg-white/8 p-4">
-        <div className="text-sm text-white/60">{text.unitNetProfit}</div>
-        <div className={`mt-2 text-4xl font-semibold tabular-nums ${unitProfitValue >= 0 ? "text-white" : "text-red-200"}`}>{formatCurrency(unitProfitValue)}</div>
-        <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
+      <div className="mt-6 rounded-3xl border border-line bg-[#fafafa] p-4">
+        <div className="text-sm font-medium text-muted">{text.unitNetProfit}</div>
+        <div className={`mt-2 text-4xl font-semibold tabular-nums ${unitProfitValue >= 0 ? "text-[#111827]" : "text-red-600"}`}>{formatCurrency(unitProfitValue)}</div>
+        <div className="mt-3 h-2 overflow-hidden rounded-full bg-[#e5e7eb]">
           <div className={`h-full rounded-full ${grade.barClass}`} style={{ width: `${Math.max(8, Math.min(100, margin))}%` }} />
         </div>
       </div>
@@ -554,7 +554,7 @@ function ProfitPanel({
         <ProfitMetric label={text.salePrice} value={formatCurrency(salePrice)} />
         <ProfitMetric label={text.netProfit} value={formatCurrency(unitProfitValue)} />
       </div>
-      <div className="mt-4 rounded-2xl border border-white/10 bg-white/8 px-4 py-3 text-sm leading-6 text-white/70">
+      <div className="mt-4 rounded-2xl border border-line bg-blue-50 px-4 py-3 text-sm leading-6 text-blue-800">
         {grade.hint}
       </div>
     </aside>
@@ -563,9 +563,9 @@ function ProfitPanel({
 
 function ProfitMetric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/8 p-3">
-      <div className="text-xs text-white/55">{label}</div>
-      <div className="mt-1 text-lg font-semibold tabular-nums text-white">{value}</div>
+    <div className="rounded-2xl border border-line bg-[#fafafa] p-3">
+      <div className="text-xs font-medium text-muted">{label}</div>
+      <div className="mt-1 text-lg font-semibold tabular-nums text-ink">{value}</div>
     </div>
   );
 }

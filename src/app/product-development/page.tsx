@@ -451,13 +451,15 @@ function ProductDevelopmentContent() {
             {selected ? (
               <>
                 <CenterPanel eyebrow={c.profitEyebrow} title={c.profitTitle}>
-                  <div className="rounded-[24px] border border-[#d8d0b8] bg-[#162f2b] p-5 text-white shadow-[0_24px_58px_rgba(15,52,47,0.22)]">
+                  <div className="rounded-[24px] border border-line bg-white p-5 text-ink shadow-[0_16px_44px_rgba(17,24,39,0.06)]">
                     <div className="flex items-center justify-between gap-3">
                       <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#d6c28b]">{c.priority[selected.priority]}</p>
-                        <h3 className="mt-2 text-2xl font-semibold">{selected.product_name}</h3>
+                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted">{c.priority[selected.priority]}</p>
+                        <h3 className="mt-2 text-2xl font-semibold text-ink">{selected.product_name}</h3>
                       </div>
-                      <BadgeCheck className="h-7 w-7 text-[#d6c28b]" />
+                      <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-50 text-blue-700">
+                        <BadgeCheck className="h-5 w-5" />
+                      </span>
                     </div>
                     <div className="mt-5 grid grid-cols-2 gap-3">
                       <DarkMetric label={c.expectedCost} value={won(selected.purchase_cost)} />
@@ -565,7 +567,7 @@ function applyProductFilters(products: ProductDevRow[], filters: { status: strin
 }
 
 function DarkMetric({ label, value }: { label: string; value: string }) {
-  return <div className="rounded-2xl border border-white/10 bg-white/8 p-3"><div className="text-xs text-white/55">{label}</div><div className="mt-1 text-lg font-semibold tabular-nums text-white">{value}</div></div>;
+  return <div className="rounded-2xl border border-line bg-[#fafafa] p-3"><div className="text-xs font-medium text-muted">{label}</div><div className="mt-1 text-lg font-semibold tabular-nums text-ink">{value}</div></div>;
 }
 
 function expectedProfit(item: ProductDevRow) {
