@@ -75,12 +75,12 @@ function ProtectedShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen">
-      <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-white/10 bg-[#102b27] px-4 py-5 text-white shadow-lift lg:block">
-        <div className="mb-8 rounded-xl border border-white/10 bg-white/[0.06] px-4 py-3">
-          <div className="text-lg font-semibold tracking-tight">{t("app.name")}</div>
-          <div className="mt-1 h-1 w-10 rounded-full bg-[#b7c7b6]" />
+      <aside className="fixed inset-y-0 left-0 hidden w-60 border-r border-white/10 bg-[#111827] px-4 py-5 text-[#d1d5db] shadow-[10px_0_36px_rgba(17,24,39,0.10)] lg:block">
+        <div className="mb-7 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3">
+          <div className="text-[15px] font-semibold tracking-tight text-white">Coupang ERP</div>
+          <div className="mt-1 text-[11px] font-medium uppercase tracking-[0.18em] text-white/45">Inventory OS</div>
         </div>
-        <nav className="space-y-1">
+        <nav className="space-y-1.5">
           {navItems.map((item) => {
             const Icon = item.icon;
             const active = pathname === item.href;
@@ -88,13 +88,13 @@ function ProtectedShell({ children }: { children: React.ReactNode }) {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium ${
+                className={`group relative flex items-center gap-3 rounded-[10px] px-3 py-2.5 text-[13px] font-medium transition ${
                   active
-                    ? "bg-white/[0.12] text-white shadow-[inset_3px_0_0_rgba(183,199,182,0.95)]"
-                    : "text-white/72 hover:bg-white/[0.07] hover:text-white"
+                    ? "bg-white text-[#111827] shadow-[0_10px_26px_rgba(0,0,0,0.18)]"
+                    : "text-[#d1d5db] hover:bg-white/[0.08] hover:text-white"
                 }`}
               >
-                <Icon size={17} className={active ? "text-[#dce7dc]" : "text-white/55 group-hover:text-[#dce7dc]"} />
+                <Icon size={16} className={active ? "text-[#111827]" : "text-white/45 group-hover:text-white/75"} />
                 <span className="truncate">{item.label[language]}</span>
               </Link>
             );
@@ -102,8 +102,8 @@ function ProtectedShell({ children }: { children: React.ReactNode }) {
         </nav>
       </aside>
 
-      <main className="lg:pl-64">
-        <header className="sticky top-0 z-10 border-b border-line bg-card/82 px-4 py-3 shadow-[0_1px_0_rgba(255,255,255,0.55)] backdrop-blur-xl lg:px-8">
+      <main className="lg:pl-60">
+        <header className="sticky top-0 z-10 border-b border-line bg-white/82 px-4 py-3 shadow-[0_1px_0_rgba(17,24,39,0.03)] backdrop-blur-xl lg:px-8">
           <div className="flex items-center justify-between gap-3">
             <div className="flex gap-2 overflow-x-auto lg:hidden">
               {navItems.map((item) => (
@@ -113,12 +113,12 @@ function ProtectedShell({ children }: { children: React.ReactNode }) {
               ))}
             </div>
             <div className="ml-auto flex items-center gap-2">
-              <select className="h-9 min-w-28 text-xs font-semibold" value={language} onChange={(event) => setLanguage(event.target.value as "zh" | "ko")}>
+              <select className="h-9 min-w-28 rounded-[10px] border border-line bg-white px-3 text-xs font-semibold text-ink shadow-[0_4px_14px_rgba(17,24,39,0.04)]" value={language} onChange={(event) => setLanguage(event.target.value as "zh" | "ko")}>
                 <option value="zh">{t("language.zh")}</option>
                 <option value="ko">{t("language.ko")}</option>
               </select>
               <button
-                className="inline-flex items-center gap-2 rounded px-3 py-2 text-sm font-semibold erp-button-primary"
+                className="inline-flex h-9 items-center gap-2 rounded-[10px] px-3 text-sm font-semibold erp-button-primary"
                 onClick={async () => {
                   await supabase.auth.signOut();
                   router.replace("/login");
@@ -130,7 +130,7 @@ function ProtectedShell({ children }: { children: React.ReactNode }) {
             </div>
           </div>
         </header>
-        <div className="px-4 py-6 lg:px-8">{children}</div>
+        <div className="px-4 py-6 lg:px-8 lg:py-8">{children}</div>
       </main>
     </div>
   );

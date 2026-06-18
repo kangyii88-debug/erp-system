@@ -269,9 +269,9 @@ function DashboardContent() {
       </div>
 
       <div className={`space-y-6 transition-opacity duration-200 ${loading ? "opacity-60" : "opacity-100"}`}>
-        <section className="premium-dashboard-panel relative overflow-hidden rounded-[30px] p-4 md:p-5">
-          <div className="pointer-events-none absolute -left-24 -top-28 h-72 w-72 rounded-full bg-emerald-900/8 blur-3xl" />
-          <div className="pointer-events-none absolute -bottom-28 -right-20 h-80 w-80 rounded-full bg-[#bca77a]/12 blur-3xl" />
+        <section className="premium-dashboard-panel relative overflow-hidden rounded-[24px] p-5 md:p-6">
+          <div className="pointer-events-none absolute -left-24 -top-28 h-72 w-72 rounded-full bg-blue-500/[0.04] blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-28 -right-20 h-80 w-80 rounded-full bg-slate-900/[0.035] blur-3xl" />
           <div className="relative grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <ExecutiveKpi
               delay={0}
@@ -343,7 +343,7 @@ function DashboardContent() {
         </section>
 
         <section className="grid gap-4">
-          <Card>
+          <Card className="rounded-[24px] p-6">
             <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
               <DashboardSectionTitle eyebrow={t("dashboard.trend.center")} title={`${trendData[0]?.label ?? ""} - ${trendData[trendData.length - 1]?.label ?? ""}`} />
               <div className="flex flex-wrap gap-2">
@@ -369,7 +369,7 @@ function DashboardContent() {
                     key={year}
                     type="button"
                     onClick={() => setSelectedYear(year)}
-                    className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition ${selectedYear === year ? "bg-brand text-white shadow-soft" : "text-ink/65 hover:bg-white"}`}
+                    className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition ${selectedYear === year ? "bg-[#111827] text-white shadow-soft" : "text-ink/65 hover:bg-white"}`}
                   >
                     {year}
                   </button>
@@ -486,7 +486,7 @@ function DateControl({
   onRangeChange: (range: { start: string; end: string }) => void;
   onModeChange: (mode: ViewMode) => void;
 }) {
-  const { t } = useLanguage();
+  const { language, t } = useLanguage();
   const buttons: Array<{ key: ViewMode; label: string }> = [
     { key: "today", label: t("period.today") },
     { key: "yesterday", label: t("period.yesterday") },
@@ -496,27 +496,27 @@ function DateControl({
   ];
 
   return (
-    <div className="rounded-2xl border border-white/60 bg-white/85 p-3 shadow-soft backdrop-blur-xl">
+    <div className="rounded-2xl border border-line bg-white p-3 shadow-[0_8px_24px_rgba(17,24,39,0.04)] backdrop-blur-xl">
       <div className="mb-2 flex flex-wrap items-center gap-2 text-sm font-semibold text-ink">
-        <span className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-brand/10 text-brand">
+        <span className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-[#f3f4f6] text-[#111827]">
           <CalendarDays size={16} />
         </span>
         {t("dashboard.dateControl")}
-        <span className="ml-auto rounded-full border border-line bg-panel px-3 py-1 text-xs font-semibold text-ink/55">
-          当前范围：{range.start} ~ {range.end}
+        <span className="ml-auto rounded-full border border-line bg-[#fafafa] px-3 py-1 text-xs font-semibold text-muted">
+          {language === "ko" ? "현재 범위" : "当前范围"}: {range.start} ~ {range.end}
         </span>
       </div>
       <div className="flex flex-wrap items-center justify-end gap-2">
-        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-line bg-panel/70 p-1.5">
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-line bg-[#f9fafb] p-1.5">
           <input
-            className="h-9 w-36 rounded-lg border border-line bg-white px-3 text-sm font-semibold text-ink outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/15"
+            className="h-9 w-36 rounded-lg border border-line bg-white px-3 text-sm font-semibold text-ink outline-none transition focus:border-ink focus:ring-2 focus:ring-ink/10"
             type="date"
             value={viewMode === "custom" ? customRange.start : range.start}
             onChange={(event) => onRangeChange({ start: event.target.value, end: viewMode === "custom" ? customRange.end : range.end })}
           />
           <span className="text-xs font-semibold text-ink/35">~</span>
           <input
-            className="h-9 w-36 rounded-lg border border-line bg-white px-3 text-sm font-semibold text-ink outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/15"
+            className="h-9 w-36 rounded-lg border border-line bg-white px-3 text-sm font-semibold text-ink outline-none transition focus:border-ink focus:ring-2 focus:ring-ink/10"
             type="date"
             value={viewMode === "custom" ? customRange.end : range.end}
             onChange={(event) => onRangeChange({ start: viewMode === "custom" ? customRange.start : range.start, end: event.target.value })}
@@ -583,9 +583,9 @@ function SkuMonthlySalesAnalysis({
   return (
     <section className="print:break-before-page">
       <Card className="premium-dashboard-panel overflow-hidden rounded-[28px]">
-        <div className="relative overflow-hidden rounded-2xl border border-white/30 bg-gradient-to-br from-[#f9faf7] via-[#eef2eb] to-[#f6f1e8] p-5">
-          <div className="pointer-events-none absolute -right-24 -top-24 h-56 w-56 rounded-full bg-[#1E5A4E]/10 blur-3xl" />
-          <div className="pointer-events-none absolute -bottom-20 left-20 h-56 w-56 rounded-full bg-[#406A7A]/10 blur-3xl" />
+        <div className="relative overflow-hidden rounded-2xl border border-line bg-[#fafafa] p-5">
+          <div className="pointer-events-none absolute -right-24 -top-24 h-56 w-56 rounded-full bg-blue-500/[0.05] blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-20 left-20 h-56 w-56 rounded-full bg-slate-900/[0.035] blur-3xl" />
 
           <div className="relative flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
             <DashboardSectionTitle eyebrow="SKU Monthly Sales Analysis" title={copy.title} />
@@ -635,12 +635,12 @@ function SkuMonthlySalesAnalysis({
           </div>
         </div>
 
-        <div className="mt-5 overflow-hidden rounded-2xl border border-white/60 bg-white/78 shadow-[0_18px_48px_rgba(23,33,29,0.06)] backdrop-blur">
+        <div className="mt-5 overflow-hidden rounded-2xl border border-line bg-white shadow-[0_14px_36px_rgba(17,24,39,0.045)] backdrop-blur">
           <div className="max-h-[520px] overflow-auto">
             <table className="min-w-[1280px] w-full border-collapse text-sm">
-              <thead className="sticky top-0 z-20 bg-[#f7f8f2]/96 backdrop-blur-xl">
+              <thead className="sticky top-0 z-20 bg-[#f9fafb]/96 backdrop-blur-xl">
                 <tr>
-                  <th className="sticky left-0 z-30 min-w-[280px] border-b border-line bg-[#f7f8f2]/96 px-4 py-3 text-left text-xs font-extrabold uppercase tracking-[0.12em] text-ink/55">{copy.productName}</th>
+                  <th className="sticky left-0 z-30 min-w-[280px] border-b border-line bg-[#f9fafb]/96 px-4 py-3 text-left text-xs font-extrabold uppercase tracking-[0.12em] text-ink/55">{copy.productName}</th>
                   {Array.from({ length: 12 }, (_, index) => (
                     <th key={index} className="border-b border-line px-4 py-3 text-right text-xs font-extrabold uppercase tracking-[0.08em] text-ink/55">{index + 1}{copy.month}</th>
                   ))}
@@ -655,7 +655,7 @@ function SkuMonthlySalesAnalysis({
                     <Fragment key={row.product.id}>
                       {showColorHeader ? (
                         <tr>
-                          <td colSpan={14} className="sticky left-0 z-10 border-b border-line bg-[#eef3ed] px-4 py-2">
+                          <td colSpan={14} className="sticky left-0 z-10 border-b border-line bg-[#f3f4f6] px-4 py-2">
                             <div className="flex items-center gap-2 text-xs font-semibold text-ink/70">
                               <span className="h-2.5 w-2.5 rounded-full ring-2 ring-white" style={{ backgroundColor: colorToken(color) }} />
                               <span>{color}</span>
@@ -664,7 +664,7 @@ function SkuMonthlySalesAnalysis({
                         </tr>
                       ) : null}
                       <tr onClick={() => onSelectSku(row.product.id)} className="premium-table-row group cursor-pointer">
-                        <td className="sticky left-0 z-10 border-b border-line bg-white/92 px-4 py-3 transition group-hover:bg-[#f6faf6]" style={{ borderLeft: `4px solid ${colorToken(color)}` }}>
+                        <td className="sticky left-0 z-10 border-b border-line bg-white/92 px-4 py-3 transition group-hover:bg-[#f9fafb]" style={{ borderLeft: `4px solid ${colorToken(color)}` }}>
                           <div className="flex flex-wrap items-center gap-2">
                             <span className="rounded-full px-2.5 py-1 text-xs font-semibold text-ink shadow-sm ring-1 ring-black/5" style={{ backgroundColor: colorBadgeBackground(color) }}>
                               {color}
@@ -750,15 +750,15 @@ function ExecutiveKpi({
 
   return (
     <div
-      className="premium-dashboard-card group min-h-36 rounded-3xl p-5 transition duration-300"
+      className="premium-dashboard-card group min-h-36 rounded-[20px] p-5 transition duration-300"
       style={{ animation: `kpi-rise 620ms ease-out ${delay}ms both` }}
     >
       <div className="pointer-events-none absolute inset-x-5 bottom-4 h-12 opacity-70 transition duration-300 group-hover:opacity-100">
         <MiniKpiSparkline tone={trendTone} />
       </div>
       <div className="relative flex items-start justify-between gap-4">
-        <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-[#1E5A4E] to-[#406A7A] text-white shadow-[0_12px_28px_rgba(30,90,78,0.24)]">
-          <Icon size={20} className="opacity-95" />
+        <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#f3f4f6] text-[#111827] ring-1 ring-[#e5e7eb]">
+          <Icon size={18} className="opacity-90" />
         </div>
         {compareValue != null ? (
           <div className={`flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold shadow-sm transition group-hover:scale-105 ${
@@ -772,9 +772,9 @@ function ExecutiveKpi({
         ) : null}
       </div>
       <div className="relative mt-5">
-        <div className="text-sm font-semibold text-ink/62">{label}</div>
-        {subtitle ? <div className="mt-1 text-xs font-medium text-ink/40">{subtitle}</div> : null}
-        <div className="premium-number mt-4 text-3xl font-semibold text-ink md:text-[34px]">
+        <div className="text-[13px] font-medium text-[#374151]">{label}</div>
+        {subtitle ? <div className="mt-1 text-[11px] font-medium text-[#9ca3af]">{subtitle}</div> : null}
+        <div className="premium-number mt-4 text-[32px] font-semibold leading-none text-[#111827]">
           <CountUpNumber value={value} format={format} suffix={suffix} formatCurrency={formatCurrency} formatNumber={formatNumber} />
         </div>
       </div>
@@ -783,8 +783,8 @@ function ExecutiveKpi({
 }
 
 function MiniKpiSparkline({ tone }: { tone: "positive" | "negative" | "neutral" }) {
-  const stroke = tone === "negative" ? "#9a3f3f" : tone === "positive" ? "#23614f" : "#8a6834";
-  const fill = tone === "negative" ? "rgba(154,63,63,0.1)" : tone === "positive" ? "rgba(35,97,79,0.11)" : "rgba(188,167,122,0.12)";
+  const stroke = tone === "negative" ? "#dc2626" : tone === "positive" ? "#2563eb" : "#9ca3af";
+  const fill = tone === "negative" ? "rgba(220,38,38,0.08)" : tone === "positive" ? "rgba(37,99,235,0.09)" : "rgba(156,163,175,0.1)";
   const points = tone === "negative"
     ? "0,18 22,15 44,22 66,14 88,24 110,20 132,30"
     : tone === "positive"
@@ -840,7 +840,7 @@ function DashboardSectionTitle({ eyebrow, title }: { eyebrow: string; title: str
   return (
     <div>
       <div className="premium-section-eyebrow">
-        <span className="h-1.5 w-1.5 rounded-full bg-[#bca77a]" />
+        <span className="h-1.5 w-1.5 rounded-full bg-[#2563eb]" />
         {eyebrow}
       </div>
       <h2 className="mt-2 text-xl font-semibold tracking-tight text-ink">{title}</h2>
@@ -871,8 +871,8 @@ function SegmentButton({ active, onClick, children }: { active: boolean; onClick
       onClick={onClick}
       className={`rounded-xl border px-3 py-2 text-sm font-semibold shadow-sm transition duration-200 ${
         active
-          ? "border-brand bg-gradient-to-br from-brand to-brand-strong text-white shadow-[0_10px_24px_rgba(23,72,63,0.18)]"
-          : "border-white/70 bg-white/75 text-ink hover:border-brand/25 hover:bg-white hover:text-brand hover:shadow-soft"
+          ? "border-[#111827] bg-[#111827] text-white shadow-[0_10px_24px_rgba(17,24,39,0.14)]"
+          : "border-line bg-[#f3f4f6] text-[#374151] hover:border-[#d1d5db] hover:bg-white hover:text-[#111827] hover:shadow-soft"
       }`}
     >
       {children}
@@ -897,7 +897,7 @@ function TrendChart({ data, comparisonData, metric }: { data: SalesPoint[]; comp
 
   if (!hasData) {
     return (
-      <div className="rounded-2xl border border-line bg-gradient-to-br from-white to-panel p-6">
+      <div className="rounded-[24px] border border-line bg-white p-6">
         <TrendSummary data={data} metric={metric} growth={growth} bestDay={bestDay} worstDay={worstDay} />
         <div className="mt-6 flex h-72 flex-col items-center justify-center rounded-xl border border-dashed border-line bg-white/70 text-center">
           <div className="text-lg font-semibold text-ink">{t("dashboard.sales.emptyTitle")}</div>
@@ -908,30 +908,30 @@ function TrendChart({ data, comparisonData, metric }: { data: SalesPoint[]; comp
   }
 
   return (
-    <div className="rounded-2xl border border-line bg-gradient-to-br from-card via-card to-[#eef3ee] p-5 shadow-soft">
+    <div className="rounded-[24px] border border-line bg-white p-5 shadow-soft">
       <TrendSummary data={data} metric={metric} growth={growth} bestDay={bestDay} worstDay={worstDay} />
       <div className="mt-5 h-80">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data} margin={{ top: 12, right: 18, left: 0, bottom: 6 }}>
             <defs>
               <linearGradient id="salesTrendFill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#17483f" stopOpacity={0.34} />
-                <stop offset="55%" stopColor="#17483f" stopOpacity={0.1} />
-                <stop offset="100%" stopColor="#17483f" stopOpacity={0.01} />
+                <stop offset="5%" stopColor="#2563eb" stopOpacity={0.22} />
+                <stop offset="55%" stopColor="#2563eb" stopOpacity={0.07} />
+                <stop offset="100%" stopColor="#2563eb" stopOpacity={0.01} />
               </linearGradient>
             </defs>
-            <CartesianGrid stroke="#d7d9cf" strokeDasharray="4 7" vertical={false} />
-            <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fill: "#66706a", fontSize: 12 }} />
-            <YAxis tickLine={false} axisLine={false} tick={{ fill: "#66706a", fontSize: 12 }} width={36} />
-            <Tooltip content={<TrendTooltip />} cursor={{ stroke: "#17483f", strokeWidth: 1, strokeDasharray: "4 4" }} />
+            <CartesianGrid stroke="#e5e7eb" strokeDasharray="4 7" vertical={false} />
+            <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fill: "#9ca3af", fontSize: 12 }} />
+            <YAxis tickLine={false} axisLine={false} tick={{ fill: "#9ca3af", fontSize: 12 }} width={36} />
+            <Tooltip content={<TrendTooltip />} cursor={{ stroke: "#2563eb", strokeWidth: 1, strokeDasharray: "4 4" }} />
             <Area
               type="monotone"
               dataKey={metric}
-              stroke="#17483f"
-              strokeWidth={3}
+              stroke="#2563eb"
+              strokeWidth={2.5}
               fill="url(#salesTrendFill)"
-              activeDot={{ r: 6, stroke: "#fffdf8", strokeWidth: 3, fill: "#17483f" }}
-              dot={{ r: 3, stroke: "#17483f", strokeWidth: 2, fill: "#fffdf8" }}
+              activeDot={{ r: 5, stroke: "#ffffff", strokeWidth: 3, fill: "#2563eb" }}
+              dot={{ r: 2.5, stroke: "#2563eb", strokeWidth: 2, fill: "#ffffff" }}
             />
           </AreaChart>
         </ResponsiveContainer>
@@ -970,9 +970,9 @@ function TrendSummary({
 
 function MiniTrendCard({ label, value, sub, tone }: { label: string; value: string | number; sub?: string; tone?: "up" | "down" }) {
   return (
-    <div className="rounded-2xl border border-white/65 bg-white/74 p-3 shadow-[0_12px_30px_rgba(23,33,29,0.06)] backdrop-blur transition duration-200 hover:-translate-y-0.5 hover:shadow-soft">
-      <div className="text-xs font-semibold text-ink/55">{label}</div>
-      <div className={`premium-number mt-2 text-2xl font-semibold ${tone === "down" ? "text-red-600" : tone === "up" ? "text-emerald-700" : "text-ink"}`}>{value}</div>
+    <div className="rounded-2xl border border-line bg-[#fafafa] p-4 shadow-[0_8px_22px_rgba(17,24,39,0.035)] backdrop-blur transition duration-200 hover:-translate-y-0.5 hover:bg-white hover:shadow-soft">
+      <div className="text-xs font-semibold text-[#6b7280]">{label}</div>
+      <div className={`premium-number mt-2 text-2xl font-semibold ${tone === "down" ? "text-red-600" : tone === "up" ? "text-[#2563eb]" : "text-ink"}`}>{value}</div>
       {sub ? <div className="mt-1 text-xs text-ink/55">{sub}</div> : null}
     </div>
   );
@@ -1027,17 +1027,17 @@ function AnnualTrendModule({
   const insight = buildAnnualInsight(data, metric, growth, bestMonth, worstMonth, t);
 
   return (
-    <div className="rounded-2xl border border-line bg-gradient-to-br from-card via-card to-[#eef3ee] p-5 shadow-soft">
+    <div className="rounded-[24px] border border-line bg-white p-5 shadow-soft">
       <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <DashboardSectionTitle eyebrow={t("dashboard.annual.trend")} title={t("dashboard.annual.title", { year })} />
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex rounded-xl border border-line bg-panel p-1">
+          <div className="flex rounded-xl border border-line bg-[#f3f4f6] p-1">
             {buildYearOptions().map((optionYear) => (
               <button
                 key={optionYear}
                 type="button"
                 onClick={() => onYearChange(optionYear)}
-                className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition ${year === optionYear ? "bg-brand text-white shadow-soft" : "text-ink/65 hover:bg-white"}`}
+                className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition ${year === optionYear ? "bg-[#111827] text-white shadow-soft" : "text-ink/65 hover:bg-white"}`}
               >
                 {optionYear}
               </button>
@@ -1049,7 +1049,7 @@ function AnnualTrendModule({
           <button
             type="button"
             onClick={() => onCompareChange(!comparePreviousYear)}
-            className={`rounded border px-3 py-2 text-sm font-semibold transition ${comparePreviousYear ? "border-brand bg-brand text-white" : "border-line bg-white text-ink"}`}
+            className={`rounded border px-3 py-2 text-sm font-semibold transition ${comparePreviousYear ? "border-[#111827] bg-[#111827] text-white" : "border-line bg-white text-ink"}`}
           >
             {t("dashboard.annual.comparePreviousYear")}
           </button>
@@ -1070,46 +1070,46 @@ function AnnualTrendModule({
             <AreaChart data={data} margin={{ top: 16, right: 24, left: 4, bottom: 8 }}>
               <defs>
                 <linearGradient id="annualTrendFill" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#17483f" stopOpacity={0.32} />
-                  <stop offset="55%" stopColor="#17483f" stopOpacity={0.1} />
-                  <stop offset="100%" stopColor="#17483f" stopOpacity={0.01} />
+                  <stop offset="0%" stopColor="#2563eb" stopOpacity={0.22} />
+                  <stop offset="55%" stopColor="#2563eb" stopOpacity={0.07} />
+                  <stop offset="100%" stopColor="#2563eb" stopOpacity={0.01} />
                 </linearGradient>
                 <linearGradient id="annualPreviousFill" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#8b9489" stopOpacity={0.18} />
-                  <stop offset="100%" stopColor="#8b9489" stopOpacity={0.01} />
+                  <stop offset="0%" stopColor="#9ca3af" stopOpacity={0.18} />
+                  <stop offset="100%" stopColor="#9ca3af" stopOpacity={0.01} />
                 </linearGradient>
               </defs>
-              <CartesianGrid stroke="#d7d9cf" strokeDasharray="4 7" vertical={false} />
-              <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fill: "#66706a", fontSize: 12 }} />
+              <CartesianGrid stroke="#e5e7eb" strokeDasharray="4 7" vertical={false} />
+              <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fill: "#9ca3af", fontSize: 12 }} />
               <YAxis
                 tickLine={false}
                 axisLine={false}
-                tick={{ fill: "#66706a", fontSize: 12 }}
+                tick={{ fill: "#9ca3af", fontSize: 12 }}
                 width={metric === "revenue" ? 78 : 44}
                 tickFormatter={(value) => metric === "revenue" ? shortWon(Number(value)) : formatNumber(Number(value))}
               />
-              <Tooltip content={<AnnualTooltip year={year} metric={metric} comparePreviousYear={comparePreviousYear} />} cursor={{ stroke: "#17483f", strokeWidth: 1, strokeDasharray: "4 4" }} />
+              <Tooltip content={<AnnualTooltip year={year} metric={metric} comparePreviousYear={comparePreviousYear} />} cursor={{ stroke: "#2563eb", strokeWidth: 1, strokeDasharray: "4 4" }} />
               {comparePreviousYear ? (
                 <Area
                   type="monotone"
                   dataKey={previousKey}
                   name={`${year - 1}`}
-                  stroke="#8b9489"
+                  stroke="#9ca3af"
                   strokeWidth={2}
                   fill="url(#annualPreviousFill)"
-                  activeDot={{ r: 5, stroke: "#fffdf8", strokeWidth: 2, fill: "#8b9489" }}
-                  dot={{ r: 2, stroke: "#8b9489", strokeWidth: 1, fill: "#fffdf8" }}
+                  activeDot={{ r: 5, stroke: "#ffffff", strokeWidth: 2, fill: "#9ca3af" }}
+                  dot={{ r: 2, stroke: "#9ca3af", strokeWidth: 1, fill: "#ffffff" }}
                 />
               ) : null}
               <Area
                 type="monotone"
                 dataKey={metricKey}
                 name={`${year}`}
-                stroke="#17483f"
-                strokeWidth={3}
+                stroke="#2563eb"
+                strokeWidth={2.5}
                 fill="url(#annualTrendFill)"
-                activeDot={{ r: 7, stroke: "#fffdf8", strokeWidth: 3, fill: "#17483f" }}
-                dot={{ r: 3, stroke: "#17483f", strokeWidth: 2, fill: "#fffdf8" }}
+                activeDot={{ r: 6, stroke: "#ffffff", strokeWidth: 3, fill: "#2563eb" }}
+                dot={{ r: 2.5, stroke: "#2563eb", strokeWidth: 2, fill: "#ffffff" }}
               />
             </AreaChart>
           </ResponsiveContainer>
@@ -1235,11 +1235,11 @@ function MonthlySizeAnalysis({ rows, metric }: { rows: SizeAnalysisRow[]; metric
       <div className="mt-4 h-56">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={rows.slice(0, 5)} layout="vertical" margin={{ left: 16, right: 24, top: 8, bottom: 8 }}>
-            <CartesianGrid stroke="#d7d9cf" strokeDasharray="4 7" horizontal={false} />
+            <CartesianGrid stroke="#e5e7eb" strokeDasharray="4 7" horizontal={false} />
             <XAxis type="number" hide />
-            <YAxis type="category" dataKey="size" width={90} tickLine={false} axisLine={false} tick={{ fill: "#66706a", fontSize: 12 }} />
-            <Tooltip content={<MonthlySizeTooltip metric={metric} />} cursor={{ fill: "rgba(30,90,78,0.06)" }} />
-            <Bar dataKey={dataKey} radius={[0, 10, 10, 0]} fill="#1E5A4E" barSize={18} />
+            <YAxis type="category" dataKey="size" width={90} tickLine={false} axisLine={false} tick={{ fill: "#9ca3af", fontSize: 12 }} />
+            <Tooltip content={<MonthlySizeTooltip metric={metric} />} cursor={{ fill: "rgba(37,99,235,0.06)" }} />
+            <Bar dataKey={dataKey} radius={[0, 10, 10, 0]} fill="#2563eb" barSize={18} />
           </BarChart>
         </ResponsiveContainer>
       </div>
@@ -1284,11 +1284,11 @@ function MonthlyDecisionCard({ card }: { card: MonthlyDecisionCardData }) {
   const emptyText = language === "ko" ? "데이터 없음" : "暂无数据";
   const Icon = card.icon;
   const toneClass = {
-    danger: "border-[#ead6d2] from-[#fff7f5] to-white text-[#A65A52]",
-    warning: "border-[#eadfca] from-[#fffaf0] to-white text-[#B38A45]",
-    success: "border-[#d5e4dd] from-[#f3faf7] to-white text-[#1E5A4E]",
-    neutral: "border-line from-[#f8f8f5] to-white text-[#6D756F]",
-    info: "border-[#d4e1e5] from-[#f3f8fa] to-white text-[#406A7A]"
+    danger: "border-red-100 from-red-50 to-white text-red-700",
+    warning: "border-amber-100 from-amber-50 to-white text-amber-700",
+    success: "border-emerald-100 from-emerald-50 to-white text-emerald-700",
+    neutral: "border-line from-[#fafafa] to-white text-[#6b7280]",
+    info: "border-blue-100 from-blue-50 to-white text-blue-700"
   }[card.tone];
 
   return (
@@ -1476,7 +1476,7 @@ function ReplenishmentActionCenter({
             <Download className="h-4 w-4" />
             {copy.exportExcel}
           </button>
-          <button type="button" onClick={copyPurchaseList} className="h-10 rounded-xl bg-brand px-3 text-sm font-semibold text-white shadow-soft transition hover:-translate-y-0.5 hover:bg-brand-strong hover:shadow-lift">
+          <button type="button" onClick={copyPurchaseList} className="h-10 rounded-xl bg-[#111827] px-3 text-sm font-semibold text-white shadow-soft transition hover:-translate-y-0.5 hover:bg-[#1f2937] hover:shadow-lift">
             {copy.copyList}
           </button>
         </>
@@ -1488,7 +1488,7 @@ function ReplenishmentActionCenter({
             key={item.key}
             type="button"
             onClick={() => onTabChange(item.key)}
-            className={`rounded-2xl border px-4 py-2 text-sm font-semibold transition ${tab === item.key ? "border-brand bg-brand text-white shadow-soft" : "border-line bg-white/75 text-ink/65 hover:border-brand/40 hover:text-ink"}`}
+            className={`rounded-2xl border px-4 py-2 text-sm font-semibold transition ${tab === item.key ? "border-[#111827] bg-[#111827] text-white shadow-soft" : "border-line bg-white text-ink/65 hover:border-[#d1d5db] hover:text-ink"}`}
           >
             {item.label}
             <span className={`ml-2 rounded-full px-2 py-0.5 text-xs ${tab === item.key ? "bg-white/18 text-white" : "bg-panel text-ink/55"}`}>{item.count}</span>
@@ -1517,7 +1517,7 @@ function ReplenishmentActionCenter({
                       type="checkbox"
                       checked={selectedIds.has(row.product.id)}
                       onChange={() => toggleRow(row.product.id)}
-                      className="h-4 w-4 rounded border-line text-brand"
+                      className="h-4 w-4 rounded border-line text-[#2563eb]"
                     />
                     <ProductInfoCell product={row.product} />
                     <NumberCell>{formatNumber(row.currentStock)}</NumberCell>
@@ -1526,7 +1526,7 @@ function ReplenishmentActionCenter({
                     <div className="text-center"><StatusBadge status={row.status} /></div>
                     <div className="text-center font-semibold text-ink">{actionLabel(row, copy)}</div>
                     <NumberCell>
-                      <span className="inline-flex rounded-full bg-brand/10 px-3 py-1 text-sm font-bold text-brand">
+                      <span className="inline-flex rounded-full bg-blue-50 px-3 py-1 text-sm font-bold text-blue-700">
                         {copy.suggestedCapsule} {formatNumber(row.suggestedQty)}
                       </span>
                     </NumberCell>
@@ -1766,7 +1766,7 @@ function DecisionPanel({
       <div className="mb-5 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
         <div>
           <div className="premium-section-eyebrow">
-            <span className="h-1.5 w-1.5 rounded-full bg-[#bca77a]" />
+            <span className="h-1.5 w-1.5 rounded-full bg-[#2563eb]" />
             {eyebrow}
           </div>
           <h2 className="mt-1 text-2xl font-semibold tracking-tight text-ink">{title}</h2>
@@ -1813,14 +1813,14 @@ function DecisionCategoryStack<T extends { product: ProductWithStock; currentSto
       {groups.map((group) => {
         const expanded = group.key === activeKey;
         return (
-          <div key={group.key} className={`rounded-[26px] border border-white/65 bg-white/72 shadow-[0_16px_42px_rgba(23,33,29,0.06)] backdrop-blur transition duration-200 ${expanded ? "p-4" : "p-0 hover:-translate-y-0.5 hover:shadow-soft"}`}>
+          <div key={group.key} className={`rounded-[26px] border border-line bg-white shadow-[0_12px_34px_rgba(17,24,39,0.045)] backdrop-blur transition duration-200 ${expanded ? "p-4" : "p-0 hover:-translate-y-0.5 hover:shadow-soft"}`}>
             <button
               type="button"
               onClick={() => onToggle(expanded ? null : group.key)}
-              className={`flex w-full flex-wrap items-center justify-between gap-3 text-left transition ${expanded ? "rounded-2xl border-b border-line pb-4" : "rounded-[26px] p-4 hover:bg-[#f7f4ec]"}`}
+              className={`flex w-full flex-wrap items-center justify-between gap-3 text-left transition ${expanded ? "rounded-2xl border-b border-line pb-4" : "rounded-[26px] p-4 hover:bg-[#f9fafb]"}`}
             >
               <div className="flex items-center gap-3">
-                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-brand shadow-sm">
+                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#f3f4f6] text-[#111827] shadow-sm">
                   {expanded ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
                 </span>
                 <div>
@@ -1868,7 +1868,7 @@ function DecisionSearch({ value, placeholder, onChange }: { value: string; place
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
-        className="h-10 w-full min-w-[220px] rounded-xl border border-white/70 bg-white/78 pl-9 pr-3 text-sm outline-none shadow-sm transition focus:border-brand/50 focus:ring-2 focus:ring-brand/10"
+        className="h-10 w-full min-w-[220px] rounded-xl border border-line bg-white pl-9 pr-3 text-sm outline-none shadow-sm transition focus:border-ink focus:ring-2 focus:ring-ink/10"
       />
     </label>
   );
@@ -1879,7 +1879,7 @@ function DecisionSelect({ value, onChange, children }: { value: string; onChange
     <select
       value={value}
       onChange={(event) => onChange(event.target.value)}
-      className="h-10 rounded-xl border border-white/70 bg-white/78 px-3 text-sm font-semibold text-ink/70 shadow-sm outline-none transition focus:border-brand/50 focus:ring-2 focus:ring-brand/10"
+      className="h-10 rounded-xl border border-line bg-white px-3 text-sm font-semibold text-ink/70 shadow-sm outline-none transition focus:border-ink focus:ring-2 focus:ring-ink/10"
     >
       {children}
     </select>
@@ -1888,7 +1888,7 @@ function DecisionSelect({ value, onChange, children }: { value: string; onChange
 
 function DecisionTable({ children }: { columns?: string; children: React.ReactNode }) {
   return (
-    <div className="overflow-hidden rounded-2xl border border-white/65 bg-white/76 shadow-[0_18px_48px_rgba(31,44,38,0.06)] backdrop-blur">
+    <div className="overflow-hidden rounded-2xl border border-line bg-white shadow-[0_14px_36px_rgba(17,24,39,0.045)] backdrop-blur">
       <div className="overflow-x-auto">
         <div className="min-w-[1040px]">{children}</div>
       </div>
@@ -1898,7 +1898,7 @@ function DecisionTable({ children }: { columns?: string; children: React.ReactNo
 
 function DecisionTableHeader({ columns, children }: { columns: string; children: React.ReactNode }) {
   return (
-    <div className={`sticky top-0 z-10 grid ${columns} items-center gap-4 border-b border-line bg-[#f3f5ee]/94 px-4 py-3 text-xs font-bold uppercase tracking-[0.12em] text-ink/45 backdrop-blur-xl`}>
+    <div className={`sticky top-0 z-10 grid ${columns} items-center gap-4 border-b border-line bg-[#f9fafb]/94 px-4 py-3 text-xs font-bold uppercase tracking-[0.12em] text-ink/45 backdrop-blur-xl`}>
       {children}
     </div>
   );
@@ -1908,7 +1908,7 @@ function DecisionRow({ status, columns, children }: { status: SmartReplenishment
   const line = status === "danger" ? "bg-red-400" : status === "warning" ? "bg-amber-400" : "bg-emerald-500";
   const highlight = status === "danger" ? "bg-red-50/35" : status === "warning" ? "bg-yellow-50/25" : "";
   return (
-    <div className={`group relative grid ${columns} items-center gap-4 px-4 py-4 text-sm transition duration-200 hover:-translate-y-0.5 hover:bg-white/86 hover:shadow-[0_12px_30px_rgba(23,33,29,0.06)] ${highlight}`}>
+    <div className={`group relative grid ${columns} items-center gap-4 px-4 py-4 text-sm transition duration-200 hover:-translate-y-0.5 hover:bg-[#fafafa] hover:shadow-[0_12px_30px_rgba(17,24,39,0.045)] ${highlight}`}>
       <span className={`absolute left-0 top-3 h-[calc(100%-24px)] w-1 rounded-r-full opacity-80 shadow-sm ${line}`} />
       {children}
     </div>
@@ -1920,7 +1920,7 @@ function SortButton({ label, active, align = "left", onClick }: { label: string;
     <button
       type="button"
       onClick={onClick}
-      className={`w-full font-bold transition hover:text-brand ${active ? "text-brand" : ""} ${align === "right" ? "text-right" : "text-left"}`}
+      className={`w-full font-bold transition hover:text-[#2563eb] ${active ? "text-[#2563eb]" : ""} ${align === "right" ? "text-right" : "text-left"}`}
     >
       {label}
     </button>
@@ -2644,7 +2644,7 @@ function colorToken(color: string) {
   if (color.includes("黑") || color.includes("블랙")) return "#1F2421";
   if (color.includes("灰") || color.includes("그레이")) return "#7C8580";
   if (color.includes("米") || color.includes("베이지")) return "#BCA77A";
-  return "#406A7A";
+  return "#2563EB";
 }
 
 function colorBadgeBackground(color: string) {
@@ -2652,7 +2652,7 @@ function colorBadgeBackground(color: string) {
   if (color.includes("灰") || color.includes("그레이")) return "#eef2ef";
   if (color.includes("米") || color.includes("베이지")) return "#f7f1df";
   if (color.includes("白") || color.includes("화이트")) return "#f6f7f2";
-  return "#edf4f1";
+  return "#eff6ff";
 }
 
 function formatPercent(value: number | null) {

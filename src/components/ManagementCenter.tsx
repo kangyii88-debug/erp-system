@@ -9,7 +9,7 @@ const toneMap: Record<Tone, string> = {
   good: "border-emerald-200 bg-emerald-50 text-emerald-700",
   watch: "border-yellow-200 bg-yellow-50 text-yellow-800",
   risk: "border-red-200 bg-red-50 text-red-700",
-  brand: "border-[#17483f]/20 bg-[#e6efeb] text-[#17483f]"
+  brand: "border-[#dbeafe] bg-[#eff6ff] text-[#2563eb]"
 };
 
 export function CenterHero({
@@ -26,8 +26,8 @@ export function CenterHero({
   children?: React.ReactNode;
 }) {
   return (
-    <section className="relative overflow-hidden rounded-[28px] border border-[#d7d8cc] bg-[#f9f7ef] px-5 py-6 shadow-[0_24px_70px_rgba(20,33,29,0.10)] md:px-7">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_82%_8%,rgba(188,167,122,0.25),transparent_26rem),radial-gradient(circle_at_12%_16%,rgba(23,72,63,0.13),transparent_24rem)]" />
+    <section className="relative overflow-hidden rounded-[28px] border border-line bg-white px-5 py-6 shadow-[0_18px_50px_rgba(17,24,39,0.055)] md:px-7">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_82%_8%,rgba(37,99,235,0.08),transparent_26rem),radial-gradient(circle_at_12%_16%,rgba(17,24,39,0.05),transparent_24rem)]" />
       <div className="relative flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
         <div className="max-w-3xl">
           <div className="premium-section-eyebrow">{eyebrow}</div>
@@ -59,7 +59,7 @@ export function ExecutiveKpi({
   tone?: Tone;
 }) {
   return (
-    <div className="rounded-2xl border border-white/70 bg-white/78 p-4 shadow-[0_12px_34px_rgba(20,33,29,0.08)] backdrop-blur">
+    <div className="rounded-[20px] border border-line bg-white p-4 shadow-[0_10px_30px_rgba(17,24,39,0.035)] backdrop-blur transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_18px_42px_rgba(17,24,39,0.075)]">
       <div className="flex items-center justify-between gap-3">
         <span className={`flex h-9 w-9 items-center justify-center rounded-full border ${toneMap[tone]}`}>
           <Icon className="h-4 w-4" />
@@ -88,7 +88,7 @@ export function CenterPanel({
   className?: string;
 }) {
   return (
-    <section className={`rounded-[26px] border border-line bg-card/90 p-5 shadow-card backdrop-blur ${className}`}>
+    <section className={`rounded-[24px] border border-line bg-white p-5 shadow-card backdrop-blur ${className}`}>
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
           {eyebrow ? <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted">{eyebrow}</p> : null}
@@ -107,7 +107,7 @@ export function StatusPill({ children, tone = "neutral" }: { children: React.Rea
 
 export function MetricLine({ label, value, tone = "neutral" }: { label: string; value: string | number; tone?: Tone }) {
   return (
-    <div className="rounded-2xl border border-line bg-white/70 px-3 py-2">
+    <div className="rounded-2xl border border-line bg-[#fafafa] px-3 py-2">
       <div className="text-xs text-muted">{label}</div>
       <div className={`mt-1 text-sm font-bold tabular-nums ${tone === "risk" ? "text-red-700" : tone === "good" ? "text-emerald-700" : "text-ink"}`}>{value}</div>
     </div>
@@ -115,9 +115,9 @@ export function MetricLine({ label, value, tone = "neutral" }: { label: string; 
 }
 
 export function ProgressBar({ value, tone = "brand" }: { value: number; tone?: Tone }) {
-  const color = tone === "risk" ? "bg-red-500" : tone === "watch" ? "bg-yellow-500" : tone === "good" ? "bg-emerald-600" : "bg-[#17483f]";
+  const color = tone === "risk" ? "bg-red-500" : tone === "watch" ? "bg-yellow-500" : tone === "good" ? "bg-emerald-600" : "bg-[#2563eb]";
   return (
-    <div className="h-2 overflow-hidden rounded-full bg-[#e7e5da]">
+    <div className="h-2 overflow-hidden rounded-full bg-[#e5e7eb]">
       <div className={`h-full rounded-full ${color}`} style={{ width: `${Math.max(4, Math.min(100, value))}%` }} />
     </div>
   );
