@@ -25,30 +25,79 @@ import {
 import { supabase } from "@/lib/supabase";
 import { LanguageProvider, useLanguage } from "./LanguageProvider";
 
-const navItems = [
-  { href: "/dashboard", icon: BarChart3, label: { zh: "数据看板", ko: "데이터 대시보드" } },
-  { href: "/products", icon: Package, label: { zh: "商品管理", ko: "상품 관리" } },
-  { href: "/inventory", icon: Boxes, label: { zh: "库存管理", ko: "재고 관리" } },
-  { href: "/sales", icon: ShoppingCart, label: { zh: "销售管理", ko: "판매 관리" } },
-  { href: "/advertising", icon: Megaphone, label: { zh: "广告分析中心", ko: "광고 분석 센터" } },
-  { href: "/purchases", icon: ClipboardList, label: { zh: "采购管理", ko: "구매 관리" } },
-  { href: "/expenses", icon: ReceiptText, label: { zh: "财务支出报表", ko: "재무 지출 리포트" } },
-  { href: "/task-center", icon: ClipboardCheck, label: { zh: "待办中心", ko: "업무 센터" } },
-  { href: "/single-product-report", icon: FileText, label: { zh: "商品测试数据库", ko: "상품 테스트 데이터베이스" } },
-  { href: "/product-development", icon: Lightbulb, label: { zh: "产品开发中心", ko: "상품 개발 센터" } },
-  { href: "/customer-issues", icon: ShieldAlert, label: { zh: "客诉问题库", ko: "고객 리뷰 센터" } },
-  { href: "/settlements", icon: Landmark, label: { zh: "Coupang 结算中心", ko: "Coupang 정산 센터" } },
-  { href: "/tax-compliance", icon: Scale, label: { zh: "税务与经营合规中心", ko: "세무 및 경영 컴플라이언스 센터" } },
-  { href: "/coupang-inbound", icon: Warehouse, label: { zh: "Coupang 入仓记录", ko: "Coupang 입고 기록" } },
-  { href: "/sku-packaging-specs", icon: Ruler, label: { zh: "SKU 包装规格库", ko: "SKU 포장 규격" } },
-  { href: "/competitor-products", icon: PackageSearch, label: { zh: "竞品商品采集库", ko: "경쟁 상품 수집库" } }
-] as const;
+const navItemsById = {
+  dashboard: { href: "/dashboard", icon: BarChart3, label: { zh: "数据看板", ko: "데이터 대시보드" } },
+  tasks: { href: "/task-center", icon: ClipboardCheck, label: { zh: "待办中心", ko: "업무 센터" } },
+  products: { href: "/products", icon: Package, label: { zh: "商品管理", ko: "상품 관리" } },
+  inventory: { href: "/inventory", icon: Boxes, label: { zh: "库存管理", ko: "재고 관리" } },
+  sales: { href: "/sales", icon: ShoppingCart, label: { zh: "销售管理", ko: "판매 관리" } },
+  advertising: { href: "/advertising", icon: Megaphone, label: { zh: "广告分析", ko: "광고 분석" } },
+  purchases: { href: "/purchases", icon: ClipboardList, label: { zh: "采购管理", ko: "구매 관리" } },
+  inbound: { href: "/coupang-inbound", icon: Warehouse, label: { zh: "入仓记录", ko: "입고 기록" } },
+  development: { href: "/product-development", icon: Lightbulb, label: { zh: "产品开发", ko: "상품 개발" } },
+  competitors: { href: "/competitor-products", icon: PackageSearch, label: { zh: "竞品采集", ko: "경쟁 상품 수집" } },
+  productTest: { href: "/single-product-report", icon: FileText, label: { zh: "商品测试", ko: "상품 테스트" } },
+  packaging: { href: "/sku-packaging-specs", icon: Ruler, label: { zh: "SKU 包装规格", ko: "SKU 포장 규격" } },
+  customerIssues: { href: "/customer-issues", icon: ShieldAlert, label: { zh: "客诉问题", ko: "고객 리뷰" } },
+  settlements: { href: "/settlements", icon: Landmark, label: { zh: "结算中心", ko: "정산 센터" } },
+  expenses: { href: "/expenses", icon: ReceiptText, label: { zh: "支出报表", ko: "지출 리포트" } },
+  tax: { href: "/tax-compliance", icon: Scale, label: { zh: "税务合规", ko: "세무 컴플라이언스" } }
+} as const;
+
+type NavItem = (typeof navItemsById)[keyof typeof navItemsById];
+
+const topNavItems: NavItem[] = [
+  navItemsById.dashboard,
+  navItemsById.tasks
+];
+
+const navGroups: Array<{ label: { zh: string; ko: string }; items: NavItem[] }> = [
+  {
+    label: { zh: "核心运营", ko: "핵심 운영" },
+    items: [navItemsById.products, navItemsById.inventory, navItemsById.sales, navItemsById.advertising]
+  },
+  {
+    label: { zh: "供应链", ko: "공급망" },
+    items: [navItemsById.purchases, navItemsById.inbound]
+  },
+  {
+    label: { zh: "产品资产", ko: "상품 자산" },
+    items: [navItemsById.development, navItemsById.competitors, navItemsById.productTest, navItemsById.packaging, navItemsById.customerIssues]
+  },
+  {
+    label: { zh: "财务合规", ko: "재무 컴플라이언스" },
+    items: [navItemsById.settlements, navItemsById.expenses, navItemsById.tax]
+  }
+];
+
+const navItems: NavItem[] = [
+  ...topNavItems,
+  ...navGroups.flatMap((group) => group.items)
+];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <LanguageProvider>
       <ProtectedShell>{children}</ProtectedShell>
     </LanguageProvider>
+  );
+}
+
+function SidebarLink({ item, active, language }: { item: NavItem; active: boolean; language: "zh" | "ko" }) {
+  const Icon = item.icon;
+
+  return (
+    <Link
+      href={item.href}
+      className={`group relative flex h-10 items-center gap-3 rounded-[10px] px-[14px] text-sm transition ${
+        active
+          ? "bg-white font-semibold text-[#111827] shadow-[0_10px_26px_rgba(0,0,0,0.18)]"
+          : "font-medium text-[#d1d5db] hover:bg-white/[0.08] hover:text-white"
+      }`}
+    >
+      <Icon size={16} className={active ? "text-[#111827]" : "text-white/40 group-hover:text-white/75"} />
+      <span className="truncate">{item.label[language]}</span>
+    </Link>
   );
 }
 
@@ -75,30 +124,28 @@ function ProtectedShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen">
-      <aside className="fixed inset-y-0 left-0 hidden w-60 border-r border-white/10 bg-[#111827] px-4 py-5 text-[#d1d5db] shadow-[10px_0_36px_rgba(17,24,39,0.10)] lg:block">
-        <div className="mb-7 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3">
-          <div className="text-[15px] font-semibold tracking-tight text-white">Coupang ERP</div>
-          <div className="mt-1 text-[11px] font-medium uppercase tracking-[0.18em] text-white/45">Inventory OS</div>
+      <aside className="fixed inset-y-0 left-0 hidden w-60 overflow-y-auto border-r border-white/10 bg-[#111827] px-4 py-5 text-[#d1d5db] shadow-[10px_0_36px_rgba(17,24,39,0.10)] lg:block">
+        <div className="mb-6 flex h-[72px] flex-col justify-center rounded-2xl border border-white/10 bg-white/[0.045] px-4">
+          <div className="text-[15px] font-bold tracking-tight text-white">Coupang ERP</div>
+          <div className="mt-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-white/40">Inventory OS</div>
         </div>
-        <nav className="space-y-1.5">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const active = pathname === item.href;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`group relative flex items-center gap-3 rounded-[10px] px-3 py-2.5 text-[13px] font-medium transition ${
-                  active
-                    ? "bg-white text-[#111827] shadow-[0_10px_26px_rgba(0,0,0,0.18)]"
-                    : "text-[#d1d5db] hover:bg-white/[0.08] hover:text-white"
-                }`}
-              >
-                <Icon size={16} className={active ? "text-[#111827]" : "text-white/45 group-hover:text-white/75"} />
-                <span className="truncate">{item.label[language]}</span>
-              </Link>
-            );
-          })}
+        <nav className="space-y-1">
+          <div className="space-y-1">
+            {topNavItems.map((item) => (
+              <SidebarLink key={item.href} item={item} active={pathname === item.href} language={language} />
+            ))}
+          </div>
+
+          {navGroups.map((group) => (
+            <div key={group.label.zh} className="pt-[18px]">
+              <div className="mb-2 px-[14px] text-xs font-semibold text-white/35">{group.label[language]}</div>
+              <div className="space-y-1">
+                {group.items.map((item) => (
+                  <SidebarLink key={item.href} item={item} active={pathname === item.href} language={language} />
+                ))}
+              </div>
+            </div>
+          ))}
         </nav>
       </aside>
 
