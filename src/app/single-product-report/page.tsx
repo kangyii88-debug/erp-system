@@ -308,6 +308,75 @@ export default function ProductTestDatabasePage() {
 function ProductTestDatabaseContent() {
   const { language, formatDate } = useLanguage();
   const c = copyText[language];
+  const table = language === "zh" ? {
+    productImage: "产品图片",
+    productName: "产品名称",
+    category: "类目",
+    coupangUrl: "Coupang链接",
+    sellingPrice: "销售价格",
+    analysisDate: "分析日期",
+    estimatedSales: "预计销量",
+    monthlyRevenue: "预计月销售额",
+    purchaseCny: "采购价(CNY)",
+    internationalShipping: "国际物流(CNY)",
+    landedCny: "到韩成本(CNY)",
+    exchangeRate: "汇率",
+    landedKrw: "到韩成本(KRW)",
+    expectedPrice: "预计售价",
+    commissionRate: "佣金率",
+    commission: "平台佣金",
+    koreanShipping: "韩国物流",
+    adCost: "广告费",
+    totalCost: "总成本",
+    profit: "利润",
+    margin: "利润率",
+    supplierUrl: "供应商链接",
+    status: "开发状态",
+    grade: "推荐等级",
+    priority: "优先级",
+    notes: "备注",
+    actions: "操作",
+    missing: "缺少数据",
+    selected: "已选择",
+    open: "打开",
+    rows: "行",
+    prev: "上一页",
+    next: "下一页"
+  } : {
+    productImage: "상품 이미지",
+    productName: "상품명",
+    category: "카테고리",
+    coupangUrl: "Coupang 링크",
+    sellingPrice: "판매가",
+    analysisDate: "분석일",
+    estimatedSales: "예상 판매량",
+    monthlyRevenue: "예상 월매출",
+    purchaseCny: "매입가(CNY)",
+    internationalShipping: "국제 물류(CNY)",
+    landedCny: "도착 원가(CNY)",
+    exchangeRate: "환율",
+    landedKrw: "도착 원가(KRW)",
+    expectedPrice: "예상 판매가",
+    commissionRate: "수수료율",
+    commission: "플랫폼 수수료",
+    koreanShipping: "한국 물류",
+    adCost: "광고비",
+    totalCost: "총원가",
+    profit: "이익",
+    margin: "이익률",
+    supplierUrl: "공급업체 링크",
+    status: "개발 상태",
+    grade: "추천 등급",
+    priority: "우선순위",
+    notes: "메모",
+    actions: "작업",
+    missing: "데이터 없음",
+    selected: "선택됨",
+    open: "열기",
+    rows: "행",
+    prev: "이전",
+    next: "다음"
+  };
   const inputRef = useRef<HTMLInputElement>(null);
   const [rows, setRows] = useState<ProductTestRow[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -455,7 +524,7 @@ function ProductTestDatabaseContent() {
   };
 
   const exportCsv = () => {
-    const headers = ["产品名称", "类目", "Coupang链接", "销售价格(KRW)", "分析日期", "一个月预计销量", "一个月预计销售额(KRW)", "采购价(CNY)", "国际物流费(CNY)", "到韩总成本(CNY)", "汇率", "到韩总成本(KRW)", "预计售价(KRW)", "平台佣金率(%)", "平台佣金(KRW)", "韩国物流费(KRW)", "广告费(KRW)", "总成本(KRW)", "利润(KRW)", "利润率(%)", "供应商链接", "开发状态", "推荐等级", "优先级", "备注"];
+    const headers = [table.productName, table.category, table.coupangUrl, `${table.sellingPrice}(KRW)`, table.analysisDate, table.estimatedSales, `${table.monthlyRevenue}(KRW)`, table.purchaseCny, table.internationalShipping, table.landedCny, table.exchangeRate, table.landedKrw, `${table.expectedPrice}(KRW)`, `${table.commissionRate}(%)`, `${table.commission}(KRW)`, `${table.koreanShipping}(KRW)`, `${table.adCost}(KRW)`, `${table.totalCost}(KRW)`, `${table.profit}(KRW)`, `${table.margin}(%)`, table.supplierUrl, table.status, table.grade, table.priority, table.notes];
     const body = filtered.map((row) => [row.product_name, row.category ?? "", row.coupang_url ?? "", row.selling_price_krw, row.analysis_date, row.estimated_monthly_sales, row.estimated_monthly_revenue_krw, row.purchase_price_cny, row.international_shipping_cny, row.landed_cost_cny, row.exchange_rate, row.landed_cost_krw, row.expected_selling_price_krw, row.platform_commission_rate, row.platform_commission_krw, row.korean_shipping_fee_krw, row.ad_cost_krw, row.total_cost_krw, row.profit_krw, row.profit_margin, row.supplier_url ?? "", row.development_status, row.recommendation_grade, row.priority, row.notes ?? ""]);
     const csv = [headers, ...body].map((line) => line.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(",")).join("\n");
     const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8" });
@@ -563,7 +632,7 @@ function ProductTestDatabaseContent() {
       <Panel title={c.title} eyebrow="EXCEL PRO DATABASE">
         {selectedIds.length ? (
           <div className="mb-3 flex items-center justify-between rounded-2xl border border-red-200 bg-red-50 px-4 py-3">
-            <span className="text-sm font-bold text-red-700">{selectedIds.length} selected</span>
+            <span className="text-sm font-bold text-red-700">{selectedIds.length} {table.selected}</span>
             <button className="rounded bg-red-700 px-3 py-2 text-sm font-bold text-white" onClick={() => remove(selectedIds)}>{c.actions.delete}</button>
           </div>
         ) : null}
@@ -575,33 +644,33 @@ function ProductTestDatabaseContent() {
                   <thead className="sticky top-0 z-[3] bg-[#eef3ef] text-xs uppercase tracking-[0.08em] text-muted">
                     <tr>
                       <th className="sticky left-0 z-[4] w-10 border-b border-line bg-[#eef3ef] px-3 py-3"><input type="checkbox" checked={pageRows.every((row) => selectedIds.includes(row.id))} onChange={(event) => setSelectedIds(event.target.checked ? Array.from(new Set([...selectedIds, ...pageRows.map((row) => row.id)])) : selectedIds.filter((id) => !pageRows.some((row) => row.id === id)))} /></th>
-                      <th className="sticky left-10 z-[4] w-24 border-b border-line bg-[#eef3ef] px-4 py-3">产品图片</th>
-                      <SortableTh stickyLeft="left-[136px]" label="产品名称" keyName="product_name" sort={sort} onSort={toggleSort} />
-                      <th className="border-b border-line px-4 py-3">类目</th>
-                      <th className="border-b border-line px-4 py-3">Coupang链接</th>
-                      <th className="border-b border-line px-4 py-3">销售价格</th>
-                      <SortableTh label="分析日期" keyName="analysis_date" sort={sort} onSort={toggleSort} />
-                      <th className="border-b border-line px-4 py-3">预计销量</th>
-                      <SortableTh label="预计月销售额" keyName="estimated_monthly_revenue_krw" sort={sort} onSort={toggleSort} />
-                      <th className="border-b border-line px-4 py-3">采购价(CNY)</th>
-                      <th className="border-b border-line px-4 py-3">国际物流(CNY)</th>
-                      <th className="border-b border-line px-4 py-3">到韩成本(CNY)</th>
-                      <th className="border-b border-line px-4 py-3">汇率</th>
-                      <th className="border-b border-line px-4 py-3">到韩成本(KRW)</th>
-                      <th className="border-b border-line px-4 py-3">预计售价</th>
-                      <th className="border-b border-line px-4 py-3">佣金率</th>
-                      <th className="border-b border-line px-4 py-3">平台佣金</th>
-                      <th className="border-b border-line px-4 py-3">韩国物流</th>
-                      <th className="border-b border-line px-4 py-3">广告费</th>
-                      <th className="border-b border-line px-4 py-3">总成本</th>
-                      <SortableTh label="利润" keyName="profit_krw" sort={sort} onSort={toggleSort} />
-                      <SortableTh label="利润率" keyName="profit_margin" sort={sort} onSort={toggleSort} />
-                      <th className="border-b border-line px-4 py-3">供应商链接</th>
-                      <th className="border-b border-line px-4 py-3">开发状态</th>
-                      <SortableTh label="推荐等级" keyName="recommendation_grade" sort={sort} onSort={toggleSort} />
-                      <SortableTh label="优先级" keyName="priority" sort={sort} onSort={toggleSort} />
-                      <th className="border-b border-line px-4 py-3">备注</th>
-                      <th className="border-b border-line px-4 py-3 text-right">操作</th>
+                      <th className="sticky left-10 z-[4] w-24 border-b border-line bg-[#eef3ef] px-4 py-3">{table.productImage}</th>
+                      <SortableTh stickyLeft="left-[136px]" label={table.productName} keyName="product_name" sort={sort} onSort={toggleSort} />
+                      <th className="border-b border-line px-4 py-3">{table.category}</th>
+                      <th className="border-b border-line px-4 py-3">{table.coupangUrl}</th>
+                      <th className="border-b border-line px-4 py-3">{table.sellingPrice}</th>
+                      <SortableTh label={table.analysisDate} keyName="analysis_date" sort={sort} onSort={toggleSort} />
+                      <th className="border-b border-line px-4 py-3">{table.estimatedSales}</th>
+                      <SortableTh label={table.monthlyRevenue} keyName="estimated_monthly_revenue_krw" sort={sort} onSort={toggleSort} />
+                      <th className="border-b border-line px-4 py-3">{table.purchaseCny}</th>
+                      <th className="border-b border-line px-4 py-3">{table.internationalShipping}</th>
+                      <th className="border-b border-line px-4 py-3">{table.landedCny}</th>
+                      <th className="border-b border-line px-4 py-3">{table.exchangeRate}</th>
+                      <th className="border-b border-line px-4 py-3">{table.landedKrw}</th>
+                      <th className="border-b border-line px-4 py-3">{table.expectedPrice}</th>
+                      <th className="border-b border-line px-4 py-3">{table.commissionRate}</th>
+                      <th className="border-b border-line px-4 py-3">{table.commission}</th>
+                      <th className="border-b border-line px-4 py-3">{table.koreanShipping}</th>
+                      <th className="border-b border-line px-4 py-3">{table.adCost}</th>
+                      <th className="border-b border-line px-4 py-3">{table.totalCost}</th>
+                      <SortableTh label={table.profit} keyName="profit_krw" sort={sort} onSort={toggleSort} />
+                      <SortableTh label={table.margin} keyName="profit_margin" sort={sort} onSort={toggleSort} />
+                      <th className="border-b border-line px-4 py-3">{table.supplierUrl}</th>
+                      <th className="border-b border-line px-4 py-3">{table.status}</th>
+                      <SortableTh label={table.grade} keyName="recommendation_grade" sort={sort} onSort={toggleSort} />
+                      <SortableTh label={table.priority} keyName="priority" sort={sort} onSort={toggleSort} />
+                      <th className="border-b border-line px-4 py-3">{table.notes}</th>
+                      <th className="border-b border-line px-4 py-3 text-right">{table.actions}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -614,8 +683,8 @@ function ProductTestDatabaseContent() {
                           </div>
                         </td>
                         <td className="sticky left-[136px] z-[2] max-w-[260px] border-b border-line bg-white px-4 py-3 font-bold text-ink group-hover:bg-[#f3f7f3]">{row.product_name}</td>
-                        <td className="border-b border-line px-4 py-3">{emptyWarn(row.category)}</td>
-                        <td className="border-b border-line px-4 py-3">{row.coupang_url ? <a className="inline-flex items-center gap-1 font-bold text-[#17483f]" href={row.coupang_url} target="_blank">Open<ExternalLink size={13} /></a> : emptyWarn("")}</td>
+                        <td className="border-b border-line px-4 py-3">{emptyWarn(localizedCategoryValue(row.category ?? "", language), table.missing)}</td>
+                        <td className="border-b border-line px-4 py-3">{row.coupang_url ? <a className="inline-flex items-center gap-1 font-bold text-[#17483f]" href={row.coupang_url} target="_blank">{table.open}<ExternalLink size={13} /></a> : emptyWarn("", table.missing)}</td>
                         <td className="border-b border-line px-4 py-3 font-semibold tabular-nums">{krw(row.selling_price_krw)}</td>
                         <td className="border-b border-line px-4 py-3">{formatDate(row.analysis_date)}</td>
                         <td className="border-b border-line px-4 py-3 font-semibold tabular-nums">{row.estimated_monthly_sales.toLocaleString()}</td>
@@ -633,7 +702,7 @@ function ProductTestDatabaseContent() {
                         <td className="border-b border-line px-4 py-3 font-semibold">{krw(row.total_cost_krw)}</td>
                         <td className={`border-b border-line px-4 py-3 font-bold ${row.profit_krw < 0 ? "text-red-700" : "text-emerald-700"}`}>{krw(row.profit_krw)}</td>
                         <td className="border-b border-line px-4 py-3"><MarginPill value={row.profit_margin} /></td>
-                        <td className="border-b border-line px-4 py-3">{row.supplier_url ? <a className="font-bold text-[#17483f]" href={row.supplier_url} target="_blank">Supplier</a> : "-"}</td>
+                        <td className="border-b border-line px-4 py-3">{row.supplier_url ? <a className="font-bold text-[#17483f]" href={row.supplier_url} target="_blank">{table.open}</a> : "-"}</td>
                         <td className="border-b border-line px-4 py-3"><Tag>{c.status[row.development_status]}</Tag></td>
                         <td className="border-b border-line px-4 py-3"><Tag tone={row.recommendation_grade === "A_PLUS" || row.recommendation_grade === "A" ? "good" : row.recommendation_grade === "D" ? "risk" : "neutral"}>{c.grade[row.recommendation_grade]}</Tag></td>
                         <td className="border-b border-line px-4 py-3"><Tag tone={row.priority === "high" ? "risk" : row.priority === "medium" ? "watch" : "neutral"}>{c.priority[row.priority]}</Tag></td>
@@ -652,10 +721,10 @@ function ProductTestDatabaseContent() {
               </div>
             </div>
             <div className="mt-4 flex items-center justify-between text-sm text-muted">
-              <span>{filtered.length} rows · {page}/{totalPages}</span>
+              <span>{filtered.length} {table.rows} · {page}/{totalPages}</span>
               <div className="flex gap-2">
-                <button className="erp-button-subtle px-3 py-2 font-bold disabled:opacity-40" disabled={page <= 1} onClick={() => setPage((value) => Math.max(1, value - 1))}>Prev</button>
-                <button className="erp-button-subtle px-3 py-2 font-bold disabled:opacity-40" disabled={page >= totalPages} onClick={() => setPage((value) => Math.min(totalPages, value + 1))}>Next</button>
+                <button className="erp-button-subtle px-3 py-2 font-bold disabled:opacity-40" disabled={page <= 1} onClick={() => setPage((value) => Math.max(1, value - 1))}>{table.prev}</button>
+                <button className="erp-button-subtle px-3 py-2 font-bold disabled:opacity-40" disabled={page >= totalPages} onClick={() => setPage((value) => Math.min(totalPages, value + 1))}>{table.next}</button>
               </div>
             </div>
           </>
@@ -675,6 +744,67 @@ function ProductTestDatabaseContent() {
 
 function Drawer({ c, language, mode, form, setForm, onClose, onSubmit }: { c: typeof copyText.zh; language: "zh" | "ko"; mode: DrawerMode; form: FormState; setForm: (form: FormState) => void; onClose: () => void; onSubmit: (event: FormEvent) => void }) {
   const calc = compute(form);
+  const labels = language === "zh" ? {
+    productImage: "产品图片",
+    uploadImage: "上传图片",
+    uploading: "上传中...",
+    clearImage: "清除图片",
+    productName: "产品名称",
+    category: "类目",
+    coupangUrl: "Coupang链接",
+    supplierUrl: "供应商链接",
+    analysisDate: "分析日期",
+    sellingPrice: "销售价格(KRW)",
+    monthlySales: "一个月预计销量",
+    expectedPrice: "预计售价(KRW)",
+    monthlyRevenue: "一个月预计销售额",
+    purchaseCny: "采购价(CNY)",
+    internationalShipping: "国际物流费(CNY)",
+    exchangeRate: "汇率",
+    commissionRate: "平台佣金率(%)",
+    koreanShipping: "韩国物流费(KRW)",
+    adCost: "广告费(KRW)",
+    landedCny: "到韩总成本(CNY)",
+    landedKrw: "到韩总成本(KRW)",
+    commission: "平台佣金(KRW)",
+    totalCost: "总成本(KRW)",
+    profit: "利润(KRW)",
+    margin: "利润率(%)",
+    status: "开发状态",
+    grade: "推荐等级",
+    priority: "优先级",
+    notes: "备注"
+  } : {
+    productImage: "상품 이미지",
+    uploadImage: "이미지 업로드",
+    uploading: "업로드 중...",
+    clearImage: "이미지 제거",
+    productName: "상품명",
+    category: "카테고리",
+    coupangUrl: "Coupang 링크",
+    supplierUrl: "공급업체 링크",
+    analysisDate: "분석일",
+    sellingPrice: "판매가(KRW)",
+    monthlySales: "월 예상 판매량",
+    expectedPrice: "예상 판매가(KRW)",
+    monthlyRevenue: "월 예상 매출",
+    purchaseCny: "매입가(CNY)",
+    internationalShipping: "국제 물류비(CNY)",
+    exchangeRate: "환율",
+    commissionRate: "플랫폼 수수료율(%)",
+    koreanShipping: "한국 물류비(KRW)",
+    adCost: "광고비(KRW)",
+    landedCny: "한국 도착 원가(CNY)",
+    landedKrw: "한국 도착 원가(KRW)",
+    commission: "플랫폼 수수료(KRW)",
+    totalCost: "총원가(KRW)",
+    profit: "이익(KRW)",
+    margin: "이익률(%)",
+    status: "개발 상태",
+    grade: "추천 등급",
+    priority: "우선순위",
+    notes: "메모"
+  };
   const [uploadingImage, setUploadingImage] = useState(false);
   const [imageUploadMessage, setImageUploadMessage] = useState("");
   const [imageUploadTone, setImageUploadTone] = useState<"error" | "success">("error");
@@ -716,10 +846,10 @@ function Drawer({ c, language, mode, form, setForm, onClose, onSubmit }: { c: ty
 
         <FormSection title={c.sections.basic}>
           <ImageUploadField
-            label={language === "zh" ? "产品图片" : "상품 이미지"}
-            uploadLabel={language === "zh" ? "上传图片" : "이미지 업로드"}
-            uploadingLabel={language === "zh" ? "上传中..." : "업로드 중..."}
-            clearLabel={language === "zh" ? "清除图片" : "이미지 제거"}
+            label={labels.productImage}
+            uploadLabel={labels.uploadImage}
+            uploadingLabel={labels.uploading}
+            clearLabel={labels.clearImage}
             value={form.product_image_url}
             uploading={uploadingImage}
             message={imageUploadMessage}
@@ -727,47 +857,47 @@ function Drawer({ c, language, mode, form, setForm, onClose, onSubmit }: { c: ty
             onChange={(value) => setForm({ ...form, product_image_url: value })}
             onFile={handleImageUpload}
           />
-          <Field label="产品名称" value={form.product_name} required onChange={(value) => setForm({ ...form, product_name: value })} />
-          <CategoryFormField label={language === "zh" ? "类目" : "카테고리"} value={form.category} language={language} onChange={(value) => setForm({ ...form, category: value })} />
-          <Field label="Coupang链接" value={form.coupang_url} onChange={(value) => setForm({ ...form, coupang_url: value })} />
-          <Field label="供应商链接" value={form.supplier_url} onChange={(value) => setForm({ ...form, supplier_url: value })} />
-          <Field label="分析日期" type="date" value={form.analysis_date} onChange={(value) => setForm({ ...form, analysis_date: value })} />
+          <Field label={labels.productName} value={form.product_name} required onChange={(value) => setForm({ ...form, product_name: value })} />
+          <CategoryFormField label={labels.category} value={form.category} language={language} onChange={(value) => setForm({ ...form, category: value })} />
+          <Field label={labels.coupangUrl} value={form.coupang_url} onChange={(value) => setForm({ ...form, coupang_url: value })} />
+          <Field label={labels.supplierUrl} value={form.supplier_url} onChange={(value) => setForm({ ...form, supplier_url: value })} />
+          <Field label={labels.analysisDate} type="date" value={form.analysis_date} onChange={(value) => setForm({ ...form, analysis_date: value })} />
         </FormSection>
 
         <FormSection title={c.sections.sales}>
-          <Field label="销售价格(KRW)" type="number" value={form.selling_price_krw} onChange={(value) => setForm({ ...form, selling_price_krw: value })} />
-          <Field label="一个月预计销量" type="number" value={form.estimated_monthly_sales} onChange={(value) => setForm({ ...form, estimated_monthly_sales: value })} />
-          <Field label="预计售价(KRW)" type="number" value={form.expected_selling_price_krw} onChange={(value) => setForm({ ...form, expected_selling_price_krw: value })} />
-          <ReadOnlyMetric label="一个月预计销售额" value={krw(calc.monthlyRevenue)} />
+          <Field label={labels.sellingPrice} type="number" value={form.selling_price_krw} onChange={(value) => setForm({ ...form, selling_price_krw: value })} />
+          <Field label={labels.monthlySales} type="number" value={form.estimated_monthly_sales} onChange={(value) => setForm({ ...form, estimated_monthly_sales: value })} />
+          <Field label={labels.expectedPrice} type="number" value={form.expected_selling_price_krw} onChange={(value) => setForm({ ...form, expected_selling_price_krw: value })} />
+          <ReadOnlyMetric label={labels.monthlyRevenue} value={krw(calc.monthlyRevenue)} />
         </FormSection>
 
         <FormSection title={c.sections.cost}>
-          <Field label="采购价(CNY)" type="number" value={form.purchase_price_cny} onChange={(value) => setForm({ ...form, purchase_price_cny: value })} />
-          <Field label="国际物流费(CNY)" type="number" value={form.international_shipping_cny} onChange={(value) => setForm({ ...form, international_shipping_cny: value })} />
-          <Field label="汇率" type="number" value={form.exchange_rate} onChange={(value) => setForm({ ...form, exchange_rate: value })} />
-          <Field label="平台佣金率(%)" type="number" value={form.platform_commission_rate} onChange={(value) => setForm({ ...form, platform_commission_rate: value })} />
-          <Field label="韩国物流费(KRW)" type="number" value={form.korean_shipping_fee_krw} onChange={(value) => setForm({ ...form, korean_shipping_fee_krw: value })} />
-          <Field label="广告费(KRW)" type="number" value={form.ad_cost_krw} onChange={(value) => setForm({ ...form, ad_cost_krw: value })} />
+          <Field label={labels.purchaseCny} type="number" value={form.purchase_price_cny} onChange={(value) => setForm({ ...form, purchase_price_cny: value })} />
+          <Field label={labels.internationalShipping} type="number" value={form.international_shipping_cny} onChange={(value) => setForm({ ...form, international_shipping_cny: value })} />
+          <Field label={labels.exchangeRate} type="number" value={form.exchange_rate} onChange={(value) => setForm({ ...form, exchange_rate: value })} />
+          <Field label={labels.commissionRate} type="number" value={form.platform_commission_rate} onChange={(value) => setForm({ ...form, platform_commission_rate: value })} />
+          <Field label={labels.koreanShipping} type="number" value={form.korean_shipping_fee_krw} onChange={(value) => setForm({ ...form, korean_shipping_fee_krw: value })} />
+          <Field label={labels.adCost} type="number" value={form.ad_cost_krw} onChange={(value) => setForm({ ...form, ad_cost_krw: value })} />
         </FormSection>
 
         <FormSection title={c.sections.result}>
-          <ReadOnlyMetric label="到韩总成本(CNY)" value={cny(calc.landedCny)} />
-          <ReadOnlyMetric label="到韩总成本(KRW)" value={krw(calc.landedKrw)} />
-          <ReadOnlyMetric label="平台佣金(KRW)" value={krw(calc.commission)} />
-          <ReadOnlyMetric label="总成本(KRW)" value={krw(calc.totalCost)} />
-          <ReadOnlyMetric label="利润(KRW)" value={krw(calc.profit)} tone={calc.profit < 0 ? "risk" : "good"} />
-          <ReadOnlyMetric label="利润率(%)" value={pct(calc.margin)} tone={calc.margin >= 40 ? "good" : calc.margin < 10 ? "risk" : "watch"} />
+          <ReadOnlyMetric label={labels.landedCny} value={cny(calc.landedCny)} />
+          <ReadOnlyMetric label={labels.landedKrw} value={krw(calc.landedKrw)} />
+          <ReadOnlyMetric label={labels.commission} value={krw(calc.commission)} />
+          <ReadOnlyMetric label={labels.totalCost} value={krw(calc.totalCost)} />
+          <ReadOnlyMetric label={labels.profit} value={krw(calc.profit)} tone={calc.profit < 0 ? "risk" : "good"} />
+          <ReadOnlyMetric label={labels.margin} value={pct(calc.margin)} tone={calc.margin >= 40 ? "good" : calc.margin < 10 ? "risk" : "watch"} />
         </FormSection>
 
         <FormSection title={c.sections.development}>
-          <SelectField label="开发状态" value={form.development_status} options={statusOptions} labelMap={c.status} onChange={(value) => setForm({ ...form, development_status: value as DevelopmentStatus })} />
-          <SelectField label="推荐等级" value={form.recommendation_grade} options={gradeOptions} labelMap={c.grade} onChange={(value) => setForm({ ...form, recommendation_grade: value as RecommendationGrade })} />
-          <SelectField label="优先级" value={form.priority} options={priorityOptions} labelMap={c.priority} onChange={(value) => setForm({ ...form, priority: value as Priority })} />
+          <SelectField label={labels.status} value={form.development_status} options={statusOptions} labelMap={c.status} onChange={(value) => setForm({ ...form, development_status: value as DevelopmentStatus })} />
+          <SelectField label={labels.grade} value={form.recommendation_grade} options={gradeOptions} labelMap={c.grade} onChange={(value) => setForm({ ...form, recommendation_grade: value as RecommendationGrade })} />
+          <SelectField label={labels.priority} value={form.priority} options={priorityOptions} labelMap={c.priority} onChange={(value) => setForm({ ...form, priority: value as Priority })} />
         </FormSection>
 
         <FormSection title={c.sections.notes}>
           <label className="md:col-span-3">
-            <span className="mb-1 block text-xs font-bold text-muted">备注</span>
+            <span className="mb-1 block text-xs font-bold text-muted">{labels.notes}</span>
             <textarea className="min-h-28 w-full" value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} />
           </label>
         </FormSection>
@@ -804,8 +934,8 @@ function parseCsvLine(line: string) {
   return cells;
 }
 
-function emptyWarn(value: string | null | undefined) {
-  return value ? value : <span className="rounded-full border border-yellow-200 bg-yellow-50 px-2 py-1 text-xs font-bold text-yellow-800">缺少数据</span>;
+function emptyWarn(value: string | null | undefined, label = "缺少数据") {
+  return value ? value : <span className="rounded-full border border-yellow-200 bg-yellow-50 px-2 py-1 text-xs font-bold text-yellow-800">{label}</span>;
 }
 
 function marginTone(value: number) {
