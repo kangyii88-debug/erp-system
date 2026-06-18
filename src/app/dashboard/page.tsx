@@ -4,8 +4,6 @@ import type React from "react";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
-  ArrowDownRight,
-  ArrowUpRight,
   Boxes,
   CalendarDays,
   ChevronDown,
@@ -275,6 +273,7 @@ function DashboardContent() {
           <div className="relative grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <ExecutiveKpi
               delay={0}
+              visualTone="business"
               icon={DollarSign}
               label={kpiCopy.revenueLabel}
               subtitle={kpiCopy.revenueSubtitle}
@@ -284,6 +283,7 @@ function DashboardContent() {
             />
             <ExecutiveKpi
               delay={100}
+              visualTone="business"
               icon={ShoppingBag}
               label={kpiCopy.ordersLabel}
               subtitle={kpiCopy.ordersSubtitle}
@@ -292,6 +292,7 @@ function DashboardContent() {
             />
             <ExecutiveKpi
               delay={200}
+              visualTone="cost"
               icon={Megaphone}
               label={kpiCopy.adSpendLabel}
               subtitle={kpiCopy.adSpendSubtitle}
@@ -301,6 +302,7 @@ function DashboardContent() {
             />
             <ExecutiveKpi
               delay={300}
+              visualTone="business"
               icon={TrendingUp}
               label={kpiCopy.profitLabel}
               subtitle={kpiCopy.profitSubtitle}
@@ -310,6 +312,7 @@ function DashboardContent() {
             />
             <ExecutiveKpi
               delay={400}
+              visualTone="risk"
               icon={PackageCheck}
               label={kpiCopy.returnInboundLabel}
               subtitle={kpiCopy.returnInboundSubtitle}
@@ -318,6 +321,7 @@ function DashboardContent() {
             />
             <ExecutiveKpi
               delay={500}
+              visualTone="risk"
               icon={AlertTriangle}
               label={kpiCopy.lossLabel}
               subtitle={kpiCopy.lossSubtitle}
@@ -327,6 +331,7 @@ function DashboardContent() {
             />
             <ExecutiveKpi
               delay={600}
+              visualTone="asset"
               icon={Boxes}
               label={t("dashboard.kpi.currentStockQty")}
               subtitle={t("dashboard.kpi.currentStockSubtitle")}
@@ -334,6 +339,7 @@ function DashboardContent() {
             />
             <ExecutiveKpi
               delay={700}
+              visualTone="asset"
               icon={Layers}
               label={t("dashboard.kpi.skuTotal")}
               subtitle={t("dashboard.kpi.skuSubtitle")}
@@ -722,12 +728,15 @@ function SkuMonthlySalesAnalysis({
   );
 }
 
+type KpiVisualTone = "business" | "cost" | "risk" | "asset";
+
 function ExecutiveKpi({
   label,
   subtitle,
   value,
   compare: compareValue,
   icon: Icon,
+  visualTone = "business",
   format = "number",
   suffix = "",
   delay = 0,
@@ -738,6 +747,7 @@ function ExecutiveKpi({
   value: number;
   compare?: number | null;
   icon: LucideIcon;
+  visualTone?: KpiVisualTone;
   format?: "number" | "currency";
   suffix?: string;
   delay?: number;
@@ -747,6 +757,11 @@ function ExecutiveKpi({
   const direction = compareValue == null ? "neutral" : compareValue >= 0 ? "up" : "down";
   const trendPositive = inverseTrend ? direction === "down" : direction === "up";
   const trendTone = compareValue == null ? "neutral" : trendPositive ? "positive" : "negative";
+  const compareClass = compareValue == null
+    ? "border-line bg-[#f3f4f6] text-[#6b7280]"
+    : trendPositive
+      ? "border-blue-100 bg-blue-50 text-blue-700"
+      : "border-red-100 bg-red-50 text-red-600";
 
   return (
     <div
@@ -754,19 +769,14 @@ function ExecutiveKpi({
       style={{ animation: `kpi-rise 620ms ease-out ${delay}ms both` }}
     >
       <div className="pointer-events-none absolute inset-x-5 bottom-4 h-12 opacity-70 transition duration-300 group-hover:opacity-100">
-        <MiniKpiSparkline tone={trendTone} />
+        <MiniKpiSparkline trend={trendTone} visualTone={visualTone} />
       </div>
       <div className="relative flex items-start justify-between gap-4">
         <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#f3f4f6] text-[#111827] ring-1 ring-[#e5e7eb]">
           <Icon size={18} className="opacity-90" />
         </div>
         {compareValue != null ? (
-          <div className={`flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold shadow-sm transition group-hover:scale-105 ${
-            trendPositive
-              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-              : "border-red-200 bg-red-50 text-red-700"
-          }`}>
-            {direction === "up" ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
+          <div className={`flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold shadow-sm transition group-hover:scale-105 ${compareClass}`}>
             {direction === "up" ? "+" : "-"}{Math.abs(compareValue).toFixed(1)}%
           </div>
         ) : null}
@@ -782,12 +792,17 @@ function ExecutiveKpi({
   );
 }
 
-function MiniKpiSparkline({ tone }: { tone: "positive" | "negative" | "neutral" }) {
-  const stroke = tone === "negative" ? "#dc2626" : tone === "positive" ? "#2563eb" : "#9ca3af";
-  const fill = tone === "negative" ? "rgba(220,38,38,0.08)" : tone === "positive" ? "rgba(37,99,235,0.09)" : "rgba(156,163,175,0.1)";
-  const points = tone === "negative"
+function MiniKpiSparkline({ trend, visualTone }: { trend: "positive" | "negative" | "neutral"; visualTone: KpiVisualTone }) {
+  const colorMap: Record<KpiVisualTone, { stroke: string; fill: string }> = {
+    business: { stroke: "#2563eb", fill: "rgba(37,99,235,0.09)" },
+    cost: { stroke: "#d97706", fill: "rgba(217,119,6,0.1)" },
+    risk: { stroke: "#dc2626", fill: "rgba(220,38,38,0.08)" },
+    asset: { stroke: "#9ca3af", fill: "rgba(156,163,175,0.1)" }
+  };
+  const { stroke, fill } = colorMap[visualTone];
+  const points = trend === "negative"
     ? "0,18 22,15 44,22 66,14 88,24 110,20 132,30"
-    : tone === "positive"
+    : trend === "positive"
       ? "0,30 22,24 44,26 66,16 88,18 110,10 132,7"
       : "0,22 22,18 44,20 66,17 88,19 110,15 132,16";
 
