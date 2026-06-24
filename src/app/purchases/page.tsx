@@ -724,11 +724,11 @@ function StatusBarPanel({ title, stats, total, formatNumber }: { title: string; 
 
 function TodoPanel({ items, copy, formatNumber }: { items: TodoItem[]; copy: PurchaseCopy; formatNumber: (value: number) => string }) {
   return (
-    <aside className="premium-dashboard-panel rounded-[28px] p-5 md:p-6">
+    <aside className="premium-dashboard-panel max-h-[560px] self-start overflow-hidden rounded-[28px] p-5 md:p-6">
       <div className="premium-section-eyebrow">ACTION QUEUE</div>
       <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink">{copy.todoTitle}</h2>
-      <div className="mt-5 space-y-3">
-        {items.slice(0, 8).map((item) => (
+      <div className="mt-5 max-h-[438px] space-y-3 overflow-y-auto pr-1">
+        {items.map((item) => (
           <div key={`${item.sku}-${item.issue}-${item.priority}`} className="rounded-2xl border border-line bg-white p-4 shadow-sm">
             <div className="flex items-start justify-between gap-3">
               <div>
