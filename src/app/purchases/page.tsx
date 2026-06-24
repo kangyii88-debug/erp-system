@@ -351,8 +351,8 @@ function PurchasesContent() {
         <StatusBarPanel title={copy.shippingOverview} stats={shippingStats} total={analytics.totalQuantity} formatNumber={formatNumber} />
       </section>
 
-      <section className="mb-5 grid gap-4 2xl:grid-cols-[minmax(0,1fr)_420px]">
-        <div className="premium-dashboard-panel rounded-[28px] p-5 md:p-6">
+      <section className="mb-5 grid items-start gap-4 2xl:grid-cols-[minmax(0,1fr)_420px]">
+        <div className="premium-dashboard-panel self-start rounded-[28px] p-5 md:p-6">
           <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
             <div>
               <div className="premium-section-eyebrow">PRODUCT PURCHASE CONTROL CENTER</div>
