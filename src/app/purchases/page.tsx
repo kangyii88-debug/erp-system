@@ -351,8 +351,8 @@ function PurchasesContent() {
         <StatusBarPanel title={copy.shippingOverview} stats={shippingStats} total={analytics.totalQuantity} formatNumber={formatNumber} />
       </section>
 
-      <section className="mb-5 grid items-start gap-4 2xl:grid-cols-[minmax(0,1fr)_420px]">
-        <div className="premium-dashboard-panel self-start rounded-[28px] p-5 md:p-6">
+      <section className="mb-5 grid gap-4 2xl:grid-cols-[minmax(0,1fr)_420px]">
+        <div className="premium-dashboard-panel rounded-[28px] p-5 md:p-6">
           <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
             <div>
               <div className="premium-section-eyebrow">PRODUCT PURCHASE CONTROL CENTER</div>
@@ -724,11 +724,11 @@ function StatusBarPanel({ title, stats, total, formatNumber }: { title: string; 
 
 function TodoPanel({ items, copy, formatNumber }: { items: TodoItem[]; copy: PurchaseCopy; formatNumber: (value: number) => string }) {
   return (
-    <aside className="premium-dashboard-panel max-h-[560px] self-start overflow-hidden rounded-[28px] p-5 md:p-6">
+    <aside className="premium-dashboard-panel rounded-[28px] p-5 md:p-6">
       <div className="premium-section-eyebrow">ACTION QUEUE</div>
       <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink">{copy.todoTitle}</h2>
-      <div className="mt-5 max-h-[438px] space-y-3 overflow-y-auto pr-1">
-        {items.map((item) => (
+      <div className="mt-5 space-y-3">
+        {items.slice(0, 8).map((item) => (
           <div key={`${item.sku}-${item.issue}-${item.priority}`} className="rounded-2xl border border-line bg-white p-4 shadow-sm">
             <div className="flex items-start justify-between gap-3">
               <div>
@@ -1220,20 +1220,12 @@ function overallTone(status: OverallStatus) {
 }
 
 function productFamilyName(name: string) {
-  const normalized = name.replace(/\s+/g, " ").trim();
-  const isHoneycomb = /허니콤|蜂巢|honeycomb/i.test(normalized);
-  const isBlackout = /암막|全遮光|遮光|blackout/i.test(normalized);
-  const isDimout = /반차광|半遮光|light\s*filtering|dimout/i.test(normalized);
-
-  if (isHoneycomb && isDimout) return "허니콤 반차광 블라인드";
-  if (isHoneycomb && isBlackout) return "허니콤 암막 블라인드";
-
-  return normalized
-    .replace(/\d+(?:\.\d+)?\s*(?:cm|m)?\s*[xX×*]\s*\d+(?:\.\d+)?\s*(?:cm|m)?/g, "")
-    .replace(/\d+(?:\.\d+)?\s*(?:cm|m)\b/gi, "")
-    .replace(/\b(화이트|블랙|그레이|베이지|白色|黑色|灰色|米色|흰색|검정|회색|white|black|gray|grey|beige)\b/gi, "")
+  return name
+    .replace(/\b\d+(\.\d+)?\s*[xX×*]\s*\d+(\.\d+)?(\s*cm)?\b/g, "")
+    .replace(/\b\d+(\.\d+)?\s*(cm|m)\b/gi, "")
+    .replace(/\b(화이트|블랙|그레이|베이지|白色|黑色|灰色|米色|white|black|gray|beige)\b/gi, "")
     .replace(/\s{2,}/g, " ")
-    .trim() || normalized;
+    .trim() || name;
 }
 
 function isProductionCompleted(unit: PurchaseUnit) {
@@ -1356,7 +1348,7 @@ function purchaseCopy(language: Language) {
       saving: "저장 중",
       orderTable: "구매 주문 관리",
       products: "상품",
-      productCount: "상품 시리즈",
+      productCount: "상품 수",
       skuCount: "SKU 수",
       purchaseQty: "구매 수량",
       unitPrice: "단가",
@@ -1463,7 +1455,7 @@ function purchaseCopy(language: Language) {
     saving: "保存中",
     orderTable: "采购订单管理",
     products: "个产品",
-    productCount: "产品系列",
+    productCount: "产品数量",
     skuCount: "SKU 数量",
     purchaseQty: "采购数量",
     unitPrice: "单价",
