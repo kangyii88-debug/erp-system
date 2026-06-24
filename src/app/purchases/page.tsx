@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   Boxes,
@@ -171,6 +171,7 @@ function PurchasesContent() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const entryRef = useRef<HTMLElement | null>(null);
   const [filters, setFilters] = useState<PurchaseFilters>(emptyFilters);
   const [form, setForm] = useState({
     product_id: "",
@@ -288,6 +289,7 @@ function PurchasesContent() {
       expected_arrival_date: order.expected_arrival_date ?? "",
       memo: order.memo ?? ""
     });
+    requestAnimationFrame(() => entryRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
   }
 
   function resetForm() {
@@ -384,7 +386,7 @@ function PurchasesContent() {
         <TodoPanel items={todoItems} copy={copy} formatNumber={formatNumber} />
       </section>
 
-      <section className="premium-dashboard-panel mb-5 rounded-[28px] p-5 md:p-6">
+      <section ref={entryRef} className="premium-dashboard-panel mb-5 rounded-[28px] p-5 md:p-6">
         <div className="mb-5 flex items-center justify-between gap-3">
           <div>
             <div className="premium-section-eyebrow">Purchase Entry</div>
