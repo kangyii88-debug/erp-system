@@ -1220,12 +1220,20 @@ function overallTone(status: OverallStatus) {
 }
 
 function productFamilyName(name: string) {
-  return name
-    .replace(/\b\d+(\.\d+)?\s*[xX×*]\s*\d+(\.\d+)?(\s*cm)?\b/g, "")
-    .replace(/\b\d+(\.\d+)?\s*(cm|m)\b/gi, "")
-    .replace(/\b(화이트|블랙|그레이|베이지|白色|黑色|灰色|米色|white|black|gray|beige)\b/gi, "")
+  const normalized = name.replace(/\s+/g, " ").trim();
+  const isHoneycomb = /허니콤|蜂巢|honeycomb/i.test(normalized);
+  const isBlackout = /암막|全遮光|遮光|blackout/i.test(normalized);
+  const isDimout = /반차광|半遮光|light\s*filtering|dimout/i.test(normalized);
+
+  if (isHoneycomb && isDimout) return "허니콤 반차광 블라인드";
+  if (isHoneycomb && isBlackout) return "허니콤 암막 블라인드";
+
+  return normalized
+    .replace(/\d+(?:\.\d+)?\s*(?:cm|m)?\s*[xX×*]\s*\d+(?:\.\d+)?\s*(?:cm|m)?/g, "")
+    .replace(/\d+(?:\.\d+)?\s*(?:cm|m)\b/gi, "")
+    .replace(/\b(화이트|블랙|그레이|베이지|白色|黑色|灰色|米色|흰색|검정|회색|white|black|gray|grey|beige)\b/gi, "")
     .replace(/\s{2,}/g, " ")
-    .trim() || name;
+    .trim() || normalized;
 }
 
 function isProductionCompleted(unit: PurchaseUnit) {
@@ -1348,7 +1356,7 @@ function purchaseCopy(language: Language) {
       saving: "저장 중",
       orderTable: "구매 주문 관리",
       products: "상품",
-      productCount: "상품 수",
+      productCount: "상품 시리즈",
       skuCount: "SKU 수",
       purchaseQty: "구매 수량",
       unitPrice: "단가",
@@ -1455,7 +1463,7 @@ function purchaseCopy(language: Language) {
     saving: "保存中",
     orderTable: "采购订单管理",
     products: "个产品",
-    productCount: "产品数量",
+    productCount: "产品系列",
     skuCount: "SKU 数量",
     purchaseQty: "采购数量",
     unitPrice: "单价",
