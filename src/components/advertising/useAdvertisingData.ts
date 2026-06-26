@@ -7,6 +7,7 @@ import {
   buildAdCards,
   buildDailyNotePayload,
   buildDailyNotes,
+  buildDailyRecordPayload,
   buildLeaderboard,
   buildOverviewKpis,
   buildRecommendations,
@@ -26,6 +27,7 @@ import type {
   AdvertisingDailyNote,
   AdvertisingDailyNoteInput,
   AdvertisingDailyNoteRow,
+  AdvertisingDailyRecordInput,
   AdvertisingMetricKey,
   AdvertisingPreset,
   AdvertisingRange,
@@ -34,33 +36,9 @@ import type {
 } from "@/lib/advertising-types";
 
 export function useAdvertisingData(preset: AdvertisingPreset, customRange?: AdvertisingRange) {
-  const [metrics, setMetrics] = useState<AdvertisingDailyMetric[]>([]);
-  const [loading, setLoading] = useState(true);
+  const recordsCrud = useAdvertisingDailyRecords();
   const notesCrud = useAdvertisingNotes();
-
-  useEffect(() => {
-    let active = true;
-
-    async function loadMetrics() {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from("advertising_daily_records")
-        .select("*")
-        .order("record_date", { ascending: false })
-        .order("created_at", { ascending: false });
-
-      if (!active) return;
-
-      const legacyRows = ((data as LegacyAdvertisingDailyRecord[] | null) ?? []).map(normalizeLegacyDailyMetric);
-      setMetrics(mergeWithDemoMetrics(error ? [] : legacyRows));
-      setLoading(false);
-    }
-
-    void loadMetrics();
-    return () => {
-      active = false;
-    };
-  }, []);
+  const metrics = recordsCrud.metrics;
 
   const today = todayKst();
   const range = useMemo(() => getPresetRange(preset, today, customRange), [preset, today, customRange]);
@@ -84,7 +62,7 @@ export function useAdvertisingData(preset: AdvertisingPreset, customRange?: Adve
   );
 
   return {
-    loading,
+    loading: recordsCrud.loading,
     ads: CORE_ADS,
     metrics,
     filteredMetrics,
@@ -94,7 +72,8 @@ export function useAdvertisingData(preset: AdvertisingPreset, customRange?: Adve
     trend,
     range,
     rankings,
-    notesCrud
+    notesCrud,
+    recordsCrud
   };
 }
 
@@ -121,6 +100,88 @@ export function useAdvertisingAdDetail(adId: string, preset: AdvertisingPreset, 
     notes,
     trend,
     recommendations
+  };
+}
+
+export function useAdvertisingDailyRecords() {
+  const [storedMetrics, setStoredMetrics] = useState<AdvertisingDailyMetric[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const metrics = useMemo(() => mergeWithDemoMetrics(storedMetrics), [storedMetrics]);
+
+  async function loadRecords() {
+    setLoading(true);
+    const { data, error: queryError } = await supabase
+      .from("advertising_daily_records")
+      .select("*")
+      .order("record_date", { ascending: false })
+      .order("created_at", { ascending: false });
+
+    if (queryError) {
+      setStoredMetrics([]);
+      setError(queryError.message);
+      setLoading(false);
+      return;
+    }
+
+    const rows = ((data as LegacyAdvertisingDailyRecord[] | null) ?? []).map(normalizeLegacyDailyMetric);
+    setStoredMetrics(rows);
+    setError(null);
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    void loadRecords();
+  }, []);
+
+  async function saveRecord(input: AdvertisingDailyRecordInput): Promise<{ ok: boolean; error: string | null }> {
+    setSaving(true);
+
+    const { data: auth } = await supabase.auth.getUser();
+    if (!auth.user) {
+      setSaving(false);
+      return { ok: false, error: "未登录，无法保存广告日报记录。" };
+    }
+
+    const payload = { user_id: auth.user.id, ...buildDailyRecordPayload(input) };
+    const { error: upsertError } = await supabase
+      .from("advertising_daily_records")
+      .upsert(payload, { onConflict: "user_id,record_date,campaign_name" });
+
+    if (upsertError) {
+      setError(upsertError.message);
+      setSaving(false);
+      return { ok: false, error: upsertError.message };
+    }
+
+    await loadRecords();
+    setSaving(false);
+    return { ok: true, error: null };
+  }
+
+  async function deleteRecord(id: string): Promise<{ ok: boolean; error: string | null }> {
+    const { error: deleteError } = await supabase.from("advertising_daily_records").delete().eq("id", id);
+
+    if (deleteError) {
+      setError(deleteError.message);
+      return { ok: false, error: deleteError.message };
+    }
+
+    await loadRecords();
+    return { ok: true, error: null };
+  }
+
+  return {
+    metrics,
+    storedMetrics,
+    loading,
+    saving,
+    error,
+    reload: loadRecords,
+    saveRecord,
+    deleteRecord
   };
 }
 
@@ -151,7 +212,7 @@ export function useAdvertisingNotes() {
 
   async function createNote(input: AdvertisingDailyNoteInput) {
     const { data: auth } = await supabase.auth.getUser();
-    if (!auth.user) return { ok: false, error: "未登录，无法保存广告日报记录。" };
+    if (!auth.user) return { ok: false, error: "未登录，无法保存广告日报备注。" };
 
     const payload = { user_id: auth.user.id, ...buildDailyNotePayload(input) };
     const { error: insertError } = await supabase.from("ad_daily_notes").insert(payload);

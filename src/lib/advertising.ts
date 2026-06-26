@@ -4,6 +4,7 @@ import type {
   AdvertisingDailyMetric,
   AdvertisingDailyNote,
   AdvertisingDailyNoteInput,
+  AdvertisingDailyRecordInput,
   AdvertisingDailyNoteRow,
   AdvertisingKpiItem,
   AdvertisingLeaderboardItem,
@@ -375,6 +376,27 @@ export function buildDailyNotePayload(input: AdvertisingDailyNoteInput) {
     sku_change: input.skuChange.trim() || null,
     issue: input.issue.trim(),
     next_plan: input.nextPlan.trim()
+  };
+}
+
+export function buildDailyRecordPayload(input: AdvertisingDailyRecordInput) {
+  const ad = CORE_ADS.find((item) => item.id === input.adId) ?? CORE_ADS[0];
+
+  return {
+    record_date: input.date,
+    campaign_name: ad.adName,
+    sku: ad.linkedSku ?? ad.id,
+    product_name: ad.linkedProductName,
+    ad_spend: input.adCost,
+    ad_sales: input.adSales,
+    impressions: input.impressions,
+    clicks: input.clicks,
+    ctr: input.ctr,
+    ad_sales_count: input.adConversionSalesCount,
+    ad_order_count: input.adConversionOrderCount,
+    roas: input.roas,
+    conversion_rate: input.conversionRate,
+    remark: input.remark.trim() || null
   };
 }
 

@@ -38,6 +38,7 @@ import type {
   AdvertisingDailyMetric,
   AdvertisingDailyNote,
   AdvertisingDailyNoteInput,
+  AdvertisingDailyRecordInput,
   AdvertisingMetricKey,
   AdvertisingPreset,
   AdvertisingRange,
@@ -126,7 +127,7 @@ export function AdvertisingDashboard({ mode = "overview" }: { mode?: DashboardMo
       {mode === "sku" ? <AdSkuPerformanceTable rows={skuRows} showAdColumn /> : null}
       {mode === "rankings" ? <RankingsPage cards={data.cards} /> : null}
       {mode === "notes" ? <AdDailyNotes notes={notes} notesCrud={data.notesCrud} /> : null}
-      {mode === "import" ? <AdImportMapping /> : null}
+      {mode === "import" ? <AdImportWorkspace recordsCrud={data.recordsCrud} /> : null}
       {mode === "rules" ? <RulesPage /> : null}
     </div>
   );
@@ -896,6 +897,209 @@ export function AdRecommendationCard({ title, detail, tone }: AdvertisingRecomme
         </div>
       </div>
     </div>
+  );
+}
+
+const emptyDailyRecordForm = (): AdvertisingDailyRecordInput => ({
+  adId: CORE_ADS[0]?.id ?? "",
+  date: todayKst(),
+  adCost: 0,
+  adSales: 0,
+  impressions: 0,
+  clicks: 0,
+  ctr: 0,
+  adConversionSalesCount: 0,
+  adConversionOrderCount: 0,
+  roas: 0,
+  conversionRate: 0,
+  remark: ""
+});
+
+export function AdImportWorkspace({
+  recordsCrud
+}: {
+  recordsCrud: {
+    storedMetrics: AdvertisingDailyMetric[];
+    loading: boolean;
+    saving: boolean;
+    error: string | null;
+    saveRecord: (input: AdvertisingDailyRecordInput) => Promise<{ ok: boolean; error: string | null }>;
+    deleteRecord: (id: string) => Promise<{ ok: boolean; error: string | null }>;
+  };
+}) {
+  const [form, setForm] = useState<AdvertisingDailyRecordInput>(emptyDailyRecordForm);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
+
+  const savedRows = useMemo(
+    () => [...recordsCrud.storedMetrics].sort((a, b) => `${b.date}-${b.id}`.localeCompare(`${a.date}-${a.id}`)),
+    [recordsCrud.storedMetrics]
+  );
+
+  function resetForm() {
+    setEditingId(null);
+    setForm(emptyDailyRecordForm());
+    setFormError(null);
+  }
+
+  function updateNumber(key: keyof AdvertisingDailyRecordInput, value: string) {
+    setForm((current) => ({ ...current, [key]: Number(value || 0) }));
+  }
+
+  function startEdit(row: AdvertisingDailyMetric) {
+    setEditingId(row.id);
+    setForm({
+      adId: row.adId,
+      date: row.date,
+      adCost: row.adCost,
+      adSales: row.adSales,
+      impressions: row.impressions,
+      clicks: row.clicks,
+      ctr: Number(row.ctr ?? 0),
+      adConversionSalesCount: row.adConversionSalesCount,
+      adConversionOrderCount: row.adConversionOrderCount,
+      roas: Number(row.roas ?? 0),
+      conversionRate: Number(row.conversionRate ?? 0),
+      remark: row.remark ?? ""
+    });
+    setFormError(null);
+  }
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const result = await recordsCrud.saveRecord(form);
+    if (!result.ok) {
+      setFormError(result.error);
+      return;
+    }
+    resetForm();
+  }
+
+  async function handleDelete(id: string) {
+    if (!window.confirm("确定删除这条广告日报记录吗？")) return;
+    const result = await recordsCrud.deleteRecord(id);
+    if (!result.ok) setFormError(result.error);
+  }
+
+  return (
+    <section className="grid gap-5 xl:grid-cols-[1.05fr,0.95fr]">
+      <div className="erp-card p-6">
+        <SectionTitle eyebrow="每日录入" title="每日广告数据录入" description="每天直接在 ERP 中填写广告日报。系统会按日期和广告名称自动覆盖同一条记录。" />
+        <div className="mt-5 rounded-[24px] border border-dashed border-line bg-[#fafaf9] px-4 py-4 text-sm leading-7 text-muted">
+          同一天 + 同一个广告名称只能保留一条记录。再次保存时，系统会自动更新这条日报，首页、趋势图和排行榜会继续共用这份数据。
+        </div>
+        <form onSubmit={handleSubmit} className="mt-5 space-y-4">
+          <div className="grid gap-3 md:grid-cols-2">
+            <label className="grid gap-1.5 text-xs font-bold text-muted">
+              日期
+              <input type="date" value={form.date} onChange={(event) => setForm({ ...form, date: event.target.value })} />
+            </label>
+            <label className="grid gap-1.5 text-xs font-bold text-muted">
+              广告名称
+              <select value={form.adId} onChange={(event) => setForm({ ...form, adId: event.target.value })}>
+                {CORE_ADS.map((ad) => (
+                  <option key={ad.id} value={ad.id}>
+                    {ad.adName}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="grid gap-1.5 text-xs font-bold text-muted">
+              广告费
+              <input type="number" min="0" step="0.01" value={form.adCost} onChange={(event) => updateNumber("adCost", event.target.value)} />
+            </label>
+            <label className="grid gap-1.5 text-xs font-bold text-muted">
+              广告转化销售额
+              <input type="number" min="0" step="0.01" value={form.adSales} onChange={(event) => updateNumber("adSales", event.target.value)} />
+            </label>
+            <label className="grid gap-1.5 text-xs font-bold text-muted">
+              曝光数
+              <input type="number" min="0" step="1" value={form.impressions} onChange={(event) => updateNumber("impressions", event.target.value)} />
+            </label>
+            <label className="grid gap-1.5 text-xs font-bold text-muted">
+              点击数
+              <input type="number" min="0" step="1" value={form.clicks} onChange={(event) => updateNumber("clicks", event.target.value)} />
+            </label>
+            <label className="grid gap-1.5 text-xs font-bold text-muted">
+              点击率
+              <input type="number" min="0" step="0.01" value={form.ctr} onChange={(event) => updateNumber("ctr", event.target.value)} />
+            </label>
+            <label className="grid gap-1.5 text-xs font-bold text-muted">
+              广告转化销售数量
+              <input type="number" min="0" step="1" value={form.adConversionSalesCount} onChange={(event) => updateNumber("adConversionSalesCount", event.target.value)} />
+            </label>
+            <label className="grid gap-1.5 text-xs font-bold text-muted">
+              广告转化订单数
+              <input type="number" min="0" step="1" value={form.adConversionOrderCount} onChange={(event) => updateNumber("adConversionOrderCount", event.target.value)} />
+            </label>
+            <label className="grid gap-1.5 text-xs font-bold text-muted">
+              ROAS
+              <input type="number" min="0" step="0.01" value={form.roas} onChange={(event) => updateNumber("roas", event.target.value)} />
+            </label>
+            <label className="grid gap-1.5 text-xs font-bold text-muted">
+              转化率
+              <input type="number" min="0" step="0.01" value={form.conversionRate} onChange={(event) => updateNumber("conversionRate", event.target.value)} />
+            </label>
+          </div>
+          <label className="grid gap-1.5 text-xs font-bold text-muted">
+            备注
+            <textarea rows={3} value={form.remark} onChange={(event) => setForm({ ...form, remark: event.target.value })} />
+          </label>
+          {formError ? <div className="text-sm text-red-700">{formError}</div> : null}
+          {recordsCrud.error ? <div className="text-sm text-red-700">数据表暂不可用：{recordsCrud.error}</div> : null}
+          <div className="flex flex-wrap gap-2">
+            <button type="submit" disabled={recordsCrud.saving} className="erp-button-primary px-4 py-2 text-sm font-semibold">
+              {recordsCrud.saving ? "保存中..." : editingId ? "更新日报" : "保存日报"}
+            </button>
+            <button type="button" onClick={resetForm} className="erp-button-subtle px-4 py-2 text-sm font-semibold">
+              {editingId ? "取消编辑" : "清空表单"}
+            </button>
+          </div>
+        </form>
+      </div>
+      <div className="erp-card overflow-hidden">
+        <div className="border-b border-line bg-[#fafaf9] px-5 py-4">
+          <div className="premium-section-eyebrow">今日记录</div>
+          <h2 className="mt-3 text-2xl font-semibold tracking-tight text-ink">已录入广告日报</h2>
+          <p className="mt-2 text-sm text-muted">你可以随时回头编辑或删除当天记录，不需要重新导入文件。</p>
+        </div>
+        <div className="divide-y divide-line/70">
+          {recordsCrud.loading ? (
+            <div className="px-5 py-10 text-sm text-muted">正在加载广告日报...</div>
+          ) : savedRows.length ? (
+            savedRows.map((row) => (
+              <div key={row.id} className="px-5 py-4">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                  <div className="min-w-0">
+                    <div className="text-sm font-semibold text-ink">{CORE_ADS.find((ad) => ad.id === row.adId)?.adName ?? row.adId}</div>
+                    <div className="mt-1 text-xs text-muted">
+                      {row.date} · 广告费 {formatCurrency(row.adCost)} · 广告销售额 {formatCurrency(row.adSales)}
+                    </div>
+                    <div className="mt-3 grid gap-2 text-xs text-muted md:grid-cols-2">
+                      <div>曝光数 {formatCount(row.impressions)}</div>
+                      <div>点击数 {formatCount(row.clicks)}</div>
+                      <div>ROAS {formatPercent(row.roas)}</div>
+                      <div>转化率 {formatPercent(row.conversionRate)}</div>
+                    </div>
+                    {row.remark ? <p className="mt-3 text-sm leading-6 text-muted">{row.remark}</p> : null}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button type="button" onClick={() => startEdit(row)} className="rounded-full border border-line bg-white p-2 text-muted">
+                      <Edit3 className="h-4 w-4" />
+                    </button>
+                    <button type="button" onClick={() => handleDelete(row.id)} className="rounded-full border border-line bg-white p-2 text-muted">
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="px-5 py-10 text-sm text-muted">当前还没有手动录入的广告日报记录。</div>
+          )}
+        </div>
+      </div>
+    </section>
   );
 }
 

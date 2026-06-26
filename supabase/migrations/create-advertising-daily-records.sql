@@ -38,6 +38,9 @@ create index if not exists advertising_daily_records_user_sku_idx
 create index if not exists advertising_daily_records_user_campaign_idx
   on advertising_daily_records (user_id, campaign_name);
 
+create unique index if not exists advertising_daily_records_user_day_campaign_uidx
+  on advertising_daily_records (user_id, record_date, campaign_name);
+
 drop trigger if exists advertising_daily_records_updated_at on advertising_daily_records;
 create trigger advertising_daily_records_updated_at before update on advertising_daily_records
 for each row execute function set_updated_at();

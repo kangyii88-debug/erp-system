@@ -136,6 +136,21 @@ export type AdvertisingDailyNoteInput = {
   nextPlan: string;
 };
 
+export type AdvertisingDailyRecordInput = {
+  adId: string;
+  date: string;
+  adCost: number;
+  adSales: number;
+  impressions: number;
+  clicks: number;
+  ctr: number;
+  adConversionSalesCount: number;
+  adConversionOrderCount: number;
+  roas: number;
+  conversionRate: number;
+  remark: string;
+};
+
 export type AdvertisingRange = {
   start: string;
   end: string;

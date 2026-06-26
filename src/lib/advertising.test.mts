@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   CORE_ADS,
   buildDailyNotePayload,
+  buildDailyRecordPayload,
   buildAdCards,
   calculateConversionRate,
   calculateCtr,
@@ -99,6 +100,27 @@ const notePayload = buildDailyNotePayload(noteInput);
 assert.equal(notePayload.ad_id, CORE_ADS[0].id);
 assert.equal(notePayload.budget_change, "+10000");
 assert.equal(notePayload.sku_change, null);
+
+const recordPayload = buildDailyRecordPayload({
+  adId: CORE_ADS[0].id,
+  date: "2026-06-27",
+  adCost: 10000,
+  adSales: 50000,
+  impressions: 1200,
+  clicks: 44,
+  ctr: 3.67,
+  adConversionSalesCount: 9,
+  adConversionOrderCount: 5,
+  roas: 500,
+  conversionRate: 11.36,
+  remark: "manual"
+});
+
+assert.equal(recordPayload.record_date, "2026-06-27");
+assert.equal(recordPayload.campaign_name, CORE_ADS[0].adName);
+assert.equal(recordPayload.sku, CORE_ADS[0].linkedSku);
+assert.equal(recordPayload.product_name, CORE_ADS[0].linkedProductName);
+assert.equal(recordPayload.remark, "manual");
 
 const noteRow: AdvertisingDailyNoteRow = {
   id: "note-1",
