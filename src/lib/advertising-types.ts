@@ -168,7 +168,9 @@ export type AdvertisingKpiItem = {
 export type AdvertisingAdCard = {
   ad: AdvertisingAd;
   today: AdvertisingSummary;
+  yesterday: AdvertisingSummary;
   last7: AdvertisingSummary;
+  thisMonth: AdvertisingSummary;
   last30: AdvertisingSummary;
   trend: AdvertisingTrendDirection;
   healthScore: number;

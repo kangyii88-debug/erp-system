@@ -5,32 +5,16 @@ import { useMemo, useState } from "react";
 import {
   AlertTriangle,
   ArrowLeft,
-  ArrowRight,
-  BadgeAlert,
-  CalendarRange,
   ChevronRight,
   Download,
   Edit3,
-  LineChart,
-  Megaphone,
   Plus,
-  Radar,
   Sparkles,
   Trash2,
   TrendingDown,
   TrendingUp
 } from "lucide-react";
-import {
-  CartesianGrid,
-  Legend,
-  Line,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-  Area,
-  AreaChart
-} from "recharts";
+import { Area, AreaChart, CartesianGrid, Legend, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 import {
   buildAdMetricsGrid,
@@ -47,7 +31,6 @@ import {
   formatCount,
   formatCurrency,
   formatPercent,
-  pickMetric,
   todayKst
 } from "@/lib/advertising";
 import type {
@@ -65,16 +48,14 @@ import type {
 type DashboardMode = "overview" | "daily" | "sku" | "rankings" | "notes" | "import" | "rules";
 
 export function AdvertisingDashboard({ mode = "overview" }: { mode?: DashboardMode }) {
-  const [preset, setPreset] = useState<AdvertisingPreset>("last30");
+  const [preset, setPreset] = useState<AdvertisingPreset>("thisMonth");
   const [customRange, setCustomRange] = useState<AdvertisingRange>({ start: todayKst(), end: todayKst() });
   const [metric, setMetric] = useState<AdvertisingMetricKey>("adSales");
   const data = useAdvertisingData(preset, customRange);
+
   const dailyRows = useMemo(() => buildGlobalDailyRows(data.filteredMetrics), [data.filteredMetrics]);
   const skuRows = useMemo(() => buildGlobalSkuRows(data.filteredMetrics), [data.filteredMetrics]);
-  const notes = useMemo(
-    () => (data.notesCrud.notes.length ? data.notesCrud.notes : buildGlobalNotes(data.metrics)),
-    [data.metrics, data.notesCrud.notes]
-  );
+  const notes = useMemo(() => (data.notesCrud.notes.length ? data.notesCrud.notes : buildGlobalNotes(data.metrics)), [data.metrics, data.notesCrud.notes]);
 
   return (
     <div className="space-y-6">
@@ -90,12 +71,12 @@ export function AdvertisingDashboard({ mode = "overview" }: { mode?: DashboardMo
       {mode === "overview" ? (
         <>
           <AdSummaryCards items={data.overviewKpis} loading={data.loading} />
-          <section className="grid gap-5 xl:grid-cols-[1.4fr,0.9fr]">
-            <div className="erp-card p-5">
+          <section className="grid gap-5 xl:grid-cols-[1.45fr,0.85fr]">
+            <div className="erp-card p-6">
               <SectionTitle
                 eyebrow="核心广告"
                 title="广告名称第一入口"
-                description="点击任一广告卡片，直接进入该广告的独立运营中心。"
+                description="点击任何广告卡片，直接进入该广告的独立运营中心。"
               />
               <div className="mt-5 grid gap-4 xl:grid-cols-3">
                 {data.cards.map((card) => (
@@ -103,42 +84,37 @@ export function AdvertisingDashboard({ mode = "overview" }: { mode?: DashboardMo
                 ))}
               </div>
             </div>
-            <div className="erp-card p-5">
-              <SectionTitle eyebrow="辅助分析" title="排行榜与提醒" description="排行榜是辅助入口，广告卡片始终保持第一优先级。" />
-              <div className="mt-5 space-y-4">
-                <AdRankingPanel
-                  title="ROAS最高广告"
-                  items={data.rankings.roas.slice(0, 3)}
-                  formatter={(value) => formatPercent(value)}
-                />
-                <AdRankingPanel
-                  title="需要优化广告"
-                  items={data.cards.filter((card) => card.healthScore < 55).map((card) => ({
-                    adId: card.ad.id,
-                    adName: card.ad.adName,
-                    value: card.healthScore,
-                    secondary: `健康分 ${card.healthScore}`
-                  }))}
-                  formatter={(value) => `${Math.round(value ?? 0)}`}
-                />
+            <div className="space-y-5">
+              <div className="erp-card p-6">
+                <SectionTitle eyebrow="辅助分析" title="排行榜与提醒" description="排行是辅助分析入口，广告卡片始终保持第一优先级。" />
+                <div className="mt-5 space-y-4">
+                  <AdRankingPanel title="本月 ROAS 最高广告" items={data.rankings.roas.slice(0, 3)} formatter={(value) => formatPercent(value)} />
+                  <AdRankingPanel
+                    title="需要重点优化广告"
+                    items={data.cards
+                      .filter((card) => card.healthScore < 60)
+                      .map((card) => ({ adId: card.ad.id, adName: card.ad.adName, value: card.healthScore, secondary: `健康分 ${card.healthScore}` }))}
+                    formatter={(value) => `${Math.round(value ?? 0)}`}
+                  />
+                </div>
               </div>
             </div>
           </section>
 
           <section className="grid gap-5 xl:grid-cols-[1.45fr,0.85fr]">
             <AdTrendChart title="整体趋势总览" points={data.trend} metric={metric} onMetricChange={setMetric} />
-            <div className="erp-card p-5">
-              <SectionTitle eyebrow="经营洞察" title="运营建议" description="基于近 30 天整体数据给出控制预算和优化素材建议。" />
+            <div className="erp-card p-6">
+              <SectionTitle eyebrow="经营建议" title="本月洞察" description="基于当前筛选范围自动生成投放建议。" />
               <div className="mt-5 grid gap-3">
                 <AdRecommendationCard
                   title="预算方向"
-                  detail={(data.overview.roas ?? 0) >= 300 ? "整体 ROAS 已经达到可放量区间，可优先扩投高健康分广告。" : "整体 ROAS 仍需优化，建议先聚焦 CTR 和转化率。"}
+                  detail={(data.overview.roas ?? 0) >= 300 ? "整体 ROAS 已经进入可放量区间，建议优先放量健康分较高的广告。" : "整体 ROAS 还需要继续优化，优先看 CTR 和转化率。"}
                   tone={(data.overview.roas ?? 0) >= 300 ? "good" : "warn"}
                 />
                 <AdRecommendationCard
-                  title="异常监控"
-                  detail={data.cards.some((card) => card.healthScore < 55) ? "检测到低健康分广告，请优先检查低ROAS广告的素材和详情页。" : "当前没有明显异常广告，继续观察近 3 天趋势。"}
-                  tone={data.cards.some((card) => card.healthScore < 55) ? "danger" : "neutral"}
+                  title="异常提醒"
+                  detail={data.cards.some((card) => card.healthScore < 60) ? "存在健康分较低的广告，建议优先检查低 ROAS 广告的素材、标题和详情页。" : "当前没有明显异常广告，继续观察近 3 天变化。"}
+                  tone={data.cards.some((card) => card.healthScore < 60) ? "danger" : "neutral"}
                 />
               </div>
             </div>
@@ -157,7 +133,7 @@ export function AdvertisingDashboard({ mode = "overview" }: { mode?: DashboardMo
 }
 
 export function AdvertisingDetailPage({ adId }: { adId: string }) {
-  const [preset, setPreset] = useState<AdvertisingPreset>("last30");
+  const [preset, setPreset] = useState<AdvertisingPreset>("thisMonth");
   const [customRange, setCustomRange] = useState<AdvertisingRange>({ start: todayKst(), end: todayKst() });
   const [metric, setMetric] = useState<AdvertisingMetricKey>("adSales");
   const data = useAdvertisingAdDetail(adId, preset, customRange);
@@ -166,7 +142,7 @@ export function AdvertisingDetailPage({ adId }: { adId: string }) {
     <div className="space-y-6">
       <HeroHeader
         title={`广告详情：${data.ad.adName}`}
-        subtitle="围绕单个广告查看 KPI、趋势图、日报表、SKU表现和每日运营记录。"
+        subtitle="查看当前广告在选定日期内的 KPI、趋势图、日报表、SKU表现和每日运营记录。"
         preset={preset}
         onPresetChange={setPreset}
         customRange={customRange}
@@ -179,12 +155,12 @@ export function AdvertisingDetailPage({ adId }: { adId: string }) {
         }
       />
 
-      <section className="erp-card p-5">
+      <section className="erp-card p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <div className="premium-section-eyebrow">广告概览</div>
             <h2 className="mt-3 text-3xl font-semibold tracking-tight text-ink">{data.ad.adName}</h2>
-            <p className="mt-2 text-sm text-muted">状态：{statusText(data.ad.status)} · 数据来源：Coupang Ads / 手动导入 / API同步兼容层</p>
+            <p className="mt-2 text-sm text-muted">状态：{statusText(data.ad.status)} · 数据来源：{data.cards.find((card) => card.ad.id === data.ad.id)?.source === "seed" ? "Demo Seed" : "广告日报兼容层"}</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <AdHealthBadge score={data.cards.find((card) => card.ad.id === data.ad.id)?.healthScore ?? 0} />
@@ -201,8 +177,8 @@ export function AdvertisingDetailPage({ adId }: { adId: string }) {
       <section className="grid gap-5 xl:grid-cols-[1.2fr,0.8fr]">
         <AdSkuPerformanceTable rows={data.skuMetrics} />
         <div className="space-y-5">
-          <div className="erp-card p-5">
-            <SectionTitle eyebrow="诊断建议" title="广告诊断卡片" description="基于近 30 天表现自动标记预算方向、风险和优化动作。" />
+          <div className="erp-card p-6">
+            <SectionTitle eyebrow="诊断建议" title="广告诊断卡片" description="基于当前广告的实际表现自动给出预算、素材和转化建议。" />
             <div className="mt-5 grid gap-3">
               {data.recommendations.map((item) => (
                 <AdRecommendationCard key={item.title} title={item.title} detail={item.detail} tone={item.tone} />
@@ -245,12 +221,7 @@ function HeroHeader({
           <h1 className="mt-3 text-4xl font-semibold tracking-tight text-ink md:text-5xl">{title}</h1>
           <p className="mt-3 text-base text-muted">{subtitle}</p>
         </div>
-        <AdDateRangeFilter
-          preset={preset}
-          onPresetChange={onPresetChange}
-          customRange={customRange}
-          onCustomRangeChange={onCustomRangeChange}
-        />
+        <AdDateRangeFilter preset={preset} onPresetChange={onPresetChange} customRange={customRange} onCustomRangeChange={onCustomRangeChange} />
       </div>
     </section>
   );
@@ -261,7 +232,7 @@ function SectionTitle({ eyebrow, title, description }: { eyebrow: string; title:
     <div>
       <div className="premium-section-eyebrow">{eyebrow}</div>
       <h2 className="mt-3 text-2xl font-semibold tracking-tight text-ink">{title}</h2>
-      <p className="mt-2 text-sm text-muted">{description}</p>
+      <p className="mt-2 text-sm leading-6 text-muted">{description}</p>
     </div>
   );
 }
@@ -283,15 +254,12 @@ export function AdDateRangeFilter({
     { key: "last7", label: "近7天" },
     { key: "last30", label: "近30天" },
     { key: "thisMonth", label: "本月" },
-    { key: "custom", label: "自定义日期" }
+    { key: "custom", label: "自定义" }
   ];
 
   return (
     <div className="flex flex-col gap-3 rounded-[24px] border border-line bg-white/90 p-4 shadow-soft">
-      <div className="flex items-center gap-2 text-sm font-semibold text-ink">
-        <CalendarRange className="h-4 w-4" />
-        日期筛选器
-      </div>
+      <div className="text-sm font-semibold text-ink">日期筛选器</div>
       <div className="flex flex-wrap gap-2">
         {options.map((option) => (
           <button
@@ -339,31 +307,34 @@ export function AdSummaryCards({
 }
 
 export function AdNameCard({ card }: { card: AdvertisingAdCard }) {
-  const icon = card.trend === "up" ? TrendingUp : card.trend === "down" ? TrendingDown : ArrowRight;
-  const TrendIcon = icon;
+  const TrendIcon = card.trend === "up" ? TrendingUp : card.trend === "down" ? TrendingDown : ChevronRight;
 
   return (
     <Link href={`/advertising/ads/${card.ad.id}`} className="premium-dashboard-card group flex h-full flex-col justify-between p-5">
       <div>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted">Ad Object</div>
-            <h3 className="mt-2 line-clamp-3 text-xl font-semibold leading-7 text-ink" title={card.ad.adName}>
-              {card.ad.adName}
+            <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted">Ad Object</div>
+            <h3 className="mt-2 text-[24px] font-semibold leading-8 tracking-[-0.02em] text-ink" title={card.ad.adName}>
+              <span className="line-clamp-2 break-keep">{card.ad.adName}</span>
             </h3>
           </div>
           <AdHealthBadge score={card.healthScore} />
         </div>
-        <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
-          <MetricMini label="今日广告费" value={formatCompactCurrency(card.today.adCost)} />
-          <MetricMini label="今日销售额" value={formatCompactCurrency(card.today.adSales)} />
-          <MetricMini label="今日 ROAS" value={formatPercent(card.today.roas)} />
+
+        <div className="mt-5 grid grid-cols-2 gap-3">
+          <MetricMini label="今日花费" value={formatCompactCurrency(card.today.adCost)} />
+          <MetricMini label="昨日花费" value={formatCompactCurrency(card.yesterday.adCost)} />
+          <MetricMini label="近7天销售额" value={formatCompactCurrency(card.last7.adSales)} />
+          <MetricMini label="本月销售额" value={formatCompactCurrency(card.thisMonth.adSales)} />
           <MetricMini label="近7天 ROAS" value={formatPercent(card.last7.roas)} />
-          <MetricMini label="CTR" value={formatPercent(card.last7.ctr)} />
-          <MetricMini label="转化率" value={formatPercent(card.last7.conversionRate)} />
+          <MetricMini label="本月 ROAS" value={formatPercent(card.thisMonth.roas)} />
+          <MetricMini label="CTR" value={formatPercent(card.thisMonth.ctr)} />
+          <MetricMini label="转化率" value={formatPercent(card.thisMonth.conversionRate)} />
         </div>
       </div>
-      <div className="mt-5 flex items-center justify-between">
+
+      <div className="mt-5 flex items-center justify-between border-t border-line/70 pt-4">
         <div className="flex items-center gap-2 text-xs font-semibold text-muted">
           <TrendIcon className="h-4 w-4" />
           {statusText(card.ad.status)} · {card.latestSyncLabel}
@@ -380,7 +351,7 @@ export function AdNameCard({ card }: { card: AdvertisingAdCard }) {
 function MetricMini({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-2xl border border-line bg-[#fafaf9] px-3 py-3">
-      <div className="text-xs font-semibold text-muted">{label}</div>
+      <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">{label}</div>
       <div className="mt-1 text-sm font-semibold text-ink">{value}</div>
     </div>
   );
@@ -404,9 +375,9 @@ export function AdTrendChart({
 }) {
   const options = buildMetricChoices();
   return (
-    <section className="erp-card p-5">
+    <section className="erp-card p-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <SectionTitle eyebrow="趋势图" title={title} description="默认展示选定日期范围内的日趋势，可切换关键指标。" />
+        <SectionTitle eyebrow="趋势图" title={title} description="按广告名称、日期和核心指标查看趋势变化。" />
         <div className="flex flex-wrap gap-2">
           {options.map((option) => (
             <button
@@ -425,7 +396,7 @@ export function AdTrendChart({
           <AreaChart data={points}>
             <defs>
               <linearGradient id="salesArea" x1="0" x2="0" y1="0" y2="1">
-                <stop offset="0%" stopColor="#1d4ed8" stopOpacity={0.25} />
+                <stop offset="0%" stopColor="#1d4ed8" stopOpacity={0.2} />
                 <stop offset="100%" stopColor="#1d4ed8" stopOpacity={0.02} />
               </linearGradient>
             </defs>
@@ -443,7 +414,17 @@ export function AdTrendChart({
   );
 }
 
-function TrendTooltip({ active, payload, label, metric }: { active?: boolean; payload?: Array<{ value: number; payload: Record<string, number | string | null> }>; label?: string; metric: AdvertisingMetricKey }) {
+function TrendTooltip({
+  active,
+  payload,
+  label,
+  metric
+}: {
+  active?: boolean;
+  payload?: Array<{ payload: Record<string, number | string | null> }>;
+  label?: string;
+  metric: AdvertisingMetricKey;
+}) {
   if (!active || !payload?.length) return null;
   const point = payload[0]?.payload;
   if (!point) return null;
@@ -598,7 +579,7 @@ export function AdSkuPerformanceTable({ rows, showAdColumn = false }: { rows: Ad
             ) : (
               <tr>
                 <td colSpan={showAdColumn ? 12 : 11} className="px-4 py-12 text-center text-sm text-muted">
-                  当前广告范围暂无 SKU 数据。
+                  当前范围暂无 SKU 数据。
                 </td>
               </tr>
             )}
@@ -636,7 +617,7 @@ export function AdRankingPanel({
             </Link>
           ))
         ) : (
-          <div className="rounded-2xl border border-dashed border-line px-3 py-8 text-center text-sm text-muted">暂无可用排行数据</div>
+          <div className="rounded-2xl border border-dashed border-line px-3 py-8 text-center text-sm text-muted">暂无可用排行数据。</div>
         )}
       </div>
     </div>
@@ -712,10 +693,12 @@ export function AdDailyNotes({
     setSaving(true);
     const result = editingId ? await notesCrud.updateNote(editingId, form) : await notesCrud.createNote(form);
     setSaving(false);
+
     if (!result.ok) {
       setFormError(result.error);
       return;
     }
+
     setShowForm(false);
     setEditingId(null);
     setForm(emptyNoteForm(adId));
@@ -726,14 +709,12 @@ export function AdDailyNotes({
     if (!notesCrud) return;
     if (!window.confirm("确定删除这条广告日报记录吗？")) return;
     const result = await notesCrud.deleteNote(id);
-    if (!result.ok) {
-      setFormError(result.error);
-    }
+    if (!result.ok) setFormError(result.error);
   }
 
   return (
-    <section className="erp-card p-5">
-      <SectionTitle eyebrow="运营日志" title="广告日报记录" description="把原本散乱的日报，统一绑定到广告名称之下。" />
+    <section className="erp-card p-6">
+      <SectionTitle eyebrow="运营日志" title="广告日报记录" description="把原本散乱的日报统一绑定到广告名称之下，方便持续追踪每一次调整动作。" />
       {notesCrud ? (
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
           <button type="button" onClick={startCreate} className="erp-button-primary inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold">
@@ -743,6 +724,7 @@ export function AdDailyNotes({
           {notesCrud.error ? <div className="text-sm text-red-700">日志表暂不可用：{notesCrud.error}</div> : null}
         </div>
       ) : null}
+
       {showForm ? (
         <form onSubmit={handleSubmit} className="mt-5 rounded-[24px] border border-line bg-[#fafaf9] p-4">
           <div className="grid gap-3 md:grid-cols-2">
@@ -751,9 +733,7 @@ export function AdDailyNotes({
                 广告名称
                 <select value={form.adId} onChange={(event) => setForm({ ...form, adId: event.target.value })}>
                   {CORE_ADS.map((ad) => (
-                    <option key={ad.id} value={ad.id}>
-                      {ad.adName}
-                    </option>
+                    <option key={ad.id} value={ad.id}>{ad.adName}</option>
                   ))}
                 </select>
               </label>
@@ -775,7 +755,7 @@ export function AdDailyNotes({
               <input value={form.bidChange} onChange={(event) => setForm({ ...form, bidChange: event.target.value })} />
             </label>
             <label className="grid gap-1.5 text-xs font-bold text-muted">
-              SKU调整
+              SKU 调整
               <input value={form.skuChange} onChange={(event) => setForm({ ...form, skuChange: event.target.value })} />
             </label>
           </div>
@@ -817,6 +797,7 @@ export function AdDailyNotes({
           </div>
         </form>
       ) : null}
+
       <div className={`mt-5 grid gap-3 ${compact ? "" : "xl:grid-cols-2"}`}>
         {filteredNotes.length ? (
           filteredNotes.map((note) => (
@@ -824,11 +805,7 @@ export function AdDailyNotes({
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <div className="text-sm font-semibold text-ink">{note.date}</div>
-                  {!adId ? (
-                    <div className="mt-1 text-xs text-muted">
-                      {CORE_ADS.find((ad) => ad.id === note.adId)?.adName ?? note.adId}
-                    </div>
-                  ) : null}
+                  {!adId ? <div className="mt-1 text-xs text-muted">{CORE_ADS.find((ad) => ad.id === note.adId)?.adName ?? note.adId}</div> : null}
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="text-xs font-semibold text-muted">{note.operator}</div>
@@ -844,18 +821,10 @@ export function AdDailyNotes({
                   ) : null}
                 </div>
               </div>
-              <div className="mt-3 text-sm font-semibold text-ink">今日观察</div>
-              <p className="mt-1 text-sm leading-6 text-muted">{note.observation}</p>
-              {note.actionTaken ? (
-                <>
-                  <div className="mt-3 text-sm font-semibold text-ink">调整动作</div>
-                  <p className="mt-1 text-sm leading-6 text-muted">{note.actionTaken}</p>
-                </>
-              ) : null}
-              <div className="mt-3 text-sm font-semibold text-ink">问题记录</div>
-              <p className="mt-1 text-sm leading-6 text-muted">{note.issue}</p>
-              <div className="mt-3 text-sm font-semibold text-ink">明日计划</div>
-              <p className="mt-1 text-sm leading-6 text-muted">{note.nextPlan}</p>
+              <NoteBlock title="今日观察" content={note.observation} />
+              <NoteBlock title="调整动作" content={note.actionTaken} />
+              <NoteBlock title="问题记录" content={note.issue} />
+              <NoteBlock title="明日计划" content={note.nextPlan} />
               {(note.budgetChange || note.bidChange || note.skuChange) ? (
                 <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold text-muted">
                   {note.budgetChange ? <span className="rounded-full border border-line bg-white px-3 py-1">预算 {note.budgetChange}</span> : null}
@@ -866,12 +835,20 @@ export function AdDailyNotes({
             </div>
           ))
         ) : (
-          <div className="rounded-2xl border border-dashed border-line px-4 py-10 text-center text-sm text-muted">
-            暂无广告日报记录。
-          </div>
+          <div className="rounded-2xl border border-dashed border-line px-4 py-10 text-center text-sm text-muted">暂无广告日报记录。</div>
         )}
       </div>
     </section>
+  );
+}
+
+function NoteBlock({ title, content }: { title: string; content: string }) {
+  if (!content) return null;
+  return (
+    <>
+      <div className="mt-3 text-sm font-semibold text-ink">{title}</div>
+      <p className="mt-1 text-sm leading-6 text-muted">{content}</p>
+    </>
   );
 }
 
@@ -882,14 +859,12 @@ export function AdRecommendationCard({ title, detail, tone }: AdvertisingRecomme
     danger: "bg-red-50 text-red-700 border-red-200",
     neutral: "bg-slate-50 text-slate-700 border-line"
   } as const;
-  const icon = tone === "good" ? Sparkles : tone === "warn" ? BadgeAlert : tone === "danger" ? AlertTriangle : Radar;
-  const Icon = icon;
 
   return (
     <div className={`rounded-[22px] border p-4 ${toneMap[tone]}`}>
       <div className="flex items-start gap-3">
         <span className="mt-0.5 inline-flex h-9 w-9 items-center justify-center rounded-2xl bg-white/70">
-          <Icon className="h-4 w-4" />
+          {tone === "danger" ? <AlertTriangle className="h-4 w-4" /> : <Sparkles className="h-4 w-4" />}
         </span>
         <div>
           <div className="text-sm font-semibold">{title}</div>
@@ -915,16 +890,10 @@ export function AdImportMapping() {
 
   return (
     <section className="grid gap-5 xl:grid-cols-[1fr,0.95fr]">
-      <div className="erp-card p-5">
-        <SectionTitle eyebrow="数据导入" title="数据导入与同步" description="第一阶段先完成导入映射规范，后续即可接 CSV / Excel / API。" />
-        <div className="mt-5 rounded-[24px] border border-dashed border-line bg-[#fafaf9] p-6">
-          <div className="text-sm font-semibold text-ink">支持内容</div>
-          <ul className="mt-3 space-y-2 text-sm text-muted">
-            <li>上传 CSV / Excel</li>
-            <li>映射韩文字段到标准广告指标</li>
-            <li>选择广告名称并导入预览</li>
-            <li>识别重复的同日同广告数据并跳过</li>
-          </ul>
+      <div className="erp-card p-6">
+        <SectionTitle eyebrow="导入计划" title="数据导入与同步" description="支持 CSV / Excel / API 的统一字段映射，后续可以直接接入真实 Coupang Ads 数据。" />
+        <div className="mt-5 rounded-[24px] border border-dashed border-line bg-[#fafaf9] p-6 text-sm leading-7 text-muted">
+          当前阶段已经完成映射规范、广告对象结构和数据容错层。下一步可以直接把上传预览、字段映射和重复校验接起来。
         </div>
       </div>
       <div className="erp-card overflow-hidden">
@@ -955,17 +924,17 @@ export function AdImportMapping() {
 
 function RankingsPage({ cards }: { cards: AdvertisingAdCard[] }) {
   const panels = [
-    { title: "ROAS排行榜", items: [...cards].sort((a, b) => Number(b.last30.roas ?? 0) - Number(a.last30.roas ?? 0)), formatter: (card: AdvertisingAdCard) => formatPercent(card.last30.roas) },
-    { title: "销售额排行榜", items: [...cards].sort((a, b) => b.last30.adSales - a.last30.adSales), formatter: (card: AdvertisingAdCard) => formatCurrency(card.last30.adSales) },
-    { title: "广告费排行榜", items: [...cards].sort((a, b) => b.last30.adCost - a.last30.adCost), formatter: (card: AdvertisingAdCard) => formatCurrency(card.last30.adCost) },
-    { title: "CTR排行榜", items: [...cards].sort((a, b) => Number(b.last30.ctr ?? 0) - Number(a.last30.ctr ?? 0)), formatter: (card: AdvertisingAdCard) => formatPercent(card.last30.ctr) }
+    { title: "本月 ROAS 排行榜", items: [...cards].sort((a, b) => Number(b.thisMonth.roas ?? 0) - Number(a.thisMonth.roas ?? 0)), formatter: (card: AdvertisingAdCard) => formatPercent(card.thisMonth.roas) },
+    { title: "本月销售额排行榜", items: [...cards].sort((a, b) => b.thisMonth.adSales - a.thisMonth.adSales), formatter: (card: AdvertisingAdCard) => formatCurrency(card.thisMonth.adSales) },
+    { title: "本月广告费排行榜", items: [...cards].sort((a, b) => b.thisMonth.adCost - a.thisMonth.adCost), formatter: (card: AdvertisingAdCard) => formatCurrency(card.thisMonth.adCost) },
+    { title: "本月 CTR 排行榜", items: [...cards].sort((a, b) => Number(b.thisMonth.ctr ?? 0) - Number(a.thisMonth.ctr ?? 0)), formatter: (card: AdvertisingAdCard) => formatPercent(card.thisMonth.ctr) }
   ];
 
   return (
     <section className="grid gap-5 xl:grid-cols-2">
       {panels.map((panel) => (
-        <div key={panel.title} className="erp-card p-5">
-          <SectionTitle eyebrow="广告排行" title={panel.title} description="所有广告名称都可以点击进入对应广告详情页。" />
+        <div key={panel.title} className="erp-card p-6">
+          <SectionTitle eyebrow="广告排行" title={panel.title} description="所有广告名称都可以直接点击进入广告详情页。" />
           <div className="mt-5 space-y-3">
             {panel.items.map((card, index) => (
               <Link key={card.ad.id} href={`/advertising/ads/${card.ad.id}`} className="flex items-center justify-between rounded-2xl border border-line bg-[#fafaf9] px-4 py-4 transition hover:-translate-y-0.5 hover:shadow-soft">
@@ -988,16 +957,16 @@ function RankingsPage({ cards }: { cards: AdvertisingAdCard[] }) {
 
 function RulesPage() {
   const rules = [
-    "ROAS 高于目标值，建议适当提高预算",
-    "ROAS 高但点击少，建议提升曝光",
-    "点击高转化低，检查商品页、价格、评论和主图",
-    "花费高且 ROAS 低，建议降低预算或暂停",
-    "曝光高 CTR 低，建议优化主图和标题"
+    "ROAS 高于目标值：建议适当提高预算",
+    "ROAS 高但点击少：建议提升曝光",
+    "点击高转化低：检查商品页、价格、评论和主图",
+    "花费高且 ROAS 低：建议降低预算或暂停",
+    "曝光高 CTR 低：建议优化主图和标题"
   ];
 
   return (
-    <section className="erp-card p-5">
-      <SectionTitle eyebrow="规则中心" title="广告规则设置" description="当前版本先把规则清晰展示出来，后续可以直接接入 `ad_rules` 配置表。" />
+    <section className="erp-card p-6">
+      <SectionTitle eyebrow="规则中心" title="广告规则设置" description="先把规则逻辑清晰沉淀下来，后续可以直接接入 ad_rules 配置表。" />
       <div className="mt-5 grid gap-3">
         {rules.map((rule) => (
           <div key={rule} className="rounded-2xl border border-line bg-[#fafaf9] px-4 py-4 text-sm text-ink">

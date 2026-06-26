@@ -11,7 +11,6 @@ import type {
   AdvertisingRange,
   AdvertisingRecommendation,
   AdvertisingSkuMetric,
-  AdvertisingSource,
   AdvertisingSummary,
   AdvertisingTrendDirection,
   AdvertisingTrendPoint,
@@ -31,7 +30,7 @@ export const CORE_ADS: AdvertisingAd[] = [
     linkedSku: "4LK-HCB-FB",
     dailyBudget: 120000,
     targetRoas: 350,
-    note: "核心放量广告"
+    note: "主力放量广告"
   },
   {
     id: "4locks-half-blackout-test",
@@ -45,7 +44,7 @@ export const CORE_ADS: AdvertisingAd[] = [
     linkedSku: "4LK-HB-TEST",
     dailyBudget: 85000,
     targetRoas: 300,
-    note: "测试创意和标题"
+    note: "测试中的创意广告"
   },
   {
     id: "honeycomb-gray-991x163",
@@ -59,7 +58,7 @@ export const CORE_ADS: AdvertisingAd[] = [
     linkedSku: "HCB-GR-991-163",
     dailyBudget: 60000,
     targetRoas: 280,
-    note: "单品精细化投放"
+    note: "单品精细投放"
   }
 ];
 
@@ -92,30 +91,114 @@ export function normalizeLegacyDailyMetric(record: LegacyAdvertisingDailyRecord)
   };
 }
 
-export function buildAdCards(
-  ads: AdvertisingAd[],
-  metrics: AdvertisingDailyMetric[],
-  today: string
-): AdvertisingAdCard[] {
-  return ads.map((ad) => {
-    const adMetrics = metrics.filter((row) => row.adId === ad.id);
-    const todaySummary = summarizeMetrics(filterMetricsByRange(adMetrics, { start: today, end: today }));
-    const last7Summary = summarizeMetrics(filterMetricsByRange(adMetrics, { start: offsetDate(today, -6), end: today }));
-    const last30Summary = summarizeMetrics(filterMetricsByRange(adMetrics, { start: offsetDate(today, -29), end: today }));
-    const trend = calculateTrendDirection(last7Summary.adSales, last30Summary.adSales / Math.max(1, 30 / 7));
-    const latestSync = adMetrics[0]?.syncedAt ?? null;
+export function buildDemoMetrics(today: string = todayKst()): AdvertisingDailyMetric[] {
+  const series = [
+    {
+      adId: CORE_ADS[0].id,
+      sku: "4LK-HCB-FB",
+      productName: "4locks 完全遮光蜂巢帘",
+      dailyCost: 25500,
+      dailySales: 152000,
+      impressions: 4200,
+      clicks: 92,
+      orders: 5,
+      salesCount: 6
+    },
+    {
+      adId: CORE_ADS[1].id,
+      sku: "4LK-HB-TEST",
+      productName: "4locks 半遮光免打孔百叶帘",
+      dailyCost: 14800,
+      dailySales: 52800,
+      impressions: 3150,
+      clicks: 57,
+      orders: 2,
+      salesCount: 3
+    },
+    {
+      adId: CORE_ADS[2].id,
+      sku: "HCB-GR-991-163",
+      productName: "蜂巢帘 灰色 99.1x163",
+      dailyCost: 9200,
+      dailySales: 38400,
+      impressions: 1980,
+      clicks: 34,
+      orders: 1,
+      salesCount: 1
+    }
+  ];
 
-    return {
-      ad,
-      today: todaySummary,
-      last7: last7Summary,
-      last30: last30Summary,
-      trend,
-      healthScore: calculateHealthScore(last7Summary, ad.targetRoas),
-      source: adMetrics[0]?.source ?? "seed",
-      latestSyncLabel: latestSync ? formatDateTime(latestSync) : "未同步"
-    };
-  });
+  const metrics: AdvertisingDailyMetric[] = [];
+  const days = 35;
+
+  for (let index = 0; index < days; index += 1) {
+    const date = offsetDate(today, -index);
+
+    for (const item of series) {
+      const swing = 1 + ((index % 5) - 2) * 0.06;
+      const cost = Math.round(item.dailyCost * swing);
+      const sales = Math.round(item.dailySales * (1 + ((index % 7) - 3) * 0.08));
+      const impressions = Math.round(item.impressions * (1 + ((index % 4) - 1.5) * 0.05));
+      const clicks = Math.max(1, Math.round(item.clicks * (1 + ((index % 6) - 2.5) * 0.04)));
+      const orders = Math.max(1, Math.round(item.orders * (1 + ((index % 3) - 1) * 0.15)));
+      const salesCount = Math.max(1, Math.round(item.salesCount * (1 + ((index % 3) - 1) * 0.12)));
+
+      metrics.push({
+        id: `demo-${item.adId}-${date}`,
+        adId: item.adId,
+        date,
+        adCost: cost,
+        adSales: sales,
+        impressions,
+        clicks,
+        ctr: calculateCtr(clicks, impressions),
+        conversionRate: calculateConversionRate(orders, clicks),
+        adConversionSalesCount: salesCount,
+        adConversionOrderCount: orders,
+        roas: calculateRoas(sales, cost),
+        cpc: calculateCpc(cost, clicks),
+        cpa: calculateCpa(cost, orders),
+        source: "seed",
+        syncedAt: `${date}T09:00:00.000Z`,
+        remark: index % 9 === 0 ? "Demo 数据：建议观察近 3 天趋势。" : null,
+        rawPayload: {
+          id: `demo-${item.adId}-${date}`,
+          record_date: date,
+          campaign_name: CORE_ADS.find((ad) => ad.id === item.adId)?.adName ?? item.adId,
+          sku: item.sku,
+          product_name: item.productName,
+          ad_spend: cost,
+          ad_sales: sales,
+          impressions,
+          clicks,
+          ctr: calculateCtr(clicks, impressions),
+          ad_sales_count: salesCount,
+          ad_order_count: orders,
+          roas: calculateRoas(sales, cost),
+          conversion_rate: calculateConversionRate(orders, clicks),
+          remark: index % 9 === 0 ? "Demo 数据：建议观察近 3 天趋势。" : null,
+          created_at: `${date}T09:00:00.000Z`,
+          updated_at: `${date}T09:00:00.000Z`
+        }
+      });
+    }
+  }
+
+  return metrics;
+}
+
+export function mergeWithDemoMetrics(metrics: AdvertisingDailyMetric[], today: string = todayKst()): AdvertisingDailyMetric[] {
+  const demoMetrics = buildDemoMetrics(today);
+  const realAdIds = new Set(metrics.map((item) => item.adId));
+  const merged = [...metrics];
+
+  for (const ad of CORE_ADS) {
+    if (!realAdIds.has(ad.id)) {
+      merged.push(...demoMetrics.filter((item) => item.adId === ad.id));
+    }
+  }
+
+  return merged.sort((a, b) => b.date.localeCompare(a.date));
 }
 
 export function summarizeMetrics(metrics: AdvertisingDailyMetric[]): AdvertisingSummary {
@@ -156,15 +239,40 @@ export function summarizeMetrics(metrics: AdvertisingDailyMetric[]): Advertising
   return summary;
 }
 
+export function buildAdCards(ads: AdvertisingAd[], metrics: AdvertisingDailyMetric[], today: string): AdvertisingAdCard[] {
+  return ads.map((ad) => {
+    const adMetrics = metrics.filter((row) => row.adId === ad.id);
+    const todaySummary = summarizeMetrics(filterMetricsByRange(adMetrics, { start: today, end: today }));
+    const yesterday = offsetDate(today, -1);
+    const yesterdaySummary = summarizeMetrics(filterMetricsByRange(adMetrics, { start: yesterday, end: yesterday }));
+    const last7Summary = summarizeMetrics(filterMetricsByRange(adMetrics, { start: offsetDate(today, -6), end: today }));
+    const thisMonthSummary = summarizeMetrics(filterMetricsByRange(adMetrics, { start: `${today.slice(0, 7)}-01`, end: today }));
+    const last30Summary = summarizeMetrics(filterMetricsByRange(adMetrics, { start: offsetDate(today, -29), end: today }));
+    const trend = calculateTrendDirection(last7Summary.adSales, thisMonthSummary.adSales / Math.max(1, dateSpan(`${today.slice(0, 7)}-01`, today) / 7));
+    const latestSync = adMetrics[0]?.syncedAt ?? null;
+
+    return {
+      ad,
+      today: todaySummary,
+      yesterday: yesterdaySummary,
+      last7: last7Summary,
+      thisMonth: thisMonthSummary,
+      last30: last30Summary,
+      trend,
+      healthScore: calculateHealthScore(last7Summary, ad.targetRoas),
+      source: adMetrics[0]?.source ?? "seed",
+      latestSyncLabel: latestSync ? formatDateTime(latestSync) : "未同步"
+    };
+  });
+}
+
 export function buildTrendPoints(metrics: AdvertisingDailyMetric[], range: AdvertisingRange): AdvertisingTrendPoint[] {
-  const bucket = new Map<string, AdvertisingDailyMetric[]>();
+  const grouped = new Map<string, AdvertisingDailyMetric[]>();
   for (const row of filterMetricsByRange(metrics, range)) {
-    const current = bucket.get(row.date) ?? [];
-    current.push(row);
-    bucket.set(row.date, current);
+    grouped.set(row.date, [...(grouped.get(row.date) ?? []), row]);
   }
 
-  return Array.from(bucket.entries())
+  return Array.from(grouped.entries())
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([date, rows]) => {
       const summary = summarizeMetrics(rows);
@@ -183,39 +291,37 @@ export function buildTrendPoints(metrics: AdvertisingDailyMetric[], range: Adver
 }
 
 export function buildSkuMetrics(adId: string, metrics: AdvertisingDailyMetric[]): AdvertisingSkuMetric[] {
-  const skuMap = new Map<string, AdvertisingDailyMetric[]>();
+  const grouped = new Map<string, AdvertisingDailyMetric[]>();
   for (const row of metrics.filter((item) => item.adId === adId)) {
-    const skuKey = row.rawPayload?.sku?.trim() || "UNASSIGNED";
-    const current = skuMap.get(skuKey) ?? [];
-    current.push(row);
-    skuMap.set(skuKey, current);
+    const sku = row.rawPayload?.sku?.trim() || "UNASSIGNED";
+    grouped.set(sku, [...(grouped.get(sku) ?? []), row]);
   }
 
-  return Array.from(skuMap.entries()).map(([skuCode, rows]) => {
-    const summary = summarizeMetrics(rows);
-    const productNameCn = rows[0]?.rawPayload?.product_name || skuCode;
-    const productNameKr = productNameCn;
-
-    return {
-      adId,
-      skuCode,
-      productNameCn,
-      productNameKr,
-      date: rows[rows.length - 1]?.date ?? "",
-      adCost: summary.adCost,
-      adSales: summary.adSales,
-      impressions: summary.impressions,
-      clicks: summary.clicks,
-      ctr: summary.ctr,
-      conversionRate: summary.conversionRate,
-      salesQuantity: summary.adConversionSalesCount,
-      orderCount: summary.adConversionOrderCount,
-      roas: summary.roas,
-      grossProfit: summary.grossProfit,
-      profitAfterAds: summary.profitAfterAds,
-      suggestion: buildSkuSuggestion(summary)
-    };
-  });
+  return Array.from(grouped.entries())
+    .map(([skuCode, rows]) => {
+      const summary = summarizeMetrics(rows);
+      const productNameCn = rows[0]?.rawPayload?.product_name || skuCode;
+      return {
+        adId,
+        skuCode,
+        productNameCn,
+        productNameKr: productNameCn,
+        date: rows[0]?.date ?? "",
+        adCost: summary.adCost,
+        adSales: summary.adSales,
+        impressions: summary.impressions,
+        clicks: summary.clicks,
+        ctr: summary.ctr,
+        conversionRate: summary.conversionRate,
+        salesQuantity: summary.adConversionSalesCount,
+        orderCount: summary.adConversionOrderCount,
+        roas: summary.roas,
+        grossProfit: summary.grossProfit,
+        profitAfterAds: summary.profitAfterAds,
+        suggestion: buildSkuSuggestion(summary)
+      };
+    })
+    .sort((a, b) => (b.roas ?? 0) - (a.roas ?? 0));
 }
 
 export function buildDailyNotes(adId: string, metrics: AdvertisingDailyMetric[]): AdvertisingDailyNote[] {
@@ -227,9 +333,12 @@ export function buildDailyNotes(adId: string, metrics: AdvertisingDailyMetric[])
       date: row.date,
       operator: "ERP Operator",
       observation: row.remark ?? "",
-      actionTaken: "查看原始日报备注",
-      issue: row.roas != null && row.roas < 1.5 ? "ROAS偏低" : "持续观察",
-      nextPlan: row.roas != null && row.roas >= 3 ? "可评估加预算" : "继续优化素材与详情页",
+      actionTaken: "查看原始广告日报备注",
+      budgetChange: "",
+      bidChange: "",
+      skuChange: "",
+      issue: row.roas != null && row.roas < 180 ? "ROAS 偏低，需要优化。" : "持续观察",
+      nextPlan: row.roas != null && row.roas >= 300 ? "可考虑放量测试" : "继续优化素材和详情页",
       createdAt: row.rawPayload?.created_at ?? row.syncedAt ?? row.date,
       updatedAt: row.rawPayload?.updated_at ?? row.syncedAt ?? null
     }))
@@ -272,35 +381,32 @@ export function buildDailyNotePayload(input: AdvertisingDailyNoteInput) {
 export function buildRecommendations(summary: AdvertisingSummary, targetRoas: number): AdvertisingRecommendation[] {
   const items: AdvertisingRecommendation[] = [];
 
-  if ((summary.roas ?? 0) * 100 >= targetRoas && (summary.cpa ?? Infinity) < 25000) {
-    items.push({ title: "提高预算", detail: "当前 ROAS 超过目标值，且获取订单成本稳定，可以逐步放量。", tone: "good" });
+  if ((summary.roas ?? 0) >= targetRoas) {
+    items.push({ title: "提高预算", detail: "当前 ROAS 已达到目标值，建议优先放量健康分高的广告。", tone: "good" });
   }
   if ((summary.ctr ?? 0) < 1.2) {
-    items.push({ title: "优化主图和标题", detail: "曝光存在但点击率偏低，优先检查主图、标题和广告素材。", tone: "warn" });
+    items.push({ title: "优化主图和标题", detail: "曝光存在但点击率偏低，建议先优化主图、标题和广告素材。", tone: "warn" });
   }
   if ((summary.ctr ?? 0) >= 1.5 && (summary.conversionRate ?? 0) < 2) {
-    items.push({ title: "检查商品页转化", detail: "点击不差但转化低，建议检查价格、评价、详情页和优惠。", tone: "danger" });
+    items.push({ title: "检查商品页转化", detail: "点击表现不差但转化偏低，建议检查价格、评价、详情页和优惠。", tone: "danger" });
   }
-  if ((summary.roas ?? 0) * 100 < targetRoas * 0.6) {
-    items.push({ title: "控制预算", detail: "当前 ROAS 明显低于目标，建议先缩量观察，再决定是否暂停。", tone: "danger" });
+  if ((summary.roas ?? 0) < targetRoas * 0.6) {
+    items.push({ title: "控制预算", detail: "当前 ROAS 明显低于目标值，建议先缩量观察，再决定是否暂停。", tone: "danger" });
   }
   if (!items.length) {
-    items.push({ title: "保持观察", detail: "当前数据波动在合理范围内，建议延续投放并观察近 3 天趋势。", tone: "neutral" });
+    items.push({ title: "保持观察", detail: "当前波动在可控范围内，继续观察近 3 天表现即可。", tone: "neutral" });
   }
 
   return items;
 }
 
-export function buildLeaderboard(
-  cards: AdvertisingAdCard[],
-  metric: AdvertisingMetricKey
-): AdvertisingLeaderboardItem[] {
+export function buildLeaderboard(cards: AdvertisingAdCard[], metric: AdvertisingMetricKey): AdvertisingLeaderboardItem[] {
   return [...cards]
     .map((card) => ({
       adId: card.ad.id,
       adName: card.ad.adName,
-      value: pickMetric(card.last30, metric),
-      secondary: `近30天 ${metric}`
+      value: pickMetric(card.thisMonth, metric),
+      secondary: "本月表现"
     }))
     .sort((a, b) => Number(b.value ?? -Infinity) - Number(a.value ?? -Infinity));
 }
@@ -309,11 +415,11 @@ export function buildOverviewKpis(summary: AdvertisingSummary, activeCount: numb
   return [
     { key: "adCost", label: "广告总花费", value: formatCurrency(summary.adCost) },
     { key: "adSales", label: "广告转化销售额", value: formatCurrency(summary.adSales) },
-    { key: "roas", label: "ROAS", value: formatPercent(summary.roas, true), tone: (summary.roas ?? 0) >= 3 ? "good" : "warn" },
+    { key: "roas", label: "ROAS", value: formatPercent(summary.roas), tone: (summary.roas ?? 0) >= 300 ? "good" : "warn" },
     { key: "clicks", label: "点击数", value: formatCount(summary.clicks) },
     { key: "impressions", label: "曝光数", value: formatCount(summary.impressions) },
     { key: "ctr", label: "CTR", value: formatPercent(summary.ctr) },
-    { key: "conversion", label: "转化率", value: formatPercent(summary.conversionRate) },
+    { key: "conversionRate", label: "转化率", value: formatPercent(summary.conversionRate) },
     { key: "active", label: "活跃广告数量", value: formatCount(activeCount) },
     { key: "abnormal", label: "异常广告数量", value: formatCount(abnormalCount), tone: abnormalCount > 0 ? "danger" : "default" }
   ];
@@ -353,7 +459,7 @@ export function calculateProfitAfterAds(grossProfit: number, adCost: number): nu
 }
 
 export function calculateHealthScore(summary: AdvertisingSummary, targetRoas: number): number {
-  let score = 62;
+  let score = 64;
   const roas = summary.roas ?? 0;
   const ctr = summary.ctr ?? 0;
   const conversion = summary.conversionRate ?? 0;
@@ -368,10 +474,10 @@ export function calculateHealthScore(summary: AdvertisingSummary, targetRoas: nu
   if (conversion >= 3) score += 10;
   else if (conversion < 1.2) score -= 12;
 
-  if (summary.profitAfterAds < 0) score -= 18;
-  if (summary.adCost === 0 && summary.adSales === 0) score -= 10;
+  if (summary.profitAfterAds < 0) score -= 16;
+  if (summary.adCost === 0 && summary.adSales === 0) score -= 8;
 
-  return Math.max(0, Math.min(100, Math.round(score)));
+  return Math.max(18, Math.min(100, Math.round(score)));
 }
 
 export function calculateTrendDirection(current: number, baseline: number): AdvertisingTrendDirection {
@@ -402,15 +508,30 @@ export function pickMetric(summary: AdvertisingSummary, metric: AdvertisingMetri
 }
 
 export function matchAdId(campaignName: string): string {
-  const found = CORE_ADS.find((ad) => normalizeCampaignName(ad.adName) === normalizeCampaignName(campaignName));
-  return found?.id ?? CORE_ADS[0].id;
+  const normalized = normalizeCampaignName(campaignName);
+
+  for (const ad of CORE_ADS) {
+    const target = normalizeCampaignName(ad.adName);
+    if (normalized === target) return ad.id;
+    if (normalized.includes(target) || target.includes(normalized)) return ad.id;
+
+    const adKeywords = target.split(" ").filter((token) => token.length > 1);
+    const matches = adKeywords.filter((token) => normalized.includes(token)).length;
+    if (matches >= Math.max(2, Math.ceil(adKeywords.length / 3))) return ad.id;
+  }
+
+  return CORE_ADS[0].id;
 }
 
 export function normalizeCampaignName(name: string): string {
-  return String(name ?? "").replace(/\s+/g, " ").trim().toLowerCase();
+  return String(name ?? "")
+    .toLowerCase()
+    .replace(/[_|,/.-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
-export function getPresetRange(preset: AdvertisingRange["start"] extends string ? string : never, today: string, custom?: AdvertisingRange): AdvertisingRange {
+export function getPresetRange(preset: string, today: string, custom?: AdvertisingRange): AdvertisingRange {
   if (preset === "today") return { start: today, end: today };
   if (preset === "yesterday") {
     const yesterday = offsetDate(today, -1);
@@ -434,7 +555,7 @@ export function formatCompactCurrency(value: number | null): string {
   return formatCurrency(value);
 }
 
-export function formatPercent(value: number | null, alreadyPercent = false): string {
+export function formatPercent(value: number | null): string {
   if (value == null) return "-";
   return `${value.toLocaleString("ko-KR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
 }
@@ -466,6 +587,14 @@ export function offsetDate(dateKey: string, days: number): string {
   const date = new Date(year, month - 1, day);
   date.setDate(date.getDate() + days);
   return date.toLocaleDateString("en-CA");
+}
+
+function dateSpan(start: string, end: string) {
+  const [sy, sm, sd] = start.split("-").map(Number);
+  const [ey, em, ed] = end.split("-").map(Number);
+  const startDate = new Date(sy, sm - 1, sd);
+  const endDate = new Date(ey, em - 1, ed);
+  return Math.max(1, Math.round((endDate.getTime() - startDate.getTime()) / 86400000) + 1);
 }
 
 function buildSkuSuggestion(summary: AdvertisingSummary): string {
