@@ -31,7 +31,7 @@ const navItemsById = {
   products: { href: "/products", icon: Package, label: { zh: "商品管理", ko: "상품 관리" } },
   inventory: { href: "/inventory", icon: Boxes, label: { zh: "库存管理", ko: "재고 관리" } },
   sales: { href: "/sales", icon: ShoppingCart, label: { zh: "销售管理", ko: "판매 관리" } },
-  advertising: { href: "/advertising", icon: Megaphone, label: { zh: "广告分析", ko: "광고 분석" } },
+  advertising: { href: "/advertising", icon: Megaphone, label: { zh: "广告智能中心", ko: "광고 인텔리전스 센터" } },
   purchases: { href: "/purchases", icon: ClipboardList, label: { zh: "采购管理", ko: "구매 관리" } },
   inbound: { href: "/coupang-inbound", icon: Warehouse, label: { zh: "入仓记录", ko: "입고 기록" } },
   development: { href: "/product-development", icon: Lightbulb, label: { zh: "产品开发", ko: "상품 개발" } },
