@@ -28,20 +28,33 @@ const seriesLabels = {
   zh: {
     half_blackout: "蜂巢帘半遮光",
     full_blackout: "蜂巢帘全遮光",
-    "4locks": "4lockS 系列"
+    "4locks": "4locks 系列"
   },
   ko: {
-    half_blackout: "허니콤 반암막",
+    half_blackout: "허니콤 반차광",
     full_blackout: "허니콤 암막",
-    "4locks": "4lockS"
+    "4locks": "4locks"
   }
 } as const;
 
-export function detectProductSeries(product: Pick<SkuPickerProduct, "sku" | "name">): ProductSeries {
-  const keyword = `${product.sku} ${product.name}`.toLowerCase();
+const seriesKeywords: Record<ProductSeries, string[]> = {
+  half_blackout: ["蜂巢帘半遮光", "半遮光", "半透光", "허니콤반차광", "반차광", "반암막", "honeycombhalfblackout"],
+  full_blackout: ["蜂巢帘全遮光", "全遮光", "全遮黑", "허니콤암막", "암막", "완전암막", "honeycombfullblackout"],
+  "4locks": ["4locks", "4lock"]
+};
 
-  if (keyword.includes("4lock")) return "4locks";
-  if (keyword.includes("半遮光") || keyword.includes("반암막")) return "half_blackout";
+export function detectProductSeries(product: Pick<SkuPickerProduct, "sku" | "name">): ProductSeries {
+  const productName = normalizeText(product.name);
+  const sku = product.sku.trim().toUpperCase();
+
+  if (containsAny(productName, seriesKeywords["4locks"])) return "4locks";
+  if (containsAny(productName, seriesKeywords.half_blackout)) return "half_blackout";
+  if (containsAny(productName, seriesKeywords.full_blackout)) return "full_blackout";
+
+  if (sku.startsWith("4LK")) return "4locks";
+  if (sku.startsWith("BZG")) return "half_blackout";
+  if (sku.startsWith("BLD")) return "full_blackout";
+
   return "full_blackout";
 }
 
@@ -148,9 +161,17 @@ function sizeSortIndex(sizeLabel: string) {
 }
 
 function normalizeQuery(value: string) {
-  return value.trim().toLowerCase().replace(/\s+/g, "");
+  return normalizeText(value);
 }
 
 function normalizeSize(size: string | null) {
-  return (size ?? "").replace(/\s+/g, "").replace(/×/g, "x").replace(/cm$/i, "") || "-";
+  return (size ?? "").replace(/\s+/g, "").replace(/횞/g, "x").replace(/cm$/i, "") || "-";
+}
+
+function normalizeText(value: string) {
+  return value.trim().toLowerCase().replace(/\s+/g, "");
+}
+
+function containsAny(value: string, keywords: string[]) {
+  return keywords.some((keyword) => value.includes(normalizeText(keyword)));
 }
