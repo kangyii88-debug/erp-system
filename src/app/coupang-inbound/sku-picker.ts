@@ -105,11 +105,11 @@ function matchesQuery(item: SkuPickerItem, normalizedQuery: string) {
 }
 
 function comparePickerItems(a: SkuPickerItem, b: SkuPickerItem) {
-  const sizeDiff = sizeSortIndex(a.sizeLabel) - sizeSortIndex(b.sizeLabel);
-  if (sizeDiff !== 0) return sizeDiff;
-
   const colorDiff = colorSortIndex(a.colorLabel) - colorSortIndex(b.colorLabel);
   if (colorDiff !== 0) return colorDiff;
+
+  const sizeDiff = sizeSortIndex(a.sizeLabel) - sizeSortIndex(b.sizeLabel);
+  if (sizeDiff !== 0) return sizeDiff;
 
   return a.sku.localeCompare(b.sku);
 }

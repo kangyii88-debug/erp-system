@@ -357,7 +357,10 @@ function CoupangInboundContent() {
   const autoCalculatedQuantity = useMemo(() => toNumber(form.box_count) * toNumber(form.units_per_box), [form.box_count, form.units_per_box]);
   const summaryItems = useMemo(
     () => [
-      { label: text.summary.selectedSku, value: selectedSkuItem?.sku ?? "—" },
+      {
+        label: text.summary.selectedSku,
+        value: selectedSkuItem ? `${selectedSkuItem.colorLabel} · ${selectedSkuItem.sizeLabel}` : "—"
+      },
       { label: text.summary.quantity, value: formatNumber(toNumber(form.confirmed_quantity)) },
       { label: text.summary.method, value: text.method[form.inbound_method] },
       { label: text.summary.status, value: text.receiveStatus[form.receive_status] },
@@ -603,9 +606,12 @@ function CoupangInboundContent() {
                     <div className="mt-3 space-y-3">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="rounded-full bg-brand/10 px-2.5 py-1 text-xs font-semibold text-brand">{selectedSkuItem.seriesLabel}</span>
-                        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">{selectedSkuItem.colorLabel}</span>
+                        <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-700">{selectedSkuItem.colorLabel}</span>
                       </div>
-                      <div className="text-lg font-semibold leading-none text-ink">{selectedSkuItem.sizeLabel}</div>
+                      <div className="flex flex-wrap items-end gap-x-3 gap-y-1">
+                        <div className="text-lg font-semibold leading-none text-ink">{selectedSkuItem.colorLabel}</div>
+                        <div className="text-sm font-medium text-muted">{selectedSkuItem.sizeLabel}</div>
+                      </div>
                       <div className="font-mono text-xs text-muted">{selectedSkuItem.sku}</div>
                     </div>
                   ) : (
@@ -672,27 +678,38 @@ function CoupangInboundContent() {
                         <span>{group.count}</span>
                       </div>
                       <div className="p-2">
-                        {group.items.map((item) => {
+                        {group.items.map((item, index) => {
                           const active = item.id === form.product_id;
+                          const showColorHeader = index === 0 || group.items[index - 1]?.colorLabel !== item.colorLabel;
                           return (
-                            <button
-                              key={item.id}
-                              type="button"
-                              onClick={() => selectProduct(item.id)}
-                              className={`mb-2 w-full rounded-2xl border px-3 py-3 text-left transition last:mb-0 ${active ? "border-brand bg-brand/5 shadow-sm" : "border-transparent bg-panel/40 hover:border-brand/20 hover:bg-panel"}`}
-                            >
-                              <div className="flex items-start justify-between gap-3">
-                                <div>
-                                  <div className="text-sm font-semibold text-ink">{item.sizeLabel}</div>
-                                  <div className="mt-1 text-xs text-muted">{item.productName}</div>
+                            <div key={item.id} className="mb-2 last:mb-0">
+                              {showColorHeader ? (
+                                <div className="mb-2 flex items-center gap-2 px-1">
+                                  <span className="rounded-full bg-slate-900 px-2.5 py-1 text-[11px] font-semibold text-white">{item.colorLabel}</span>
+                                  <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted">{group.label}</span>
                                 </div>
-                                <span className="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-600">{item.colorLabel}</span>
-                              </div>
-                              <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
-                                <span>{item.seriesLabel}</span>
-                                <span className="font-mono">{item.sku}</span>
-                              </div>
-                            </button>
+                              ) : null}
+                              <button
+                                type="button"
+                                onClick={() => selectProduct(item.id)}
+                                className={`w-full rounded-2xl border px-3 py-3 text-left transition ${active ? "border-brand bg-brand/5 shadow-sm" : "border-transparent bg-panel/40 hover:border-brand/20 hover:bg-panel"}`}
+                              >
+                                <div className="flex items-start justify-between gap-3">
+                                  <div>
+                                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                      <div className="text-sm font-semibold text-ink">{item.colorLabel}</div>
+                                      <div className="text-xs font-medium text-muted">{item.sizeLabel}</div>
+                                    </div>
+                                    <div className="mt-1 text-xs text-muted">{item.productName}</div>
+                                  </div>
+                                  <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${active ? "bg-brand text-white" : "border border-slate-200 bg-slate-50 text-slate-700"}`}>{item.sizeLabel}</span>
+                                </div>
+                                <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
+                                  <span>{item.seriesLabel}</span>
+                                  <span className="font-mono">{item.sku}</span>
+                                </div>
+                              </button>
+                            </div>
                           );
                         })}
                       </div>
