@@ -61,7 +61,7 @@ export function AdvertisingDashboard({ mode = "overview" }: { mode?: DashboardMo
     <div className="space-y-6">
       <HeroHeader
         title="广告智能中心"
-        subtitle="按广告名称统一管理 Coupang 广告数据、SKU表现、ROAS趋势和每日运营记录。"
+        subtitle="围绕广告名称统一查看 Coupang 广告花费、销售表现、SKU贡献、ROAS趋势与每日运营动作。"
         preset={preset}
         onPresetChange={setPreset}
         customRange={customRange}
@@ -76,7 +76,7 @@ export function AdvertisingDashboard({ mode = "overview" }: { mode?: DashboardMo
               <SectionTitle
                 eyebrow="核心广告"
                 title="广告名称第一入口"
-                description="点击任何广告卡片，直接进入该广告的独立运营中心。"
+                description="广告名称是第一入口。点击任意广告卡片，即可进入该广告的独立经营中心。"
               />
               <div className="mt-5 grid gap-4 xl:grid-cols-3">
                 {data.cards.map((card) => (
@@ -86,11 +86,11 @@ export function AdvertisingDashboard({ mode = "overview" }: { mode?: DashboardMo
             </div>
             <div className="space-y-5">
               <div className="erp-card p-6">
-                <SectionTitle eyebrow="辅助分析" title="排行榜与提醒" description="排行是辅助分析入口，广告卡片始终保持第一优先级。" />
+                <SectionTitle eyebrow="辅助分析" title="排行榜与提醒" description="排行榜用于快速定位问题和机会，但不会替代广告名称作为主入口。" />
                 <div className="mt-5 space-y-4">
                   <AdRankingPanel title="本月 ROAS 最高广告" items={data.rankings.roas.slice(0, 3)} formatter={(value) => formatPercent(value)} />
                   <AdRankingPanel
-                    title="需要重点优化广告"
+                    title="需要重点优化的广告"
                     items={data.cards
                       .filter((card) => card.healthScore < 60)
                       .map((card) => ({ adId: card.ad.id, adName: card.ad.adName, value: card.healthScore, secondary: `健康分 ${card.healthScore}` }))}
@@ -104,16 +104,16 @@ export function AdvertisingDashboard({ mode = "overview" }: { mode?: DashboardMo
           <section className="grid gap-5 xl:grid-cols-[1.45fr,0.85fr]">
             <AdTrendChart title="整体趋势总览" points={data.trend} metric={metric} onMetricChange={setMetric} />
             <div className="erp-card p-6">
-              <SectionTitle eyebrow="经营建议" title="本月洞察" description="基于当前筛选范围自动生成投放建议。" />
+              <SectionTitle eyebrow="经营建议" title="本月洞察" description="基于当前筛选范围自动生成预算、素材与转化层面的经营建议。" />
               <div className="mt-5 grid gap-3">
                 <AdRecommendationCard
                   title="预算方向"
-                  detail={(data.overview.roas ?? 0) >= 300 ? "整体 ROAS 已经进入可放量区间，建议优先放量健康分较高的广告。" : "整体 ROAS 还需要继续优化，优先看 CTR 和转化率。"}
+                  detail={(data.overview.roas ?? 0) >= 300 ? "整体 ROAS 已进入可放量区间，建议优先提升健康分较高广告的预算。" : "整体 ROAS 仍有提升空间，建议优先检查 CTR 与转化率。"}
                   tone={(data.overview.roas ?? 0) >= 300 ? "good" : "warn"}
                 />
                 <AdRecommendationCard
                   title="异常提醒"
-                  detail={data.cards.some((card) => card.healthScore < 60) ? "存在健康分较低的广告，建议优先检查低 ROAS 广告的素材、标题和详情页。" : "当前没有明显异常广告，继续观察近 3 天变化。"}
+                  detail={data.cards.some((card) => card.healthScore < 60) ? "存在健康分较低的广告，建议优先检查低 ROAS 广告的素材、标题与详情页。" : "当前没有明显异常广告，继续观察近 3 天的走势变化。"}
                   tone={data.cards.some((card) => card.healthScore < 60) ? "danger" : "neutral"}
                 />
               </div>
@@ -142,7 +142,7 @@ export function AdvertisingDetailPage({ adId }: { adId: string }) {
     <div className="space-y-6">
       <HeroHeader
         title={`广告详情：${data.ad.adName}`}
-        subtitle="查看当前广告在选定日期内的 KPI、趋势图、日报表、SKU表现和每日运营记录。"
+        subtitle="查看当前广告在选定日期内的 KPI、趋势图、日报明细、SKU表现与每日运营记录。"
         preset={preset}
         onPresetChange={setPreset}
         customRange={customRange}
@@ -160,7 +160,7 @@ export function AdvertisingDetailPage({ adId }: { adId: string }) {
           <div>
             <div className="premium-section-eyebrow">广告概览</div>
             <h2 className="mt-3 text-3xl font-semibold tracking-tight text-ink">{data.ad.adName}</h2>
-            <p className="mt-2 text-sm text-muted">状态：{statusText(data.ad.status)} · 数据来源：{data.cards.find((card) => card.ad.id === data.ad.id)?.source === "seed" ? "Demo Seed" : "广告日报兼容层"}</p>
+            <p className="mt-2 text-sm text-muted">状态：{statusText(data.ad.status)} · 数据来源：{data.cards.find((card) => card.ad.id === data.ad.id)?.source === "seed" ? "演示数据" : "广告日报兼容层"}</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <AdHealthBadge score={data.cards.find((card) => card.ad.id === data.ad.id)?.healthScore ?? 0} />
@@ -178,7 +178,7 @@ export function AdvertisingDetailPage({ adId }: { adId: string }) {
         <AdSkuPerformanceTable rows={data.skuMetrics} />
         <div className="space-y-5">
           <div className="erp-card p-6">
-            <SectionTitle eyebrow="诊断建议" title="广告诊断卡片" description="基于当前广告的实际表现自动给出预算、素材和转化建议。" />
+            <SectionTitle eyebrow="诊断建议" title="广告诊断卡片" description="基于当前广告的实际表现，自动生成预算、素材和转化层面的优化建议。" />
             <div className="mt-5 grid gap-3">
               {data.recommendations.map((item) => (
                 <AdRecommendationCard key={item.title} title={item.title} detail={item.detail} tone={item.tone} />
@@ -217,7 +217,7 @@ function HeroHeader({
       <div className="relative flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
         <div className="max-w-3xl">
           {leading}
-          <div className="premium-section-eyebrow mt-0">Advertising Intelligence Center</div>
+          <div className="premium-section-eyebrow mt-0">广告智能中心</div>
           <h1 className="mt-3 text-4xl font-semibold tracking-tight text-ink md:text-5xl">{title}</h1>
           <p className="mt-3 text-base text-muted">{subtitle}</p>
         </div>
@@ -259,7 +259,7 @@ export function AdDateRangeFilter({
 
   return (
     <div className="flex flex-col gap-3 rounded-[24px] border border-line bg-white/90 p-4 shadow-soft">
-      <div className="text-sm font-semibold text-ink">日期筛选器</div>
+      <div className="text-sm font-semibold text-ink">日期筛选</div>
       <div className="flex flex-wrap gap-2">
         {options.map((option) => (
           <button
@@ -308,36 +308,51 @@ export function AdSummaryCards({
 
 export function AdNameCard({ card }: { card: AdvertisingAdCard }) {
   const TrendIcon = card.trend === "up" ? TrendingUp : card.trend === "down" ? TrendingDown : ChevronRight;
+  const statusTone =
+    card.ad.status === "running"
+      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+      : card.ad.status === "warning"
+        ? "bg-yellow-50 text-yellow-700 border-yellow-200"
+        : "bg-slate-100 text-slate-700 border-slate-200";
 
   return (
-    <Link href={`/advertising/ads/${card.ad.id}`} className="premium-dashboard-card group flex h-full flex-col justify-between p-5">
-      <div>
+    <Link href={`/advertising/ads/${card.ad.id}`} className="premium-dashboard-card premium-ad-card group flex h-full flex-col justify-between p-5">
+      <div className="space-y-5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted">Ad Object</div>
-            <h3 className="mt-2 text-[24px] font-semibold leading-8 tracking-[-0.02em] text-ink" title={card.ad.adName}>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[11px] font-semibold tracking-[0.08em] text-muted">广告对象</span>
+              <span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${statusTone}`}>{statusText(card.ad.status)}</span>
+            </div>
+            <h3 className="mt-3 text-[24px] font-semibold leading-8 tracking-[-0.03em] text-ink" title={card.ad.adName}>
               <span className="line-clamp-2 break-keep">{card.ad.adName}</span>
             </h3>
+            <p className="mt-2 line-clamp-1 text-sm text-muted">{card.ad.note ?? "以广告名称为入口，查看该广告的独立经营表现。"}</p>
           </div>
           <AdHealthBadge score={card.healthScore} />
         </div>
 
-        <div className="mt-5 grid grid-cols-2 gap-3">
-          <MetricMini label="今日花费" value={formatCompactCurrency(card.today.adCost)} />
+        <div className="grid grid-cols-2 gap-3">
+          <MetricMini label="今日花费" value={formatCompactCurrency(card.today.adCost)} tone="strong" />
           <MetricMini label="昨日花费" value={formatCompactCurrency(card.yesterday.adCost)} />
-          <MetricMini label="近7天销售额" value={formatCompactCurrency(card.last7.adSales)} />
+          <MetricMini label="近7天销售额" value={formatCompactCurrency(card.last7.adSales)} tone="strong" />
           <MetricMini label="本月销售额" value={formatCompactCurrency(card.thisMonth.adSales)} />
-          <MetricMini label="近7天 ROAS" value={formatPercent(card.last7.roas)} />
-          <MetricMini label="本月 ROAS" value={formatPercent(card.thisMonth.roas)} />
-          <MetricMini label="CTR" value={formatPercent(card.thisMonth.ctr)} />
-          <MetricMini label="转化率" value={formatPercent(card.thisMonth.conversionRate)} />
+        </div>
+
+        <div className="rounded-[20px] border border-line bg-[#f8fafc] p-3">
+          <div className="grid grid-cols-4 gap-2">
+            <MetricStrip label="近7天 ROAS" value={formatPercent(card.last7.roas)} />
+            <MetricStrip label="本月 ROAS" value={formatPercent(card.thisMonth.roas)} />
+            <MetricStrip label="CTR" value={formatPercent(card.thisMonth.ctr)} />
+            <MetricStrip label="转化率" value={formatPercent(card.thisMonth.conversionRate)} />
+          </div>
         </div>
       </div>
 
       <div className="mt-5 flex items-center justify-between border-t border-line/70 pt-4">
         <div className="flex items-center gap-2 text-xs font-semibold text-muted">
           <TrendIcon className="h-4 w-4" />
-          {statusText(card.ad.status)} · {card.latestSyncLabel}
+          最近同步 {card.latestSyncLabel}
         </div>
         <span className="inline-flex items-center gap-1 text-sm font-semibold text-ink">
           查看详情
@@ -348,10 +363,19 @@ export function AdNameCard({ card }: { card: AdvertisingAdCard }) {
   );
 }
 
-function MetricMini({ label, value }: { label: string; value: string }) {
+function MetricMini({ label, value, tone = "default" }: { label: string; value: string; tone?: "default" | "strong" }) {
   return (
-    <div className="rounded-2xl border border-line bg-[#fafaf9] px-3 py-3">
+    <div className={`rounded-2xl border px-3 py-3 ${tone === "strong" ? "border-[#dbe6ff] bg-[#f3f7ff]" : "border-line bg-[#fafaf9]"}`}>
       <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">{label}</div>
+      <div className="mt-1 text-sm font-semibold text-ink">{value}</div>
+    </div>
+  );
+}
+
+function MetricStrip({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl bg-white px-3 py-3 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]">
+      <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted">{label}</div>
       <div className="mt-1 text-sm font-semibold text-ink">{value}</div>
     </div>
   );
@@ -377,7 +401,7 @@ export function AdTrendChart({
   return (
     <section className="erp-card p-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <SectionTitle eyebrow="趋势图" title={title} description="按广告名称、日期和核心指标查看趋势变化。" />
+        <SectionTitle eyebrow="趋势图" title={title} description="按广告名称、日期范围与核心指标查看趋势变化。" />
         <div className="flex flex-wrap gap-2">
           {options.map((option) => (
             <button
@@ -460,7 +484,7 @@ export function AdDailyMetricsTable({ rows, showAdColumn = false }: { rows: Adve
       <div className="flex items-center justify-between border-b border-line bg-[#fafaf9] px-5 py-4">
         <div>
           <div className="premium-section-eyebrow">日报表</div>
-          <h2 className="mt-3 text-2xl font-semibold tracking-tight text-ink">广告日报中心</h2>
+          <h2 className="mt-3 text-2xl font-semibold tracking-tight text-ink">广告日报明细</h2>
         </div>
         <button type="button" className="inline-flex items-center gap-2 rounded-full border border-line bg-white px-4 py-2 text-sm font-semibold text-ink shadow-soft">
           <Download className="h-4 w-4" />
@@ -514,7 +538,7 @@ export function AdDailyMetricsTable({ rows, showAdColumn = false }: { rows: Adve
             ) : (
               <tr>
                 <td colSpan={showAdColumn ? 13 : 12} className="px-4 py-12 text-center text-sm text-muted">
-                  暂无广告数据，请先导入 Coupang Ads 数据，或检查当前日期范围。
+                  暂无广告数据。请先导入 Coupang Ads 数据，或检查当前日期范围。
                 </td>
               </tr>
             )}
@@ -530,7 +554,7 @@ export function AdSkuPerformanceTable({ rows, showAdColumn = false }: { rows: Ad
     <section className="erp-card overflow-hidden">
       <div className="border-b border-line bg-[#fafaf9] px-5 py-4">
         <div className="premium-section-eyebrow">SKU表现</div>
-        <h2 className="mt-3 text-2xl font-semibold tracking-tight text-ink">广告 SKU 分析</h2>
+        <h2 className="mt-3 text-2xl font-semibold tracking-tight text-ink">广告 SKU 表现</h2>
       </div>
       <div className="overflow-x-auto">
         <table className="min-w-[1180px] w-full text-left text-sm">
@@ -714,7 +738,7 @@ export function AdDailyNotes({
 
   return (
     <section className="erp-card p-6">
-      <SectionTitle eyebrow="运营日志" title="广告日报记录" description="把原本散乱的日报统一绑定到广告名称之下，方便持续追踪每一次调整动作。" />
+      <SectionTitle eyebrow="运营日志" title="广告日报记录" description="把原本散乱的日报统一绑定到广告名称之下，便于持续追踪每一次预算、出价和 SKU 调整。" />
       {notesCrud ? (
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
           <button type="button" onClick={startCreate} className="erp-button-primary inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold">
@@ -891,9 +915,9 @@ export function AdImportMapping() {
   return (
     <section className="grid gap-5 xl:grid-cols-[1fr,0.95fr]">
       <div className="erp-card p-6">
-        <SectionTitle eyebrow="导入计划" title="数据导入与同步" description="支持 CSV / Excel / API 的统一字段映射，后续可以直接接入真实 Coupang Ads 数据。" />
+      <SectionTitle eyebrow="导入计划" title="数据导入与同步" description="支持 CSV / Excel / API 的统一字段映射，后续可以直接接入真实 Coupang Ads 数据流。" />
         <div className="mt-5 rounded-[24px] border border-dashed border-line bg-[#fafaf9] p-6 text-sm leading-7 text-muted">
-          当前阶段已经完成映射规范、广告对象结构和数据容错层。下一步可以直接把上传预览、字段映射和重复校验接起来。
+          当前阶段已经完成映射规范、广告对象结构和数据容错层。下一步可以直接接入上传预览、字段映射与重复校验流程。
         </div>
       </div>
       <div className="erp-card overflow-hidden">
@@ -934,7 +958,7 @@ function RankingsPage({ cards }: { cards: AdvertisingAdCard[] }) {
     <section className="grid gap-5 xl:grid-cols-2">
       {panels.map((panel) => (
         <div key={panel.title} className="erp-card p-6">
-          <SectionTitle eyebrow="广告排行" title={panel.title} description="所有广告名称都可以直接点击进入广告详情页。" />
+          <SectionTitle eyebrow="广告排行" title={panel.title} description="所有广告名称都支持直接点击进入对应的广告详情页。" />
           <div className="mt-5 space-y-3">
             {panel.items.map((card, index) => (
               <Link key={card.ad.id} href={`/advertising/ads/${card.ad.id}`} className="flex items-center justify-between rounded-2xl border border-line bg-[#fafaf9] px-4 py-4 transition hover:-translate-y-0.5 hover:shadow-soft">
@@ -966,7 +990,7 @@ function RulesPage() {
 
   return (
     <section className="erp-card p-6">
-      <SectionTitle eyebrow="规则中心" title="广告规则设置" description="先把规则逻辑清晰沉淀下来，后续可以直接接入 ad_rules 配置表。" />
+      <SectionTitle eyebrow="规则中心" title="广告规则设置" description="先把规则逻辑清晰沉淀下来，后续可以直接接入 ad_rules 配置表做动态管理。" />
       <div className="mt-5 grid gap-3">
         {rules.map((rule) => (
           <div key={rule} className="rounded-2xl border border-line bg-[#fafaf9] px-4 py-4 text-sm text-ink">
