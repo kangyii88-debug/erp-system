@@ -818,7 +818,17 @@ function SalesContent() {
 
                   {expanded ? (
                     <div className="overflow-x-auto px-4 pb-4">
-                      <table className="w-full min-w-[980px] text-sm">
+                      <table className="w-full min-w-[1120px] table-fixed text-sm">
+                        <colgroup>
+                          <col className="w-[9rem]" />
+                          <col className="w-[12rem]" />
+                          <col className="w-[24rem]" />
+                          <col className="w-[7rem]" />
+                          <col className="w-[7rem]" />
+                          <col className="w-[7rem]" />
+                          <col className="w-[14rem]" />
+                          <col className="w-[10rem]" />
+                        </colgroup>
                         <thead>
                           <tr className="text-left text-xs uppercase tracking-[0.12em] text-muted">
                             <TableHead>{text.saleDate}</TableHead>
@@ -836,31 +846,31 @@ function SalesContent() {
                             const product = productMap.get(sale.product_id);
                             return (
                               <tr key={sale.id} className="group border-t border-line/70 transition hover:bg-[rgba(23,72,63,0.035)]">
-                                <TableCell>{formatDate(sale.happened_at)}</TableCell>
+                                <TableCell nowrap>{formatDate(sale.happened_at)}</TableCell>
                                 <TableCell>
                                   <span className="rounded-full bg-[var(--color-primary-soft)] px-2.5 py-1 text-xs font-bold text-[var(--color-primary)]">
                                     {sale.products?.sku ?? product?.sku}
                                   </span>
                                 </TableCell>
                                 <TableCell>
-                                  <div className="max-w-[360px] truncate font-semibold text-ink" title={sale.products?.name ?? product?.name}>
+                                  <div className="truncate font-semibold text-ink" title={sale.products?.name ?? product?.name}>
                                     {sale.products?.name ?? product?.name}
                                   </div>
                                 </TableCell>
-                                <TableCell>{localizedColor(product ?? sale.products, language)}</TableCell>
-                                <TableCell>{normalizeSize(product?.size ?? sale.products?.size ?? "")}</TableCell>
+                                <TableCell nowrap>{localizedColor(product ?? sale.products, language)}</TableCell>
+                                <TableCell nowrap>{normalizeSize(product?.size ?? sale.products?.size ?? "")}</TableCell>
                                 <TableCell align="center">
                                   <span className="tabular-nums text-base font-bold">{formatNumber(sale.quantity)}</span>
                                 </TableCell>
                                 <TableCell>
-                                  <span className="block max-w-[260px] truncate text-muted" title={sale.memo ?? ""}>
+                                  <span className="block truncate text-muted" title={sale.memo ?? ""}>
                                     {sale.memo || "-"}
                                   </span>
                                 </TableCell>
                                 <TableCell align="right">
                                   <div className="flex justify-end gap-2">
                                     <button
-                                      className="inline-flex items-center gap-1 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700"
+                                      className="inline-flex min-w-[4rem] items-center justify-center gap-1 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700"
                                       type="button"
                                       onClick={() => startEdit(sale)}
                                     >
@@ -868,7 +878,7 @@ function SalesContent() {
                                       {text.edit}
                                     </button>
                                     <button
-                                      className="inline-flex items-center gap-1 rounded-xl border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-bold text-red-700"
+                                      className="inline-flex min-w-[4rem] items-center justify-center gap-1 rounded-xl border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-bold text-red-700"
                                       type="button"
                                       onClick={() => deleteSale(sale)}
                                     >
@@ -979,11 +989,19 @@ function PreviewBadge({ label, value, tone = "neutral" }: { label: string; value
 }
 
 function TableHead({ children, align = "left" }: { children: React.ReactNode; align?: "left" | "center" | "right" }) {
-  return <th className={`bg-white/70 px-4 py-3 font-bold ${alignClass(align)}`}>{children}</th>;
+  return <th className={`bg-white/70 px-4 py-3 font-bold whitespace-nowrap ${alignClass(align)}`}>{children}</th>;
 }
 
-function TableCell({ children, align = "left" }: { children: React.ReactNode; align?: "left" | "center" | "right" }) {
-  return <td className={`px-4 py-3 align-middle ${alignClass(align)}`}>{children}</td>;
+function TableCell({
+  children,
+  align = "left",
+  nowrap = false
+}: {
+  children: React.ReactNode;
+  align?: "left" | "center" | "right";
+  nowrap?: boolean;
+}) {
+  return <td className={`px-4 py-3 align-middle ${nowrap ? "whitespace-nowrap" : ""} ${alignClass(align)}`}>{children}</td>;
 }
 
 function EmptyState({ title, desc, compact = false }: { title: string; desc: string; compact?: boolean }) {
