@@ -102,6 +102,15 @@ type SkuAgg = Metrics & {
   status: "scale" | "keep" | "reduce" | "pause";
 };
 
+type CampaignParsed = {
+  raw: string;
+  title: string;
+  tags: string[];
+  descriptor: string;
+};
+
+const LEDGER_PAGE_SIZE = 12;
+
 const emptyForm: FormState = {
   record_date: todayKst(),
   campaign_name: "",
@@ -334,6 +343,9 @@ export default function AdvertisingPage() {
 function AdvertisingDailyCenter() {
   const { language } = useLanguage();
   const c = copy[language];
+  const pagerCopy = language === "ko"
+    ? { previous: "이전", next: "다음", page: "페이지", showing: "표시" }
+    : { previous: "上一页", next: "下一页", page: "页", showing: "显示" };
   const [records, setRecords] = useState<DailyAdRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -347,6 +359,7 @@ function AdvertisingDailyCenter() {
   const [rankingMetric, setRankingMetric] = useState<RankingMetric>("roas");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [ledgerPage, setLedgerPage] = useState(1);
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({ key: "ad_sales", dir: "desc" });
 
   useEffect(() => {
@@ -441,6 +454,27 @@ function AdvertisingDailyCenter() {
   const rankingRows = useMemo(() => [...skuRows].sort((a, b) => Number(b[rankingMetric]) - Number(a[rankingMetric])).slice(0, 10), [skuRows, rankingMetric]);
   const rankingTabs = useMemo(() => (Object.entries(c.rankingTabs) as Array<[RankingMetric, string]>).map(([key, label]) => ({ key, label })), [c]);
   const insights = useMemo(() => buildInsights(skuRows, metrics, comparisonMetrics, c), [skuRows, metrics, comparisonMetrics, c]);
+  const ledgerTotalPages = Math.max(1, Math.ceil(rangeRecords.length / LEDGER_PAGE_SIZE));
+  const pagedLedgerRecords = useMemo(() => {
+    const start = (ledgerPage - 1) * LEDGER_PAGE_SIZE;
+    return rangeRecords.slice(start, start + LEDGER_PAGE_SIZE);
+  }, [ledgerPage, rangeRecords]);
+  const ledgerPageNumbers = useMemo(() => {
+    const start = Math.max(1, ledgerPage - 2);
+    const end = Math.min(ledgerTotalPages, start + 4);
+    const adjustedStart = Math.max(1, end - 4);
+    return Array.from({ length: end - adjustedStart + 1 }, (_, index) => adjustedStart + index);
+  }, [ledgerPage, ledgerTotalPages]);
+
+  useEffect(() => {
+    setLedgerPage(1);
+  }, [preset, customStart, customEnd, records.length]);
+
+  useEffect(() => {
+    if (ledgerPage > ledgerTotalPages) {
+      setLedgerPage(ledgerTotalPages);
+    }
+  }, [ledgerPage, ledgerTotalPages]);
 
   return (
     <div className="space-y-6">
@@ -597,7 +631,18 @@ function AdvertisingDailyCenter() {
             <Plus className="h-4 w-4" /> {c.newRecord}
           </button>
         </div>
-        <RecordLedger c={c} records={rangeRecords} onEdit={startEdit} onDelete={deleteRecord} />
+        <RecordLedger
+          c={c}
+          records={pagedLedgerRecords}
+          totalRecords={rangeRecords.length}
+          page={ledgerPage}
+          totalPages={ledgerTotalPages}
+          pageNumbers={ledgerPageNumbers}
+          pagerCopy={pagerCopy}
+          onPageChange={setLedgerPage}
+          onEdit={startEdit}
+          onDelete={deleteRecord}
+        />
       </section>
     </div>
   );
@@ -733,42 +778,120 @@ function RankingList({ c, rows, metric }: { c: PageCopy; rows: SkuAgg[]; metric:
   );
 }
 
-function RecordLedger({ c, records, onEdit, onDelete }: { c: PageCopy; records: DailyAdRecord[]; onEdit: (record: DailyAdRecord) => void; onDelete: (id: string) => void }) {
-  if (!records.length) return <PanelEmpty title={c.ledgerEmptyTitle} text={c.ledgerEmptyText} />;
+function RecordLedger({
+  c,
+  records,
+  totalRecords,
+  page,
+  totalPages,
+  pageNumbers,
+  pagerCopy,
+  onPageChange,
+  onEdit,
+  onDelete
+}: {
+  c: PageCopy;
+  records: DailyAdRecord[];
+  totalRecords: number;
+  page: number;
+  totalPages: number;
+  pageNumbers: number[];
+  pagerCopy: { previous: string; next: string; page: string; showing: string };
+  onPageChange: (page: number) => void;
+  onEdit: (record: DailyAdRecord) => void;
+  onDelete: (id: string) => void;
+}) {
+  if (!totalRecords) return <PanelEmpty title={c.ledgerEmptyTitle} text={c.ledgerEmptyText} />;
   return (
-    <div className="overflow-x-auto rounded-2xl border border-line bg-white">
-      <table className="min-w-[1180px] w-full text-left text-sm">
-        <thead className="bg-[#f7f5ed] text-xs uppercase tracking-[0.14em] text-muted">
-          <tr>
-            {c.columns.map((item) => <th key={item} className="px-4 py-3">{item}</th>)}
-          </tr>
-        </thead>
-        <tbody>
-          {records.map((record) => (
-            <tr key={record.id} className="border-t border-line/70 transition hover:bg-[#f9fafb]">
-              <td className="px-4 py-3">{formatDate(record.record_date)}</td>
-              <td className="px-4 py-3 font-semibold text-ink">{record.campaign_name}</td>
-              <td className="px-4 py-3 font-mono text-xs">{record.sku}</td>
-              <td className="px-4 py-3">{record.product_name}</td>
-              <td className="px-4 py-3">{won(record.ad_spend)}</td>
-              <td className="px-4 py-3">{won(record.ad_sales)}</td>
-              <td className="px-4 py-3">{formatNumber(record.impressions, 0)}</td>
-              <td className="px-4 py-3">{formatNumber(record.clicks, 0)}</td>
-              <td className="px-4 py-3">{formatNumber(displayCtr(record), 2)}%</td>
-              <td className="px-4 py-3">{formatNumber(record.ad_sales_count, 0)}</td>
-              <td className="px-4 py-3">{formatNumber(record.ad_order_count, 0)}</td>
-              <td className="px-4 py-3">{formatNumber(displayRoas(record) * 100, 2)}%</td>
-              <td className="px-4 py-3">{formatNumber(displayConversionRate(record), 2)}%</td>
-              <td className="px-4 py-3">
-                <div className="flex gap-2">
-                  <button className="erp-button-subtle inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold" onClick={() => onEdit(record)}><Edit3 className="h-3.5 w-3.5" />{c.edit}</button>
-                  <button className="erp-button-subtle inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold text-red-700" onClick={() => onDelete(record.id)}><Trash2 className="h-3.5 w-3.5" />{c.delete}</button>
-                </div>
-              </td>
+    <div className="overflow-hidden rounded-2xl border border-line bg-white shadow-[0_18px_48px_rgba(17,24,39,0.045)]">
+      <div className="overflow-x-auto">
+        <table className="min-w-[1180px] w-full text-left text-sm">
+          <thead className="bg-[#f7f5ed] text-xs uppercase tracking-[0.14em] text-muted">
+            <tr>
+              {c.columns.map((item) => <th key={item} className="px-4 py-3">{item}</th>)}
             </tr>
+          </thead>
+          <tbody>
+            {records.map((record) => (
+              <tr key={record.id} className="border-t border-line/70 align-top transition hover:bg-[#f9fafb]">
+                <td className="px-4 py-3 whitespace-nowrap">{formatDate(record.record_date)}</td>
+                <td className="px-4 py-3"><CampaignNameCell name={record.campaign_name} /></td>
+                <td className="px-4 py-3 font-mono text-xs">{record.sku}</td>
+                <td className="px-4 py-3">{record.product_name}</td>
+                <td className="px-4 py-3">{won(record.ad_spend)}</td>
+                <td className="px-4 py-3">{won(record.ad_sales)}</td>
+                <td className="px-4 py-3">{formatNumber(record.impressions, 0)}</td>
+                <td className="px-4 py-3">{formatNumber(record.clicks, 0)}</td>
+                <td className="px-4 py-3">{formatNumber(displayCtr(record), 2)}%</td>
+                <td className="px-4 py-3">{formatNumber(record.ad_sales_count, 0)}</td>
+                <td className="px-4 py-3">{formatNumber(record.ad_order_count, 0)}</td>
+                <td className="px-4 py-3">{formatNumber(displayRoas(record) * 100, 2)}%</td>
+                <td className="px-4 py-3">{formatNumber(displayConversionRate(record), 2)}%</td>
+                <td className="px-4 py-3">
+                  <div className="flex gap-2">
+                    <button className="erp-button-subtle inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold" onClick={() => onEdit(record)}><Edit3 className="h-3.5 w-3.5" />{c.edit}</button>
+                    <button className="erp-button-subtle inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold text-red-700" onClick={() => onDelete(record.id)}><Trash2 className="h-3.5 w-3.5" />{c.delete}</button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="flex flex-col gap-3 border-t border-line bg-[#fcfdff] px-4 py-4 md:flex-row md:items-center md:justify-between">
+        <div className="text-sm font-semibold text-muted">
+          {pagerCopy.showing} <span className="text-ink">{formatNumber((page - 1) * LEDGER_PAGE_SIZE + 1, 0)}</span>
+          {" - "}
+          <span className="text-ink">{formatNumber(Math.min(page * LEDGER_PAGE_SIZE, totalRecords), 0)}</span>
+          {" / "}
+          <span className="text-ink">{formatNumber(totalRecords, 0)}</span>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <button type="button" onClick={() => onPageChange(Math.max(1, page - 1))} disabled={page === 1} className="rounded-xl border border-line bg-white px-3 py-2 text-sm font-semibold text-ink shadow-sm transition hover:border-[#2563eb]/30 hover:text-[#2563eb] disabled:cursor-not-allowed disabled:opacity-45">
+            {pagerCopy.previous}
+          </button>
+          {pageNumbers.map((pageNumber) => (
+            <button key={pageNumber} type="button" onClick={() => onPageChange(pageNumber)} className={`h-10 min-w-10 rounded-xl px-3 text-sm font-bold transition ${pageNumber === page ? "bg-[#111827] text-white shadow-soft" : "border border-line bg-white text-ink hover:border-[#2563eb]/30 hover:text-[#2563eb]"}`}>
+              {pageNumber}
+            </button>
           ))}
-        </tbody>
-      </table>
+          <button type="button" onClick={() => onPageChange(Math.min(totalPages, page + 1))} disabled={page === totalPages} className="rounded-xl border border-line bg-white px-3 py-2 text-sm font-semibold text-ink shadow-sm transition hover:border-[#2563eb]/30 hover:text-[#2563eb] disabled:cursor-not-allowed disabled:opacity-45">
+            {pagerCopy.next}
+          </button>
+          <div className="ml-1 text-sm font-semibold text-muted">
+            {pagerCopy.page} <span className="text-ink">{formatNumber(page, 0)}</span> / <span className="text-ink">{formatNumber(totalPages, 0)}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CampaignNameCell({ name }: { name: string }) {
+  const parsed = parseCampaignName(name);
+
+  return (
+    <div className="min-w-[300px] max-w-[360px]">
+      <div className="text-sm font-semibold leading-5 text-ink">{parsed.title}</div>
+      {parsed.tags.length ? (
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {parsed.tags.slice(0, 4).map((tag) => (
+            <span key={tag} className="rounded-full border border-line bg-[#f7f5ed] px-2 py-1 text-[11px] font-bold text-muted">
+              {tag}
+            </span>
+          ))}
+        </div>
+      ) : null}
+      {parsed.descriptor ? (
+        <div className="mt-2 line-clamp-1 text-xs font-medium text-ink/70" title={parsed.descriptor}>
+          {parsed.descriptor}
+        </div>
+      ) : null}
+      {parsed.raw !== parsed.title ? (
+        <div className="mt-2 line-clamp-1 text-xs text-muted" title={parsed.raw}>
+          {parsed.raw}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -983,6 +1106,30 @@ function buildPayload(form: FormState) {
 
 function payloadToPreview(form: FormState): DailyAdRecord {
   return { id: "preview", user_id: "", created_at: "", ...buildPayload(form), updated_at: null };
+}
+
+function parseCampaignName(value: string) {
+  const raw = String(value ?? "").trim();
+  const cleaned = raw.replace(/[_/|,\-]+/g, " ").replace(/\s+/g, " ").trim();
+  const tokens = raw
+    .split(/[_/,|\-]+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+  const tags = tokens
+    .filter((item, index, list) => list.indexOf(item) === index)
+    .filter((item) => item.length > 1);
+  const title =
+    tags.find((item) => /广告|광고|campaign|매출|销量|테스트|설치/i.test(item)) ||
+    cleaned ||
+    "-";
+  const descriptor = cleaned.replace(title, "").trim();
+
+  return {
+    raw: raw || "-",
+    title,
+    tags: tags.filter((item) => item !== title).slice(0, 6),
+    descriptor
+  };
 }
 
 function buildMetrics(rows: DailyAdRecord[]): Metrics {
