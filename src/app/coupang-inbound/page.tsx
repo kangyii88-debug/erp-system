@@ -1,15 +1,16 @@
-"use client";
+﻿"use client";
 
 import type { FormEvent, ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import type { LucideIcon } from "lucide-react";
-import { AlertCircle, Boxes, CalendarDays, ClipboardList, Info, PackageCheck, Search, Truck } from "lucide-react";
+import { AlertCircle, Boxes, ClipboardList, Info, PackageCheck, Search, Truck } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/Card";
 import { useLanguage } from "@/components/LanguageProvider";
 import { activeProducts } from "@/lib/products";
 import { supabase } from "@/lib/supabase";
 import type { CoupangInboundRecord, ProductWithStock } from "@/lib/types";
+import { buildSkuPickerState, countProductsBySeries, detectProductSeries, PRODUCT_SERIES_ORDER, seriesLabel, toSkuPickerItem, type ProductSeriesFilter } from "./sku-picker";
 
 type InboundMethod = CoupangInboundRecord["inbound_method"];
 type OutboundLocation = CoupangInboundRecord["outbound_location"];
@@ -52,15 +53,15 @@ const copy = {
   zh: {
     eyebrow: "COUPANG INBOUND",
     title: "Coupang 入仓记录",
-    subtitle: "记录商品发往 Coupang 仓库的日期、方式、接收状态、异常预警和采购批次。",
-    notice: "该页面仅用于 Coupang 入仓过程记录，不直接影响当前库存。实际库存请在库存管理中维护。",
-    noStockImpact: "新增、编辑、删除、修改接收状态或确认入库数量，都不会改变当前库存数量。",
+    subtitle: "记录发往 Coupang 仓库的日期、方式、接收状态、异常预警和采购批次信息。",
+    notice: "该页面仅用于记录 Coupang 入仓过程，不直接影响当前库存。实际库存请在库存管理中维护。",
+    noStockImpact: "新增、编辑、删除和状态变更都不会改动当前库存数量。",
     stats: {
       records: "本月入仓记录数量",
       quantity: "本月确认入库数量",
       pending: "待接收数量",
       received: "已接收数量",
-      issues: "异常/差异数量"
+      issues: "异常 / 差异数量"
     },
     formAdd: "新增入仓记录",
     formEdit: "编辑入仓记录",
@@ -78,9 +79,9 @@ const copy = {
       milkRunType: "Milk Run 类型",
       reservationNumber: "预约号 / 入库单号",
       receiveStatus: "Coupang 接收状态",
-      discrepancyStatus: "差异预警",
+      discrepancyStatus: "差异状态",
       applicationDate: "申请日期",
-      expectedInboundDate: "预计入库日",
+      expectedInboundDate: "预计入仓日期",
       purchaseBatchNo: "采购批次号",
       memo: "备注",
       actions: "操作"
@@ -94,23 +95,23 @@ const copy = {
       office: "办公室发出"
     },
     milkRun: {
-      parcel: "택배",
-      pallet: "팔레트",
-      truck: "트럭"
+      parcel: "快递",
+      pallet: "托盘",
+      truck: "卡车"
     },
     receiveStatus: {
       pending: "待接收",
-      received: "Coupang 已接收",
+      received: "已接收",
       partial: "部分接收",
-      issue: "异常"
+      issue: "有异常"
     },
     discrepancy: {
       normal: "正常",
-      quantity_mismatch: "数量不一致",
+      quantity_mismatch: "数量不符",
       follow_up: "待跟进",
       lost: "丢失",
-      damaged: "损耗",
-      lost_or_damaged: "丢失/损耗"
+      damaged: "破损",
+      lost_or_damaged: "丢失 / 破损"
     },
     allYears: "全部年份",
     allMonths: "全部月份",
@@ -118,7 +119,7 @@ const copy = {
     allLocations: "全部发出地点",
     allReceiveStatus: "全部接收状态",
     allDiscrepancy: "全部差异状态",
-    searchSku: "搜索 SKU",
+    searchSku: "搜索尺寸 / SKU / 商品名",
     searchProduct: "搜索商品名称",
     searchBatch: "搜索采购批次号",
     startDate: "开始日期",
@@ -132,24 +133,24 @@ const copy = {
     empty: "暂无 Coupang 入仓记录",
     loading: "正在加载入仓记录...",
     records: "条记录",
-    autoCalcHint: "确认入库数量默认按“箱数 × 每箱数量”自动计算，也可以手动修改。",
-    deleteConfirm: "确定删除该 Coupang 入仓记录吗？删除后不可恢复，但不会影响库存数量。",
+    autoCalcHint: "确认入库数量默认按箱数乘以每箱数量自动计算，也可以手动覆盖。",
+    deleteConfirm: "确定删除这条 Coupang 入仓记录吗？删除后不可恢复，但不会影响库存数量。",
     productRequired: "请选择 SKU。",
-    dateRequired: "请输入入仓日期。",
+    dateRequired: "请选择入仓日期。",
     productNameRequired: "请输入商品名称。"
   },
   ko: {
     eyebrow: "COUPANG INBOUND",
     title: "Coupang 입고 기록",
-    subtitle: "Coupang 창고로 보낸 상품의 날짜, 방식, 접수 상태, 차이 경고와 구매 배치를 기록합니다.",
-    notice: "이 페이지는 Coupang 입고 과정 기록용이며 현재 재고 수량에는 직접 반영되지 않습니다. 실제 재고는 재고 관리에서 관리해주세요.",
-    noStockImpact: "추가, 수정, 삭제, 접수 상태 변경 또는 확인 입고 수량 변경은 현재 재고 수량을 변경하지 않습니다.",
+    subtitle: "Coupang 창고로 보내는 상품의 날짜, 방식, 접수 상태, 이상 여부와 구매 배치를 기록합니다.",
+    notice: "이 페이지는 Coupang 입고 과정을 기록하기 위한 용도이며 현재 재고를 직접 변경하지 않습니다. 실제 재고는 재고 관리에서 유지해 주세요.",
+    noStockImpact: "추가, 수정, 삭제와 상태 변경은 현재 재고 수량에 영향을 주지 않습니다.",
     stats: {
       records: "이번 달 입고 기록 수",
       quantity: "이번 달 확인 입고 수량",
       pending: "대기 수량",
-      received: "접수완료 수량",
-      issues: "이상/차이 건수"
+      received: "접수 완료 수량",
+      issues: "이상 / 차이 건수"
     },
     formAdd: "입고 기록 추가",
     formEdit: "입고 기록 수정",
@@ -159,15 +160,15 @@ const copy = {
       inboundDate: "입고일",
       sku: "SKU",
       productName: "상품명",
-      boxCount: "박스 수량",
+      boxCount: "박스 수",
       unitsPerBox: "박스당 수량",
       confirmedQuantity: "확인 입고 수량",
-      inboundMethod: "입고 방법",
+      inboundMethod: "입고 방식",
       outboundLocation: "출고 위치",
-      milkRunType: "밀크런 타입",
-      reservationNumber: "입고 예약번호 / 입고번호",
+      milkRunType: "Milk Run 유형",
+      reservationNumber: "예약번호 / 입고번호",
       receiveStatus: "Coupang 접수 상태",
-      discrepancyStatus: "차이 경고",
+      discrepancyStatus: "차이 상태",
       applicationDate: "신청일",
       expectedInboundDate: "예정 입고일",
       purchaseBatchNo: "구매 배치번호",
@@ -175,8 +176,8 @@ const copy = {
       actions: "작업"
     },
     method: {
-      parcel: "택배로 보내기",
-      milk_run: "밀크런"
+      parcel: "택배 발송",
+      milk_run: "Milk Run"
     },
     location: {
       warehouse: "창고 출고",
@@ -189,8 +190,8 @@ const copy = {
     },
     receiveStatus: {
       pending: "대기",
-      received: "Coupang 접수완료",
-      partial: "부분입고",
+      received: "접수 완료",
+      partial: "부분 접수",
       issue: "이상"
     },
     discrepancy: {
@@ -198,16 +199,16 @@ const copy = {
       quantity_mismatch: "수량 불일치",
       follow_up: "확인 필요",
       lost: "분실",
-      damaged: "손상",
-      lost_or_damaged: "분실/손상"
+      damaged: "파손",
+      lost_or_damaged: "분실 / 파손"
     },
     allYears: "전체 연도",
     allMonths: "전체 월",
-    allMethods: "전체 입고 방법",
+    allMethods: "전체 입고 방식",
     allLocations: "전체 출고 위치",
     allReceiveStatus: "전체 접수 상태",
     allDiscrepancy: "전체 차이 상태",
-    searchSku: "SKU 검색",
+    searchSku: "사이즈 / SKU / 상품명 검색",
     searchProduct: "상품명 검색",
     searchBatch: "구매 배치번호 검색",
     startDate: "시작일",
@@ -221,11 +222,11 @@ const copy = {
     empty: "Coupang 입고 기록이 없습니다",
     loading: "입고 기록을 불러오는 중...",
     records: "건",
-    autoCalcHint: "확인 입고 수량은 기본적으로 박스 수량 × 박스당 수량으로 자동 계산되며 직접 수정할 수 있습니다.",
+    autoCalcHint: "확인 입고 수량은 기본적으로 박스 수 곱하기 박스당 수량으로 자동 계산되며 직접 수정할 수도 있습니다.",
     deleteConfirm: "이 Coupang 입고 기록을 삭제하시겠습니까? 삭제 후 복구할 수 없지만 재고 수량에는 영향을 주지 않습니다.",
-    productRequired: "SKU를 선택해주세요.",
-    dateRequired: "입고일을 입력해주세요.",
-    productNameRequired: "상품명을 입력해주세요."
+    productRequired: "SKU를 선택해 주세요.",
+    dateRequired: "입고일을 입력해 주세요.",
+    productNameRequired: "상품명을 입력해 주세요."
   }
 } as const;
 
@@ -249,6 +250,25 @@ const initialForm: FormState = {
   memo: ""
 };
 
+const skuPickerCopy = {
+  zh: {
+    all: "全部",
+    searchHint: "先按系列筛选，再搜索尺寸 / SKU / 商品名",
+    selected: "已选 SKU",
+    empty: "没有匹配的 SKU",
+    clearSearch: "清空搜索",
+    selectedPlaceholder: "还没有选择 SKU"
+  },
+  ko: {
+    all: "전체",
+    searchHint: "시리즈를 고른 뒤 사이즈 / SKU / 상품명을 검색하세요",
+    selected: "선택한 SKU",
+    empty: "일치하는 SKU가 없습니다",
+    clearSearch: "검색 지우기",
+    selectedPlaceholder: "아직 SKU를 선택하지 않았습니다"
+  }
+} as const;
+
 export default function CoupangInboundPage() {
   return (
     <AppShell>
@@ -266,6 +286,8 @@ function CoupangInboundContent() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
+  const [seriesFilter, setSeriesFilter] = useState<ProductSeriesFilter>("all");
+  const [skuQuery, setSkuQuery] = useState("");
   const [filters, setFilters] = useState({
     year: currentYear,
     month: currentMonth,
@@ -281,7 +303,11 @@ function CoupangInboundContent() {
   });
 
   const visibleProducts = useMemo(() => activeProducts(products), [products]);
-  const productGroupsByColor = useMemo(() => groupProductsByColor(visibleProducts, language), [visibleProducts, language]);
+  const pickerText = skuPickerCopy[language];
+  const skuSeriesCounts = useMemo(() => countProductsBySeries(visibleProducts), [visibleProducts]);
+  const skuPickerState = useMemo(() => buildSkuPickerState(visibleProducts, language, seriesFilter, skuQuery), [visibleProducts, language, seriesFilter, skuQuery]);
+  const selectedProduct = useMemo(() => visibleProducts.find((item) => item.id === form.product_id) ?? null, [visibleProducts, form.product_id]);
+  const selectedSkuItem = useMemo(() => (selectedProduct ? toSkuPickerItem(selectedProduct, language) : null), [selectedProduct, language]);
 
   useEffect(() => {
     void loadData();
@@ -308,6 +334,10 @@ function CoupangInboundContent() {
       sku: product?.sku ?? "",
       product_name: product?.name ?? ""
     }));
+    if (product) {
+      setSeriesFilter(detectProductSeries(product));
+      setSkuQuery("");
+    }
   }
 
   function updateBoxCount(value: string) {
@@ -396,12 +426,17 @@ function CoupangInboundContent() {
       purchase_batch_no: record.purchase_batch_no ?? "",
       memo: record.memo ?? ""
     });
+    const currentProduct = visibleProducts.find((item) => item.id === record.product_id) ?? visibleProducts.find((item) => item.sku === record.sku);
+    setSeriesFilter(currentProduct ? detectProductSeries(currentProduct) : "all");
+    setSkuQuery("");
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function resetForm() {
     setEditingId(null);
     setForm({ ...initialForm, inbound_date: toDateInput(new Date()) });
+    setSeriesFilter("all");
+    setSkuQuery("");
   }
 
   async function deleteRecord(id: string) {
@@ -502,19 +537,99 @@ function CoupangInboundContent() {
           <Field label={text.fields.inboundDate}>
             <input type="date" value={form.inbound_date} onChange={(event) => setForm({ ...form, inbound_date: event.target.value })} required />
           </Field>
-          <Field label={text.fields.sku}>
-            <select value={form.product_id} onChange={(event) => selectProduct(event.target.value)} required>
-              <option value="">{text.selectSku}</option>
-              {productGroupsByColor.map(([color, group]) => (
-                <optgroup key={color} label={`${color} (${group.length})`}>
-                  {group.map((product) => (
-                    <option key={product.id} value={product.id}>
-                      {productOptionLabel(product)}
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
-            </select>
+          <Field label={text.fields.sku} className="lg:col-span-2">
+            <div className="rounded-2xl border border-line bg-panel/30 p-3">
+              <div className="rounded-2xl border border-brand/15 bg-white px-3 py-2.5 shadow-sm">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">{pickerText.selected}</div>
+                {selectedSkuItem ? (
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <span className="rounded-full bg-brand/10 px-2.5 py-1 text-xs font-semibold text-brand">{selectedSkuItem.seriesLabel}</span>
+                    <span className="text-sm font-semibold text-ink">{selectedSkuItem.sizeLabel}</span>
+                    <span className="text-sm text-muted">{selectedSkuItem.colorLabel}</span>
+                    <span className="font-mono text-xs text-muted">{selectedSkuItem.sku}</span>
+                  </div>
+                ) : (
+                  <div className="mt-2 text-sm text-muted">{pickerText.selectedPlaceholder}</div>
+                )}
+              </div>
+
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSeriesFilter("all")}
+                  className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${seriesFilter === "all" ? "bg-ink text-white shadow-sm" : "border border-line bg-white text-muted hover:border-brand/30 hover:text-ink"}`}
+                >
+                  {pickerText.all} ({visibleProducts.length})
+                </button>
+                {PRODUCT_SERIES_ORDER.map((series) => (
+                  <button
+                    key={series}
+                    type="button"
+                    onClick={() => setSeriesFilter(series)}
+                    className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${seriesFilter === series ? "bg-brand text-white shadow-sm" : "border border-line bg-white text-muted hover:border-brand/30 hover:text-ink"}`}
+                  >
+                    {seriesLabel(series, language)} ({skuSeriesCounts[series]})
+                  </button>
+                ))}
+              </div>
+
+              <div className="relative mt-3">
+                <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted" />
+                <input className="w-full pl-9 pr-10" placeholder={text.searchSku} value={skuQuery} onChange={(event) => setSkuQuery(event.target.value)} />
+                {skuQuery ? (
+                  <button
+                    type="button"
+                    aria-label={pickerText.clearSearch}
+                    onClick={() => setSkuQuery("")}
+                    className="absolute right-2 top-2 rounded-lg px-2 py-1 text-xs font-semibold text-muted transition hover:bg-panel hover:text-ink"
+                  >
+                    횞
+                  </button>
+                ) : null}
+              </div>
+
+              <div className="mt-2 text-xs text-muted">{pickerText.searchHint}</div>
+
+              <div className="mt-3 max-h-72 overflow-y-auto rounded-2xl border border-line bg-white">
+                {skuPickerState.groups.length ? (
+                  skuPickerState.groups.map((group) => (
+                    <div key={group.series} className="border-b border-line last:border-b-0">
+                      <div className="sticky top-0 flex items-center justify-between bg-panel/95 px-3 py-2 text-xs font-semibold text-muted backdrop-blur">
+                        <span>{group.label}</span>
+                        <span>{group.count}</span>
+                      </div>
+                      <div className="p-2">
+                        {group.items.map((item) => {
+                          const active = item.id === form.product_id;
+                          return (
+                            <button
+                              key={item.id}
+                              type="button"
+                              onClick={() => selectProduct(item.id)}
+                              className={`mb-2 w-full rounded-2xl border px-3 py-3 text-left transition last:mb-0 ${active ? "border-brand bg-brand/5 shadow-sm" : "border-transparent bg-panel/40 hover:border-brand/20 hover:bg-panel"}`}
+                            >
+                              <div className="flex items-start justify-between gap-3">
+                                <div>
+                                  <div className="text-sm font-semibold text-ink">{item.sizeLabel}</div>
+                                  <div className="mt-1 text-xs text-muted">{item.productName}</div>
+                                </div>
+                                <span className="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-600">{item.colorLabel}</span>
+                              </div>
+                              <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
+                                <span>{item.seriesLabel}</span>
+                                <span className="font-mono">{item.sku}</span>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="px-4 py-8 text-center text-sm text-muted">{pickerText.empty}</div>
+                )}
+              </div>
+            </div>
           </Field>
           <Field label={text.fields.productName} className="lg:col-span-2">
             <input value={form.product_name} onChange={(event) => setForm({ ...form, product_name: event.target.value })} required />
@@ -826,75 +941,6 @@ function normalizeDiscrepancy(status: DiscrepancyStatus): ActiveDiscrepancyStatu
   return status === "lost_or_damaged" ? "damaged" : status;
 }
 
-function groupProductsByColor(products: ProductWithStock[], language: "zh" | "ko") {
-  const groups = new Map<string, ProductWithStock[]>();
-
-  products
-    .slice()
-    .sort(compareProducts)
-    .forEach((product) => {
-      const color = localizedColor(product, language);
-      const group = groups.get(color) ?? [];
-      group.push(product);
-      groups.set(color, group);
-    });
-
-  return Array.from(groups.entries()).sort(([, productsA], [, productsB]) => colorSortIndex(productsA[0]) - colorSortIndex(productsB[0]));
-}
-
-function productOptionLabel(product: ProductWithStock) {
-  return `${normalizeSize(product.size)} | ${product.name}`;
-}
-
-function compareProducts(a: ProductWithStock, b: ProductWithStock) {
-  const sizeDiff = sizeSortIndex(a.size) - sizeSortIndex(b.size);
-  if (sizeDiff !== 0) return sizeDiff;
-
-  const colorDiff = colorSortIndex(a) - colorSortIndex(b);
-  if (colorDiff !== 0) return colorDiff;
-
-  return a.sku.localeCompare(b.sku);
-}
-
-function localizedColor(product: Pick<ProductWithStock, "sku" | "color">, language: "zh" | "ko") {
-  const suffix = product.sku?.match(/-(WH|BL|GR|BE)$/i)?.[1]?.toUpperCase();
-  const color = (product.color ?? "").trim().toLowerCase();
-
-  const colorKey =
-    suffix === "WH" || color.includes("white") || color.includes("白") || color.includes("화이트")
-      ? "white"
-      : suffix === "BL" || color.includes("black") || color.includes("黑") || color.includes("블랙")
-        ? "black"
-        : suffix === "GR" || color.includes("gray") || color.includes("grey") || color.includes("灰") || color.includes("그레이")
-          ? "gray"
-          : suffix === "BE" || color.includes("beige") || color.includes("米") || color.includes("베이지")
-            ? "beige"
-            : "other";
-
-  const labels = {
-    zh: { white: "白色", black: "黑色", gray: "灰色", beige: "米色", other: "其他颜色" },
-    ko: { white: "화이트", black: "블랙", gray: "그레이", beige: "베이지", other: "기타 색상" }
-  } as const;
-
-  return labels[language][colorKey];
-}
-
-function colorSortIndex(product: Pick<ProductWithStock, "sku" | "color">) {
-  const label = localizedColor(product, "zh");
-  const order: Record<string, number> = { 白色: 0, 黑色: 1, 灰色: 2, 米色: 3, 其他颜色: 99 };
-  return order[label] ?? 99;
-}
-
-function sizeSortIndex(size: string | null) {
-  const normalized = normalizeSize(size);
-  const order = ["58.4x163", "76.2x163", "87.6x163", "91.4x163", "99.1x163"];
-  const index = order.indexOf(normalized);
-  return index >= 0 ? index : 99;
-}
-
-function normalizeSize(size: string | null) {
-  return (size ?? "").replace(/\s+/g, "").replace(/×/g, "x").replace(/cm$/i, "") || "-";
-}
 
 function toDateInput(date: Date) {
   const year = date.getFullYear();
