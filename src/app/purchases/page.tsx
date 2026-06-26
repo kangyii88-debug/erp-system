@@ -161,9 +161,14 @@ export default function PurchasesPage() {
   );
 }
 
+const PURCHASE_TABLE_PAGE_SIZE = 12;
+
 function PurchasesContent() {
   const { language, t, formatDate, formatNumber, formatCurrency } = useLanguage();
   const copy = purchaseCopy(language);
+  const paginationText = language === "ko"
+    ? { previous: "이전", next: "다음", page: "페이지", rows: "항목", showing: "표시" }
+    : { previous: "上一页", next: "下一页", page: "页", rows: "条", showing: "显示" };
   const [products, setProducts] = useState<ProductWithStock[]>([]);
   const [orders, setOrders] = useState<PurchaseOrderWithProduct[]>([]);
   const [batches, setBatches] = useState<PurchaseBatch[]>([]);
@@ -173,6 +178,7 @@ function PurchasesContent() {
   const [message, setMessage] = useState("");
   const entryRef = useRef<HTMLElement | null>(null);
   const [filters, setFilters] = useState<PurchaseFilters>(emptyFilters);
+  const [tablePage, setTablePage] = useState(1);
   const [form, setForm] = useState({
     product_id: "",
     factory_name: "",
@@ -194,6 +200,27 @@ function PurchasesContent() {
   const todoItems = useMemo(() => buildTodoItems(filteredUnits, copy), [filteredUnits, copy]);
   const tableSummary = useMemo(() => buildTableSummary(filteredUnits, productCards), [filteredUnits, productCards]);
   const hasFilters = Object.values(filters).some(Boolean);
+  const totalTablePages = Math.max(1, Math.ceil(filteredUnits.length / PURCHASE_TABLE_PAGE_SIZE));
+  const paginatedUnits = useMemo(() => {
+    const start = (tablePage - 1) * PURCHASE_TABLE_PAGE_SIZE;
+    return filteredUnits.slice(start, start + PURCHASE_TABLE_PAGE_SIZE);
+  }, [filteredUnits, tablePage]);
+  const visiblePageNumbers = useMemo(() => {
+    const start = Math.max(1, tablePage - 2);
+    const end = Math.min(totalTablePages, start + 4);
+    const adjustedStart = Math.max(1, end - 4);
+    return Array.from({ length: end - adjustedStart + 1 }, (_, index) => adjustedStart + index);
+  }, [tablePage, totalTablePages]);
+
+  useEffect(() => {
+    setTablePage(1);
+  }, [filters]);
+
+  useEffect(() => {
+    if (tablePage > totalTablePages) {
+      setTablePage(totalTablePages);
+    }
+  }, [tablePage, totalTablePages]);
 
   useEffect(() => {
     load();
@@ -463,7 +490,7 @@ function PurchasesContent() {
                 </tr>
               </thead>
               <tbody>
-                {filteredUnits.map((unit) => {
+                {paginatedUnits.map((unit) => {
                   const order = orders.find((row) => row.id === unit.orderId);
                   const status = inferUnitOverallStatus(unit);
                   return (
@@ -506,6 +533,51 @@ function PurchasesContent() {
               </tbody>
             </table>
           </div>
+          {filteredUnits.length ? (
+            <div className="flex flex-col gap-3 border-t border-line bg-[#fcfdff] px-4 py-4 md:flex-row md:items-center md:justify-between">
+              <div className="text-sm font-semibold text-muted">
+                {paginationText.showing}{" "}
+                <span className="text-ink">{formatNumber((tablePage - 1) * PURCHASE_TABLE_PAGE_SIZE + 1)}</span>
+                {" - "}
+                <span className="text-ink">{formatNumber(Math.min(tablePage * PURCHASE_TABLE_PAGE_SIZE, filteredUnits.length))}</span>
+                {" / "}
+                <span className="text-ink">{formatNumber(filteredUnits.length)}</span>
+                {" "}
+                {paginationText.rows}
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setTablePage((current) => Math.max(1, current - 1))}
+                  disabled={tablePage === 1}
+                  className="rounded-xl border border-line bg-white px-3 py-2 text-sm font-semibold text-ink shadow-sm transition hover:border-[#2563eb]/30 hover:text-[#2563eb] disabled:cursor-not-allowed disabled:opacity-45"
+                >
+                  {paginationText.previous}
+                </button>
+                {visiblePageNumbers.map((pageNumber) => (
+                  <button
+                    key={pageNumber}
+                    type="button"
+                    onClick={() => setTablePage(pageNumber)}
+                    className={`h-10 min-w-10 rounded-xl px-3 text-sm font-bold transition ${pageNumber === tablePage ? "bg-[#111827] text-white shadow-soft" : "border border-line bg-white text-ink hover:border-[#2563eb]/30 hover:text-[#2563eb]"}`}
+                  >
+                    {pageNumber}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setTablePage((current) => Math.min(totalTablePages, current + 1))}
+                  disabled={tablePage === totalTablePages}
+                  className="rounded-xl border border-line bg-white px-3 py-2 text-sm font-semibold text-ink shadow-sm transition hover:border-[#2563eb]/30 hover:text-[#2563eb] disabled:cursor-not-allowed disabled:opacity-45"
+                >
+                  {paginationText.next}
+                </button>
+                <div className="ml-1 text-sm font-semibold text-muted">
+                  {paginationText.page} <span className="text-ink">{formatNumber(tablePage)}</span> / <span className="text-ink">{formatNumber(totalTablePages)}</span>
+                </div>
+              </div>
+            </div>
+          ) : null}
         </div>
       </section>
     </>
