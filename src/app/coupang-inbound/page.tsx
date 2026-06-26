@@ -65,6 +65,29 @@ const copy = {
     },
     formAdd: "新增入仓记录",
     formEdit: "编辑入仓记录",
+    sections: {
+      base: "基础信息",
+      skuPicker: "SKU 选择",
+      quantity: "数量确认",
+      logistics: "物流状态",
+      schedule: "时间与备注",
+      action: "提交操作"
+    },
+    sectionDesc: {
+      base: "先确定入仓日期，再确认本次录入对应的商品。",
+      skuPicker: "按系列筛选并快速定位 SKU，避免录错尺寸与颜色。",
+      quantity: "按箱数和每箱数量自动推算确认入库数量。",
+      logistics: "统一记录本次入仓方式、接收状态和异常情况。",
+      schedule: "补充申请日期、预计入仓时间、采购批次和备注。",
+      action: "提交前再看一眼本次入仓摘要。"
+    },
+    summary: {
+      selectedSku: "已选 SKU",
+      quantity: "确认数量",
+      method: "入仓方式",
+      status: "接收状态",
+      batch: "采购批次"
+    },
     filters: "入仓记录筛选",
     list: "Coupang 入仓记录列表",
     fields: {
@@ -154,6 +177,29 @@ const copy = {
     },
     formAdd: "입고 기록 추가",
     formEdit: "입고 기록 수정",
+    sections: {
+      base: "기본 정보",
+      skuPicker: "SKU 선택",
+      quantity: "수량 확인",
+      logistics: "물류 상태",
+      schedule: "일정 및 메모",
+      action: "제출 작업"
+    },
+    sectionDesc: {
+      base: "입고일을 먼저 정하고 이번 기록의 상품을 확인합니다.",
+      skuPicker: "시리즈로 먼저 좁히고 SKU를 빠르게 골라 입력 오류를 줄입니다.",
+      quantity: "박스 수와 박스당 수량으로 확인 입고 수량을 자동 계산합니다.",
+      logistics: "입고 방식, 접수 상태, 이상 여부를 한 번에 관리합니다.",
+      schedule: "신청일, 예정 입고일, 구매 배치번호와 메모를 보완합니다.",
+      action: "저장 전 이번 입고 요약을 한 번 더 확인합니다."
+    },
+    summary: {
+      selectedSku: "선택 SKU",
+      quantity: "확인 수량",
+      method: "입고 방식",
+      status: "접수 상태",
+      batch: "구매 배치"
+    },
     filters: "입고 기록 필터",
     list: "Coupang 입고 기록 목록",
     fields: {
@@ -308,6 +354,17 @@ function CoupangInboundContent() {
   const skuPickerState = useMemo(() => buildSkuPickerState(visibleProducts, language, seriesFilter, skuQuery), [visibleProducts, language, seriesFilter, skuQuery]);
   const selectedProduct = useMemo(() => visibleProducts.find((item) => item.id === form.product_id) ?? null, [visibleProducts, form.product_id]);
   const selectedSkuItem = useMemo(() => (selectedProduct ? toSkuPickerItem(selectedProduct, language) : null), [selectedProduct, language]);
+  const autoCalculatedQuantity = useMemo(() => toNumber(form.box_count) * toNumber(form.units_per_box), [form.box_count, form.units_per_box]);
+  const summaryItems = useMemo(
+    () => [
+      { label: text.summary.selectedSku, value: selectedSkuItem?.sku ?? "—" },
+      { label: text.summary.quantity, value: formatNumber(toNumber(form.confirmed_quantity)) },
+      { label: text.summary.method, value: text.method[form.inbound_method] },
+      { label: text.summary.status, value: text.receiveStatus[form.receive_status] },
+      { label: text.summary.batch, value: form.purchase_batch_no.trim() || "—" }
+    ],
+    [form.confirmed_quantity, form.inbound_method, form.purchase_batch_no, form.receive_status, formatNumber, selectedSkuItem?.sku, text]
+  );
 
   useEffect(() => {
     void loadData();
@@ -521,39 +578,57 @@ function CoupangInboundContent() {
       </section>
 
       <Card>
-        <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="mb-5">
           <div>
             <h2 className="text-lg font-semibold">{editingId ? text.formEdit : text.formAdd}</h2>
             <p className="mt-1 text-xs text-muted">{text.autoCalcHint}</p>
           </div>
-          {editingId ? (
-            <button type="button" onClick={resetForm} className="erp-button-subtle px-3 py-2 text-xs font-semibold">
-              {text.cancelEdit}
-            </button>
-          ) : null}
         </div>
 
-        <form onSubmit={submit} className="grid gap-4 lg:grid-cols-4">
-          <Field label={text.fields.inboundDate}>
-            <input type="date" value={form.inbound_date} onChange={(event) => setForm({ ...form, inbound_date: event.target.value })} required />
-          </Field>
-          <Field label={text.fields.sku} className="lg:col-span-2">
-            <div className="rounded-2xl border border-line bg-panel/30 p-3">
-              <div className="rounded-2xl border border-brand/15 bg-white px-3 py-2.5 shadow-sm">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">{pickerText.selected}</div>
-                {selectedSkuItem ? (
-                  <div className="mt-2 flex flex-wrap items-center gap-2">
-                    <span className="rounded-full bg-brand/10 px-2.5 py-1 text-xs font-semibold text-brand">{selectedSkuItem.seriesLabel}</span>
-                    <span className="text-sm font-semibold text-ink">{selectedSkuItem.sizeLabel}</span>
-                    <span className="text-sm text-muted">{selectedSkuItem.colorLabel}</span>
-                    <span className="font-mono text-xs text-muted">{selectedSkuItem.sku}</span>
-                  </div>
-                ) : (
-                  <div className="mt-2 text-sm text-muted">{pickerText.selectedPlaceholder}</div>
-                )}
+        <form onSubmit={submit} className="space-y-5">
+          <div className="grid gap-5 xl:grid-cols-[320px_minmax(0,1fr)]">
+            <section className="rounded-[28px] border border-line bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(246,249,248,0.92))] p-4 shadow-[0_16px_36px_rgba(15,23,42,0.05)]">
+              <div className="mb-4">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted">{text.sections.base}</div>
+                <div className="mt-1 text-base font-semibold text-ink">{text.fields.inboundDate}</div>
+                <div className="mt-1 text-xs leading-5 text-muted">{text.sectionDesc.base}</div>
+              </div>
+              <div className="space-y-4">
+                <Field label={text.fields.inboundDate}>
+                  <input type="date" value={form.inbound_date} onChange={(event) => setForm({ ...form, inbound_date: event.target.value })} required />
+                </Field>
+                <div className="rounded-3xl border border-brand/15 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(246,250,248,0.94))] p-4 shadow-sm">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">{pickerText.selected}</div>
+                  {selectedSkuItem ? (
+                    <div className="mt-3 space-y-3">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="rounded-full bg-brand/10 px-2.5 py-1 text-xs font-semibold text-brand">{selectedSkuItem.seriesLabel}</span>
+                        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">{selectedSkuItem.colorLabel}</span>
+                      </div>
+                      <div className="text-lg font-semibold leading-none text-ink">{selectedSkuItem.sizeLabel}</div>
+                      <div className="font-mono text-xs text-muted">{selectedSkuItem.sku}</div>
+                    </div>
+                  ) : (
+                    <div className="mt-2 text-sm text-muted">{pickerText.selectedPlaceholder}</div>
+                  )}
+                </div>
+                <Field label={text.fields.productName}>
+                  <input value={form.product_name} onChange={(event) => setForm({ ...form, product_name: event.target.value })} required />
+                </Field>
+              </div>
+            </section>
+
+            <section className="rounded-[28px] border border-line bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(246,249,248,0.92))] p-4 shadow-[0_16px_36px_rgba(15,23,42,0.05)]">
+              <div className="mb-4 flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
+                <div>
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted">{text.sections.skuPicker}</div>
+                  <div className="mt-1 text-base font-semibold text-ink">{text.fields.sku}</div>
+                  <div className="mt-1 text-xs leading-5 text-muted">{text.sectionDesc.skuPicker}</div>
+                </div>
+                <div className="rounded-full border border-line bg-white px-3 py-1.5 text-xs text-muted shadow-sm">{pickerText.searchHint}</div>
               </div>
 
-              <div className="mt-3 flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
                   onClick={() => setSeriesFilter("all")}
@@ -573,7 +648,7 @@ function CoupangInboundContent() {
                 ))}
               </div>
 
-              <div className="relative mt-3">
+              <div className="relative mt-4">
                 <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted" />
                 <input className="w-full pl-9 pr-10" placeholder={text.searchSku} value={skuQuery} onChange={(event) => setSkuQuery(event.target.value)} />
                 {skuQuery ? (
@@ -583,14 +658,12 @@ function CoupangInboundContent() {
                     onClick={() => setSkuQuery("")}
                     className="absolute right-2 top-2 rounded-lg px-2 py-1 text-xs font-semibold text-muted transition hover:bg-panel hover:text-ink"
                   >
-                    횞
+                    X
                   </button>
                 ) : null}
               </div>
 
-              <div className="mt-2 text-xs text-muted">{pickerText.searchHint}</div>
-
-              <div className="mt-3 max-h-72 overflow-y-auto rounded-2xl border border-line bg-white">
+              <div className="mt-4 max-h-[420px] overflow-y-auto rounded-[24px] border border-line bg-white">
                 {skuPickerState.groups.length ? (
                   skuPickerState.groups.map((group) => (
                     <div key={group.series} className="border-b border-line last:border-b-0">
@@ -629,84 +702,139 @@ function CoupangInboundContent() {
                   <div className="px-4 py-8 text-center text-sm text-muted">{pickerText.empty}</div>
                 )}
               </div>
-            </div>
-          </Field>
-          <Field label={text.fields.productName} className="lg:col-span-2">
-            <input value={form.product_name} onChange={(event) => setForm({ ...form, product_name: event.target.value })} required />
-          </Field>
-          <Field label={text.fields.boxCount}>
-            <input type="number" min="0" value={form.box_count} onChange={(event) => updateBoxCount(event.target.value)} />
-          </Field>
-          <Field label={text.fields.unitsPerBox}>
-            <input type="number" min="0" value={form.units_per_box} onChange={(event) => updateUnitsPerBox(event.target.value)} />
-          </Field>
-          <Field label={text.fields.confirmedQuantity}>
-            <input type="number" min="0" value={form.confirmed_quantity} onChange={(event) => setForm({ ...form, confirmed_quantity: event.target.value })} />
-          </Field>
-          <Field label={text.fields.inboundMethod}>
-            <select value={form.inbound_method} onChange={(event) => setForm({ ...form, inbound_method: event.target.value as InboundMethod })}>
-              {methodOptions.map((method) => (
-                <option key={method} value={method}>
-                  {text.method[method]}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <Field label={text.fields.outboundLocation}>
-            <select value={form.outbound_location} onChange={(event) => setForm({ ...form, outbound_location: event.target.value as OutboundLocation })}>
-              {locationOptions.map((location) => (
-                <option key={location} value={location}>
-                  {text.location[location]}
-                </option>
-              ))}
-            </select>
-          </Field>
-          {form.inbound_method === "milk_run" ? (
-            <Field label={text.fields.milkRunType}>
-              <select value={form.milk_run_type} onChange={(event) => setForm({ ...form, milk_run_type: event.target.value as MilkRunType })}>
-                {milkRunOptions.map((type) => (
-                  <option key={type} value={type}>
-                    {text.milkRun[type]}
-                  </option>
+            </section>
+          </div>
+
+          <div className="grid gap-5 xl:grid-cols-2">
+            <section className="rounded-[28px] border border-line bg-[linear-gradient(180deg,rgba(255,255,255,1),rgba(249,250,251,0.96))] p-4 shadow-[0_14px_30px_rgba(15,23,42,0.04)]">
+              <div className="mb-4">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted">{text.sections.quantity}</div>
+                <div className="mt-1 text-base font-semibold text-ink">{text.fields.confirmedQuantity}</div>
+                <div className="mt-1 text-xs leading-5 text-muted">{text.sectionDesc.quantity}</div>
+              </div>
+              <div className="grid gap-4 md:grid-cols-3">
+                <Field label={text.fields.boxCount}>
+                  <input type="number" min="0" value={form.box_count} onChange={(event) => updateBoxCount(event.target.value)} />
+                </Field>
+                <Field label={text.fields.unitsPerBox}>
+                  <input type="number" min="0" value={form.units_per_box} onChange={(event) => updateUnitsPerBox(event.target.value)} />
+                </Field>
+                <Field label={text.fields.confirmedQuantity}>
+                  <input type="number" min="0" value={form.confirmed_quantity} onChange={(event) => setForm({ ...form, confirmed_quantity: event.target.value })} />
+                </Field>
+              </div>
+              <div className="mt-4 flex flex-wrap gap-3">
+                <InfoPill label={text.fields.confirmedQuantity} value={formatNumber(autoCalculatedQuantity)} tone="brand" />
+                <InfoPill label={text.fields.unitsPerBox} value={formatNumber(toNumber(form.units_per_box))} />
+              </div>
+            </section>
+
+            <section className="rounded-[28px] border border-line bg-[linear-gradient(180deg,rgba(255,255,255,1),rgba(249,250,251,0.96))] p-4 shadow-[0_14px_30px_rgba(15,23,42,0.04)]">
+              <div className="mb-4">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted">{text.sections.logistics}</div>
+                <div className="mt-1 text-base font-semibold text-ink">{text.fields.inboundMethod} / {text.fields.receiveStatus}</div>
+                <div className="mt-1 text-xs leading-5 text-muted">{text.sectionDesc.logistics}</div>
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <Field label={text.fields.inboundMethod}>
+                  <select value={form.inbound_method} onChange={(event) => setForm({ ...form, inbound_method: event.target.value as InboundMethod })}>
+                    {methodOptions.map((method) => (
+                      <option key={method} value={method}>
+                        {text.method[method]}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label={text.fields.outboundLocation}>
+                  <select value={form.outbound_location} onChange={(event) => setForm({ ...form, outbound_location: event.target.value as OutboundLocation })}>
+                    {locationOptions.map((location) => (
+                      <option key={location} value={location}>
+                        {text.location[location]}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                {form.inbound_method === "milk_run" ? (
+                  <Field label={text.fields.milkRunType}>
+                    <select value={form.milk_run_type} onChange={(event) => setForm({ ...form, milk_run_type: event.target.value as MilkRunType })}>
+                      {milkRunOptions.map((type) => (
+                        <option key={type} value={type}>
+                          {text.milkRun[type]}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                ) : null}
+                <Field label={text.fields.reservationNumber}>
+                  <input value={form.reservation_number} onChange={(event) => setForm({ ...form, reservation_number: event.target.value })} />
+                </Field>
+                <Field label={text.fields.receiveStatus}>
+                  <select value={form.receive_status} onChange={(event) => setForm({ ...form, receive_status: event.target.value as ReceiveStatus })}>
+                    {receiveStatusOptions.map((status) => (
+                      <option key={status} value={status}>
+                        {text.receiveStatus[status]}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label={text.fields.discrepancyStatus}>
+                  <select value={form.discrepancy_status} onChange={(event) => setForm({ ...form, discrepancy_status: event.target.value as ActiveDiscrepancyStatus })}>
+                    {discrepancyOptions.map((status) => (
+                      <option key={status} value={status}>
+                        {text.discrepancy[status]}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              </div>
+            </section>
+          </div>
+
+          <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
+            <section className="rounded-[28px] border border-line bg-[linear-gradient(180deg,rgba(255,255,255,1),rgba(249,250,251,0.96))] p-4 shadow-[0_14px_30px_rgba(15,23,42,0.04)]">
+              <div className="mb-4">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted">{text.sections.schedule}</div>
+                <div className="mt-1 text-base font-semibold text-ink">{text.fields.applicationDate} / {text.fields.expectedInboundDate}</div>
+                <div className="mt-1 text-xs leading-5 text-muted">{text.sectionDesc.schedule}</div>
+              </div>
+              <div className="grid gap-4 md:grid-cols-3">
+                <Field label={text.fields.applicationDate}>
+                  <input type="date" value={form.application_date} onChange={(event) => setForm({ ...form, application_date: event.target.value })} />
+                </Field>
+                <Field label={text.fields.expectedInboundDate}>
+                  <input type="date" value={form.expected_inbound_date} onChange={(event) => setForm({ ...form, expected_inbound_date: event.target.value })} />
+                </Field>
+                <Field label={text.fields.purchaseBatchNo}>
+                  <input value={form.purchase_batch_no} onChange={(event) => setForm({ ...form, purchase_batch_no: event.target.value })} />
+                </Field>
+                <Field label={text.fields.memo} className="md:col-span-3">
+                  <textarea rows={3} value={form.memo} onChange={(event) => setForm({ ...form, memo: event.target.value })} />
+                </Field>
+              </div>
+            </section>
+
+            <section className="rounded-[28px] border border-brand/20 bg-[linear-gradient(180deg,rgba(237,247,244,0.92),rgba(255,255,255,0.98))] p-4 shadow-[0_18px_42px_rgba(22,78,99,0.08)]">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted">{text.sections.action}</div>
+              <div className="mt-1 text-base font-semibold text-ink">{editingId ? text.update : text.save}</div>
+              <div className="mt-1 text-xs leading-5 text-muted">{text.sectionDesc.action}</div>
+              <div className="mt-4 space-y-2 rounded-3xl border border-white/80 bg-white/85 p-3 shadow-sm">
+                {summaryItems.map((item) => (
+                  <div key={item.label} className="flex items-center justify-between gap-3 border-b border-line/70 py-2 last:border-b-0 last:pb-0 first:pt-0">
+                    <span className="text-xs font-medium text-muted">{item.label}</span>
+                    <span className="text-sm font-semibold text-ink">{item.value}</span>
+                  </div>
                 ))}
-              </select>
-            </Field>
-          ) : null}
-          <Field label={text.fields.reservationNumber}>
-            <input value={form.reservation_number} onChange={(event) => setForm({ ...form, reservation_number: event.target.value })} />
-          </Field>
-          <Field label={text.fields.receiveStatus}>
-            <select value={form.receive_status} onChange={(event) => setForm({ ...form, receive_status: event.target.value as ReceiveStatus })}>
-              {receiveStatusOptions.map((status) => (
-                <option key={status} value={status}>
-                  {text.receiveStatus[status]}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <Field label={text.fields.discrepancyStatus}>
-            <select value={form.discrepancy_status} onChange={(event) => setForm({ ...form, discrepancy_status: event.target.value as ActiveDiscrepancyStatus })}>
-              {discrepancyOptions.map((status) => (
-                <option key={status} value={status}>
-                  {text.discrepancy[status]}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <Field label={text.fields.applicationDate}>
-            <input type="date" value={form.application_date} onChange={(event) => setForm({ ...form, application_date: event.target.value })} />
-          </Field>
-          <Field label={text.fields.expectedInboundDate}>
-            <input type="date" value={form.expected_inbound_date} onChange={(event) => setForm({ ...form, expected_inbound_date: event.target.value })} />
-          </Field>
-          <Field label={text.fields.purchaseBatchNo}>
-            <input value={form.purchase_batch_no} onChange={(event) => setForm({ ...form, purchase_batch_no: event.target.value })} />
-          </Field>
-          <Field label={text.fields.memo} className="lg:col-span-3">
-            <textarea rows={2} value={form.memo} onChange={(event) => setForm({ ...form, memo: event.target.value })} />
-          </Field>
-          <div className="flex items-end">
-            <button className="erp-button-primary w-full px-4 py-3 text-sm font-semibold">{editingId ? text.update : text.save}</button>
+              </div>
+              <div className="mt-4 rounded-2xl border border-dashed border-brand/25 bg-white/70 px-3 py-2 text-xs leading-5 text-muted">{text.noStockImpact}</div>
+              <div className="mt-5 space-y-3">
+                <button className="erp-button-primary w-full px-4 py-3 text-sm font-semibold">{editingId ? text.update : text.save}</button>
+                {editingId ? (
+                  <button type="button" onClick={resetForm} className="erp-button-subtle w-full px-4 py-3 text-sm font-semibold">
+                    {text.cancelEdit}
+                  </button>
+                ) : null}
+              </div>
+            </section>
           </div>
         </form>
 
@@ -885,6 +1013,19 @@ function Field({ label, children, className = "" }: { label: string; children: R
       <span>{label}</span>
       {children}
     </label>
+  );
+}
+
+function InfoPill({ label, value, tone = "neutral" }: { label: string; value: string; tone?: "neutral" | "brand" }) {
+  return (
+    <div
+      className={`rounded-full border px-3 py-2 text-xs shadow-sm ${
+        tone === "brand" ? "border-brand/20 bg-brand/5 text-brand" : "border-line bg-white text-muted"
+      }`}
+    >
+      <span className="font-medium">{label}</span>
+      <span className="ml-2 font-semibold text-ink">{value}</span>
+    </div>
   );
 }
 
