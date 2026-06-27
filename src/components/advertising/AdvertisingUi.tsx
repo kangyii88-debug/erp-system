@@ -72,6 +72,7 @@ export function AdvertisingDashboard({ mode = "overview" }: { mode?: DashboardMo
       {mode === "overview" ? (
         <>
           <AdSummaryCards items={data.overviewKpis} loading={data.loading} />
+          <AdImportWorkspace recordsCrud={data.recordsCrud} />
           <section className="grid gap-5 xl:grid-cols-[1.45fr,0.85fr]">
             <div className="erp-card p-6">
               <SectionTitle
