@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   ArrowLeft,
@@ -932,7 +932,9 @@ export function AdImportWorkspace({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [formCardHeight, setFormCardHeight] = useState<number | null>(null);
   const pageSize = 6;
+  const formCardRef = useRef<HTMLDivElement | null>(null);
 
   const savedRows = useMemo(
     () => [...recordsCrud.storedMetrics].sort((a, b) => `${b.date}-${b.id}`.localeCompare(`${a.date}-${a.id}`)),
@@ -949,6 +951,30 @@ export function AdImportWorkspace({
       setCurrentPage(totalPages);
     }
   }, [currentPage, totalPages]);
+
+  useEffect(() => {
+    const node = formCardRef.current;
+    if (!node) return;
+
+    const syncHeight = () => {
+      if (window.innerWidth < 1280) {
+        setFormCardHeight(null);
+        return;
+      }
+      setFormCardHeight(node.offsetHeight);
+    };
+
+    syncHeight();
+
+    const observer = typeof ResizeObserver !== "undefined" ? new ResizeObserver(syncHeight) : null;
+    observer?.observe(node);
+    window.addEventListener("resize", syncHeight);
+
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", syncHeight);
+    };
+  }, []);
 
   function resetForm() {
     setEditingId(null);
@@ -998,7 +1024,7 @@ export function AdImportWorkspace({
 
   return (
     <section className="grid items-start gap-5 xl:grid-cols-[1.05fr,0.95fr]">
-      <div className="erp-card self-start p-6">
+      <div ref={formCardRef} className="erp-card self-start p-6">
         <SectionTitle eyebrow="每日录入" title="每日广告数据录入" description="每天直接在 ERP 中填写广告日报。系统会按日期和广告名称自动覆盖同一条记录。" />
         <div className="mt-5 rounded-[24px] border border-dashed border-line bg-[#fafaf9] px-4 py-4 text-sm leading-7 text-muted">
           同一天 + 同一个广告名称只能保留一条记录。再次保存时，系统会自动更新这条日报，首页、趋势图和排行榜会继续共用这份数据。
@@ -1072,13 +1098,16 @@ export function AdImportWorkspace({
           </div>
         </form>
       </div>
-      <div className="erp-card self-start overflow-hidden">
+      <div
+        className="erp-card self-start overflow-hidden xl:flex xl:flex-col"
+        style={formCardHeight ? { height: `${formCardHeight}px` } : undefined}
+      >
         <div className="border-b border-line bg-[#fafaf9] px-5 py-4">
           <div className="premium-section-eyebrow">今日记录</div>
           <h2 className="mt-3 text-2xl font-semibold tracking-tight text-ink">已录入广告日报</h2>
           <p className="mt-2 text-sm text-muted">你可以随时回头编辑或删除当天记录，不需要重新导入文件。</p>
         </div>
-        <div className="divide-y divide-line/70">
+        <div className="divide-y divide-line/70 xl:flex-1 xl:overflow-y-auto">
           {recordsCrud.loading ? (
             <div className="px-5 py-10 text-sm text-muted">正在加载广告日报...</div>
           ) : savedRows.length ? (
