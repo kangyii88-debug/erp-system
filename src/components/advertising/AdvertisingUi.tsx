@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
   ArrowLeft,
@@ -931,11 +931,24 @@ export function AdImportWorkspace({
   const [form, setForm] = useState<AdvertisingDailyRecordInput>(emptyDailyRecordForm);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 6;
 
   const savedRows = useMemo(
     () => [...recordsCrud.storedMetrics].sort((a, b) => `${b.date}-${b.id}`.localeCompare(`${a.date}-${a.id}`)),
     [recordsCrud.storedMetrics]
   );
+  const totalPages = Math.max(1, Math.ceil(savedRows.length / pageSize));
+  const paginatedRows = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize;
+    return savedRows.slice(startIndex, startIndex + pageSize);
+  }, [currentPage, savedRows]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
 
   function resetForm() {
     setEditingId(null);
@@ -973,6 +986,7 @@ export function AdImportWorkspace({
       setFormError(result.error);
       return;
     }
+    setCurrentPage(1);
     resetForm();
   }
 
@@ -983,8 +997,8 @@ export function AdImportWorkspace({
   }
 
   return (
-    <section className="grid gap-5 xl:grid-cols-[1.05fr,0.95fr]">
-      <div className="erp-card p-6">
+    <section className="grid items-start gap-5 xl:grid-cols-[1.05fr,0.95fr]">
+      <div className="erp-card self-start p-6">
         <SectionTitle eyebrow="每日录入" title="每日广告数据录入" description="每天直接在 ERP 中填写广告日报。系统会按日期和广告名称自动覆盖同一条记录。" />
         <div className="mt-5 rounded-[24px] border border-dashed border-line bg-[#fafaf9] px-4 py-4 text-sm leading-7 text-muted">
           同一天 + 同一个广告名称只能保留一条记录。再次保存时，系统会自动更新这条日报，首页、趋势图和排行榜会继续共用这份数据。
@@ -1058,7 +1072,7 @@ export function AdImportWorkspace({
           </div>
         </form>
       </div>
-      <div className="erp-card overflow-hidden">
+      <div className="erp-card self-start overflow-hidden">
         <div className="border-b border-line bg-[#fafaf9] px-5 py-4">
           <div className="premium-section-eyebrow">今日记录</div>
           <h2 className="mt-3 text-2xl font-semibold tracking-tight text-ink">已录入广告日报</h2>
@@ -1068,7 +1082,7 @@ export function AdImportWorkspace({
           {recordsCrud.loading ? (
             <div className="px-5 py-10 text-sm text-muted">正在加载广告日报...</div>
           ) : savedRows.length ? (
-            savedRows.map((row) => (
+            paginatedRows.map((row) => (
               <div key={row.id} className="px-5 py-4">
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                   <div className="min-w-0">
@@ -1099,6 +1113,31 @@ export function AdImportWorkspace({
             <div className="px-5 py-10 text-sm text-muted">当前还没有手动录入的广告日报记录。</div>
           )}
         </div>
+        {savedRows.length > pageSize ? (
+          <div className="flex items-center justify-between border-t border-line bg-[#fafaf9] px-5 py-4">
+            <div className="text-sm text-muted">
+              第 {currentPage} / {totalPages} 页
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                disabled={currentPage === 1}
+                className="erp-button-subtle px-3 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                上一页
+              </button>
+              <button
+                type="button"
+                onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                disabled={currentPage === totalPages}
+                className="erp-button-subtle px-3 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                下一页
+              </button>
+            </div>
+          </div>
+        ) : null}
       </div>
     </section>
   );
@@ -1243,3 +1282,4 @@ function toneText(tone?: "default" | "good" | "warn" | "danger") {
   if (tone === "danger") return "需重点处理";
   return "持续监控";
 }
+
