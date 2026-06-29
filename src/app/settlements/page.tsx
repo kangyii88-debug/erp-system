@@ -45,9 +45,11 @@ type SettlementForm = {
 };
 
 type SortKey = "month" | "sales" | "payment" | "adRate" | "paymentRate";
+type PersistenceMode = "remote" | "local";
 
 const PAGE_SIZE = 10;
 const STORAGE_BUCKET = "settlement-attachments";
+const LOCAL_SETTLEMENT_STORAGE_KEY = "coupang-settlements-local-drafts";
 
 export default function SettlementsPage() {
   return (
@@ -70,6 +72,7 @@ function SettlementCenter() {
   const [monthFilter, setMonthFilter] = useState("all");
   const [sortKey, setSortKey] = useState<SortKey>("month");
   const [page, setPage] = useState(1);
+  const [persistenceMode, setPersistenceMode] = useState<PersistenceMode>("remote");
 
   useEffect(() => {
     load();
@@ -78,9 +81,16 @@ function SettlementCenter() {
   async function load() {
     const { data, error } = await supabase.from("coupang_settlements").select("*").order("settlement_month", { ascending: false });
     if (error) {
+      if (isSettlementTableMissing(error.message)) {
+        setPersistenceMode("local");
+        setRecords(loadLocalSettlementRecords());
+        setMessage("");
+        return;
+      }
       setMessage(error.message);
       return;
     }
+    setPersistenceMode("remote");
     setRecords((data ?? []) as CoupangSettlement[]);
     setMessage("");
   }
@@ -89,6 +99,21 @@ function SettlementCenter() {
     event.preventDefault();
     setSaving(true);
     setMessage("");
+
+    if (persistenceMode === "local") {
+      const result = saveSettlementToLocal({
+        records,
+        form,
+        editingId,
+        attachmentUrl: form.attachment_url || null
+      });
+      setRecords(result.records);
+      setSaving(false);
+      resetForm();
+      setMessage(copy.savedLocal);
+      return;
+    }
+
     const { data: auth } = await supabase.auth.getUser();
     if (!auth.user) {
       setSaving(false);
@@ -136,6 +161,19 @@ function SettlementCenter() {
 
     setSaving(false);
     if (error) {
+      if (isSettlementTableMissing(error.message)) {
+        setPersistenceMode("local");
+        const result = saveSettlementToLocal({
+          records,
+          form,
+          editingId,
+          attachmentUrl
+        });
+        setRecords(result.records);
+        resetForm();
+        setMessage(copy.savedLocal);
+        return;
+      }
       setMessage(error.message);
       return;
     }
@@ -183,8 +221,23 @@ function SettlementCenter() {
 
   async function deleteRecord(id: string) {
     if (!window.confirm(copy.deleteConfirm)) return;
+
+    if (persistenceMode === "local") {
+      const nextRecords = removeLocalSettlementRecord(id);
+      setRecords(nextRecords);
+      if (editingId === id) resetForm();
+      return;
+    }
+
     const { error } = await supabase.from("coupang_settlements").delete().eq("id", id);
     if (error) {
+      if (isSettlementTableMissing(error.message)) {
+        setPersistenceMode("local");
+        const nextRecords = removeLocalSettlementRecord(id);
+        setRecords(nextRecords);
+        if (editingId === id) resetForm();
+        return;
+      }
       setMessage(error.message);
       return;
     }
@@ -250,6 +303,8 @@ function SettlementCenter() {
           onSubmit={submit}
           formatCurrency={formatCurrency}
           message={displayMessage}
+          notice={persistenceMode === "local" ? copy.localDraftModeNotice : ""}
+          localMode={persistenceMode === "local"}
         />
         <BusinessInsights insights={buildInsights(currentMetrics, previousRecord(records, currentMetrics.settlement_month), copy, formatCurrency)} copy={copy} />
       </section>
@@ -396,7 +451,9 @@ function SettlementEntry({
   onCancel,
   onSubmit,
   formatCurrency,
-  message
+  message,
+  notice,
+  localMode
 }: {
   form: SettlementForm;
   copy: SettlementCopy;
@@ -410,6 +467,8 @@ function SettlementEntry({
   onSubmit: (event: FormEvent) => void;
   formatCurrency: (value: number) => string;
   message: string;
+  notice: string;
+  localMode: boolean;
 }) {
   const primaryFields: Array<[keyof SettlementForm, string]> = [
     ["sales_amount", copy.salesAmount],
@@ -466,10 +525,10 @@ function SettlementEntry({
         </FormGroup>
         <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(260px,0.45fr)]">
           <Field label={copy.attachment}>
-            <label className="flex min-h-10 cursor-pointer items-center gap-2 rounded-xl border border-line bg-white/80 px-3 py-2 text-sm font-semibold text-muted transition hover:border-brand/30 hover:text-brand">
+            <label className={`flex min-h-10 items-center gap-2 rounded-xl border border-line bg-white/80 px-3 py-2 text-sm font-semibold text-muted transition ${localMode ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:border-brand/30 hover:text-brand"}`}>
               <Paperclip className="h-4 w-4" />
-              <span className="truncate">{attachmentFile?.name || (form.attachment_url ? copy.attachmentSaved : copy.uploadHint)}</span>
-              <input className="hidden" type="file" accept="image/*,.pdf,.xls,.xlsx,.csv" onChange={(event) => onFileChange(event.target.files?.[0] ?? null)} />
+              <span className="truncate">{localMode ? copy.localDraftAttachmentHint : attachmentFile?.name || (form.attachment_url ? copy.attachmentSaved : copy.uploadHint)}</span>
+              <input className="hidden" type="file" accept="image/*,.pdf,.xls,.xlsx,.csv" disabled={localMode} onChange={(event) => onFileChange(event.target.files?.[0] ?? null)} />
             </label>
           </Field>
           <Field label={copy.remark}><textarea className="min-h-10" value={form.remark} onChange={(event) => onFormChange({ ...form, remark: event.target.value })} /></Field>
@@ -484,8 +543,13 @@ function SettlementEntry({
         <div className="rounded-xl border border-brand/10 bg-brand/5 px-4 py-3 text-xs font-semibold leading-6 text-brand">
           {copy.formulaHint}
         </div>
+        {notice ? (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold leading-6 text-amber-800">
+            {notice}
+          </div>
+        ) : null}
         {message ? (
-          <div className={`rounded-xl border px-4 py-3 text-sm font-semibold leading-6 ${message === copy.saved ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-red-200 bg-red-50 text-red-700"}`}>
+          <div className={`rounded-xl border px-4 py-3 text-sm font-semibold leading-6 ${message === copy.saved || message === copy.savedLocal ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-red-200 bg-red-50 text-red-700"}`}>
             {message}
           </div>
         ) : null}
@@ -850,15 +914,86 @@ function emptyToNull(value: string) {
   return trimmed ? trimmed : null;
 }
 
+function isSettlementTableMissing(message: string) {
+  return message.includes("Could not find the table") || message.includes("schema cache") || message.includes("coupang_settlements");
+}
+
 function friendlySettlementMessage(message: string, copy: SettlementCopy) {
   if (!message) return "";
-  if (message.includes("Could not find the table") || message.includes("schema cache") || message.includes("coupang_settlements")) {
+  if (isSettlementTableMissing(message)) {
     return copy.databaseSetupRequired;
   }
   if (message.includes("sales_month")) {
     return copy.salesMonthMigrationRequired;
   }
   return message;
+}
+
+function loadLocalSettlementRecords() {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(LOCAL_SETTLEMENT_STORAGE_KEY);
+    const parsed = raw ? (JSON.parse(raw) as CoupangSettlement[]) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function persistLocalSettlementRecords(records: CoupangSettlement[]) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(LOCAL_SETTLEMENT_STORAGE_KEY, JSON.stringify(records));
+}
+
+function saveSettlementToLocal({
+  records,
+  form,
+  editingId,
+  attachmentUrl
+}: {
+  records: CoupangSettlement[];
+  form: SettlementForm;
+  editingId: string | null;
+  attachmentUrl: string | null;
+}) {
+  const calc = calculateSettlement(form);
+  const existing = editingId ? records.find((record) => record.id === editingId) ?? null : null;
+  const record: CoupangSettlement = {
+    id: editingId ?? `local-${Date.now()}`,
+    user_id: existing?.user_id ?? "local-draft",
+    sales_month: monthToDate(form.sales_month),
+    settlement_month: monthToDate(form.settlement_month),
+    sales_amount: calc.salesAmount,
+    cancel_amount: calc.cancelAmount,
+    actual_sales_amount: calc.actualSalesAmount,
+    sales_fee: calc.salesFee,
+    seller_coupon: calc.sellerCoupon,
+    milk_run_fee: calc.milkRunFee,
+    ad_fee: calc.adFee,
+    settlement_deduction: calc.settlementDeduction,
+    fulfillment_fee: calc.fulfillmentFee,
+    inventory_loss_compensation: calc.inventoryLossCompensation,
+    final_payment_amount: calc.finalPaymentAmount,
+    cancel_rate: calc.cancelRate,
+    fee_rate: calc.feeRate,
+    ad_rate: calc.adRate,
+    payment_rate: calc.paymentRate,
+    remark: emptyToNull(form.remark),
+    attachment_url: attachmentUrl,
+    created_at: existing?.created_at ?? new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  };
+
+  const nextRecords = editingId ? records.map((item) => (item.id === editingId ? record : item)) : [record, ...records];
+  nextRecords.sort((a, b) => b.settlement_month.localeCompare(a.settlement_month));
+  persistLocalSettlementRecords(nextRecords);
+  return { records: nextRecords };
+}
+
+function removeLocalSettlementRecord(id: string) {
+  const nextRecords = loadLocalSettlementRecords().filter((record) => record.id !== id);
+  persistLocalSettlementRecords(nextRecords);
+  return nextRecords;
 }
 
 function settlementCopy(language: Language) {
@@ -920,11 +1055,14 @@ function settlementCopy(language: Language) {
       update: "업데이트",
       saving: "저장 중",
       saved: "저장되었습니다. 아래 월별 정산 기록에 반영되었습니다.",
+      savedLocal: "온라인 정산 테이블이 아직 없어 브라우저 로컬 초안으로 저장했습니다.",
       empty: "정산 데이터가 없습니다.",
       databaseSetupRequired: "Supabase에 coupang_settlements 테이블이 아직 없습니다. supabase/migrations/create-coupang-settlements.sql을 먼저 실행해야 저장됩니다.",
       salesMonthMigrationRequired: "Supabase의 coupang_settlements 테이블에 sales_month 컬럼이 없습니다. supabase/migrations/add-sales-month-to-coupang-settlements.sql을 실행하세요.",
       uploadHint: "정산 캡처 / Excel / PDF 업로드",
       attachmentSaved: "기존 첨부 있음",
+      localDraftModeNotice: "온라인 Supabase 정산 테이블이 아직 없어 현재는 브라우저 로컬 초안 모드로 저장됩니다. 같은 브라우저에서는 계속 수정/삭제할 수 있습니다.",
+      localDraftAttachmentHint: "로컬 초안 모드에서는 첨부 업로드가 비활성화됩니다.",
       deleteConfirm: "이 정산 기록을 삭제하시겠습니까? 삭제 후 복구할 수 없습니다.",
       monthlyLedgerCount: (count: number) => `${count}건`,
       pageInfo: (page: number, total: number, count: number) => `${page}/${total} · ${count}건`,
@@ -996,11 +1134,14 @@ function settlementCopy(language: Language) {
     update: "更新",
     saving: "保存中",
     saved: "保存成功，已记录到下方月份记录。",
+    savedLocal: "线上结算表还没建好，已先保存到当前浏览器本地草稿。",
     empty: "暂无结算数据",
     databaseSetupRequired: "线上 Supabase 还没有 coupang_settlements 表。请先执行 supabase/migrations/create-coupang-settlements.sql，执行后才能保存。",
     salesMonthMigrationRequired: "线上 Supabase 的 coupang_settlements 表还没有 sales_month 字段。请执行 supabase/migrations/add-sales-month-to-coupang-settlements.sql。",
     uploadHint: "上传结算截图 / Excel / PDF",
     attachmentSaved: "已有附件",
+    localDraftModeNotice: "线上 Supabase 的结算表还没就绪，当前会自动保存到这个浏览器的本地草稿里。你仍然可以继续录入、编辑和删除。",
+    localDraftAttachmentHint: "本地草稿模式下暂不支持附件上传。",
     deleteConfirm: "确认删除这条结算记录吗？删除后无法恢复。",
     monthlyLedgerCount: (count: number) => `共 ${count} 条`,
     pageInfo: (page: number, total: number, count: number) => `第 ${page}/${total} 页 · 共 ${count} 条`,
